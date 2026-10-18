@@ -621,7 +621,10 @@ static int text_of(ppl_vm *V, const value *v, value *s)
 
 /* TEXTOUT_P(text, [G], x, y, [font, c1, width, c2]) -> the x where it ended.
  * Font 0 = the Home font (3 here), 1..7 = 10..22 px; c2 fills the cell
- * [x-1, x+width] x [y, y+cell-1] first. */
+ * [x-1, x+width] x [y, y+cell-1] first.  Text wholly outside the grob draws
+ * nothing and answers x plus its width in font 3, whatever the font (the
+ * Virtual Calculator answers 622 for "abc" in font 7 at x 600 on a 512-wide
+ * grob). */
 static int textout(ppl_vm *V, int argc, value *a, value *out, int cart)
 {
     grob *g;
@@ -636,7 +639,6 @@ static int textout(ppl_vm *V, int argc, value *a, value *out, int cart)
     if ((st = xy(V, cart, a, &x, &y))) return st;
     if (argc > 2 && (st = num_i(&a[2], &font))) return st;
     if (font < 0 || font > 7) return E_BADVAL;
-    if (cart) font = 0;                     /* TEXTOUT ignores the font (Virtual Calculator) */
     if (argc > 3 && (st = colour(&a[3], &fg))) return st;
     if (argc > 4 && (st = num_i(&a[4], &maxw))) return st;
     if (argc > 5) { if ((st = colour(&a[5], &bg))) return st; bgon = 1; }
@@ -684,7 +686,7 @@ static void menu_button(grob *g, int x0, int x1, const pstr *label)
     {
         int tx = x0 + ((x1 - x0 + 1) - w) / 2;
         if ((x1 - x0 + 1) - w < 2) tx = x0 + 1;
-        gfx_text(g, 3, label->c, label->len, tx, 222, GFX_WHITE, x1 - tx, 0, 0);
+        gfx_text(g, 3, label->c, label->len, tx, 222, GFX_WHITE, x1 + 1 - tx, 0, 0);
     }
 }
 

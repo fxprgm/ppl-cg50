@@ -622,11 +622,18 @@ int gfx_text(grob *g, int font, const uint16_t *s, uint32_t n, int x, int y,
     const gfx_font *f = font_of(font);
     int w = 0, xlim, px;
     uint32_t i;
-    unsigned op = 255u - (fg >> 24);
+    unsigned op = 255u;               /* the text colour's alpha is ignored (measured) */
     for (i = 0; i < n; i++) w += char_adv(f, s[i]);
+    if (x - 1 >= g->w || y >= g->h || y + f->cell <= 0 || x + w < 0) {
+        /* nothing of it on the grob: the Prime answers with font 3's width */
+        f = font_of(3);
+        for (w = 0, i = 0; i < n; i++) w += char_adv(f, s[i]);
+        if (maxw >= 0 && w > maxw) w = maxw;
+        return x + w;
+    }
     if (maxw >= 0 && w > maxw) w = maxw;
     xlim = x + w;
-    if (bgon) gfx_fill(g, x - 1, y, x + w, y + f->cell - 1, bg);
+    if (bgon) gfx_fill(g, x - 1, y - 1, x + w, y + f->cell - 1, bg);
     if (op) {
         px = x;
         for (i = 0; i < n && px < xlim; i++) {

@@ -71,6 +71,10 @@ W_SYM = [
 SUBST = {0x2D: 0x2212,     # the Prime draws '-' as a minus, as wide as '+'
          0xE003: 0x69,     # the Prime's imaginary unit
          0x2148: 0x69}
+# characters made from another glyph scaled and moved (the Prime's own
+# shapes): code -> (source, scale, raise in em, left edge in em from the pen)
+SYNTH = {0x2212: (0x2D, 1.15, 0.18, 0.09),   # its minus is a short raised dash: "-5" shows as a superscript minus
+         0x1D07: (0x45, 0.76, 0.0, 0.0)}     # small capital E, x-height tall, as in 2.5E-3
 
 
 def widths():
@@ -92,17 +96,17 @@ def cmap_of(path):
     return set(TTFont(path).getBestCmap())
 
 
-def render(path, cp, size, ss):
+def render(path, cp, size, ss, scale=1.0):
     """-> (image L, x, y) of the ink box relative to the pen on the baseline"""
     ch = chr(cp)
     if not ss:
-        f = ImageFont.truetype(path, size)
+        f = ImageFont.truetype(path, size * scale)
         m, (ox, oy) = f.getmask2(ch, mode='L', anchor='ls')
         if not m.size[0] or not m.size[1]:
             return None, 0, 0
         return Image.frombytes('L', m.size, bytes(m)), ox, oy
     k = 8
-    f = ImageFont.truetype(path, size * k)
+    f = ImageFont.truetype(path, size * k * scale)
     m, (ox, oy) = f.getmask2(ch, mode='L', anchor='ls')
     if not m.size[0] or not m.size[1]:
         return None, 0, 0
@@ -155,8 +159,12 @@ def main():
                         nib.append(15 if r in (0, h - 1) or c in (0, w - 1) else 0)
             else:
                 src = SUBST.get(cp, cp)
+                scale, lift, atpen = 1.0, 0.0, None
+                if cp in SYNTH:
+                    src, scale, lift, atpen = SYNTH[cp]
                 path = droid if src in dcm else free
-                im, x, y = render(path, src, size, SUPERSAMPLE[f])
+                im, x, y = render(path, src, size, SUPERSAMPLE[f], scale)
+                y -= round(lift * size)
                 if im is None:
                     w = h = 0
                 else:
@@ -168,7 +176,9 @@ def main():
                         x += bbox[0]; y += bbox[1]
                         w, h = im.size
                         fa = advance(path, src, size)
-                        if abs(adv - fa) >= 2:          # centre in the Prime's advance
+                        if atpen is not None:
+                            x = round(atpen * size)
+                        elif abs(adv - fa) >= 2:        # centre in the Prime's advance
                             x += (adv - fa) // 2
                         nib = [(v * 15 + 127) // 255 for v in im.getdata()]
             if len(nib) % 2:
