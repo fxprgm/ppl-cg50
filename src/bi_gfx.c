@@ -593,11 +593,9 @@ static int blit(ppl_vm *V, int argc, value *a, value *out, int cart)
         if (ns >= 6 && (st = alpha_arg(&a[5], &al))) return st;
         break;
     }
-    if (sx0 > sx1) { int t = sx0; sx0 = sx1; sx1 = t; }
-    if (sy0 > sy1) { int t = sy0; sy0 = sy1; sy1 = t; }
+    /* a destination given right to left or bottom to top draws nothing
+     * (Virtual Calculator); the same is assumed of the source */
     if (nd < 4) { dx1 = dx0 + (sx1 - sx0); dy1 = dy0 + (sy1 - sy0); }
-    if (dx0 > dx1) { int t = dx0; dx0 = dx1; dx1 = t; }
-    if (dy0 > dy1) { int t = dy0; dy0 = dy1; dy1 = t; }
     gfx_blit(d, dx0, dy0, dx1, dy1, s, sx0, sy0, sx1, sy1, use_key, key, al);
     return done(V, d, dy0, dy1 - 1, out);
 }
