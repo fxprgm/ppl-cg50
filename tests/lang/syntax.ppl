@@ -1,0 +1,74 @@
+// Syntax seen in real programs: lower-case keywords, brackets, CONST,
+// headings without parentheses, = in declarations, VIEW, stray END.
+const K1 = 7;
+CONST K2 := 3;
+k_a=1, k_b=2;
+VIEW "Menu entry" MENUF()
+begin
+  return 5;
+end;
+
+EXPORT noparen
+BEGIN
+  RETURN 11;
+END;
+
+EXPORT LOWER1(n)
+begin
+  local i, s := 0, key;
+  for i from 1 to n do s := s + i; end;
+  key := s;
+  if key > 5 then return key; else return -1; end;
+end;
+
+EXPORT BRACK()
+BEGIN
+  LOCAL L := {10,20,30}, M := [[1,2],[3,4]];
+  L[2] := 25;
+  M[2,1] := 9;
+  RETURN {L[2], M[2][1], M[1,2]};
+END;
+
+EXPORT DEGS()
+BEGIN
+  RETURN SIN(30°);
+END;
+
+EXPORT CONTN()
+BEGIN
+  LOCAL i, j, n := 0;
+  FOR i FROM 1 TO 3 DO
+    FOR j FROM 1 TO 3 DO
+      IF j == 2 THEN CONTINUE 2; END;
+      n := n + 1;
+    END;
+  END;
+  RETURN n;
+END;
+
+EXPORT GETK()
+BEGIN
+  RETURN {K1 + K2, k_b, MENUF()};
+END;
+
+EXPORT QUIT()
+BEGIN
+  LOCAL r := 1;
+  IF r THEN BREAK; END;
+  RETURN 2;
+END;
+END;
+
+//> GETK() => {10,2,5}
+//> noparen() => 11
+//> LOWER1(4) => 10
+//> LOWER1(2) => -1
+//> BRACK() => {25,9,2}
+//> DEGS() => 0.5
+//> CONTN() => 3
+//> QUIT() => 0
+//> TYPE('X+1') => 8
+//> STRING('X+1') => "X+1"
+//> 2_m => *error*
+//> sqrt(2) => 1.41421356237
+//> ∫(X^2,X,0,3) => 9

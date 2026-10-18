@@ -247,9 +247,9 @@ static BI(b_euler)
     return 0;
 }
 
-/* ∫(expr, var, a, b): Gauss-Legendre (10 points) on 16 panels; the
- * expression is a thunk */
-static BI(b_integral)
+/* ∫(expr, var, a, b): 10-point Gauss-Legendre on 1, 2, 4 ... 64 panels
+ * until two successive results agree to 12 digits; sums in the xn engine */
+static int gl_panels(ppl_vm *V, value *a, const real *lo, const real *hi, int panels, xn *res)
 {
     static const char *xs[5] = { "0.1488743389816312108848260", "0.4333953941292471907992659",
                                  "0.6794095682990244062343274", "0.8650633666889845107320967",
@@ -257,42 +257,55 @@ static BI(b_integral)
     static const char *ws[5] = { "0.2955242247147528701738930", "0.2692667193099963550912269",
                                  "0.2190863625159820439955349", "0.1494513491505805931457763",
                                  "0.0666713443086881375935688" };
-    real lo, hi, h, sum, half, two;
+    xn L, H, h, half, sum, mid, t, x, w;
+    int k, i, sg, st;
+    xn_from_real(&L, lo); xn_from_real(&H, hi);
+    xn_sub(&h, &H, &L, 30); xn_div_int(&h, &h, panels, 30);
+    xn_div_int(&half, &h, 2, 30);
+    xn_zero(&sum);
+    for (k = 0; k < panels; k++) {
+        xn_mul_int(&mid, &h, k, 30); xn_add(&mid, &mid, &L, 30); xn_add(&mid, &mid, &half, 30);
+        for (i = 0; i < 5; i++)
+            for (sg = -1; sg <= 1; sg += 2) {
+                real xr, fr;
+                value xv, fv;
+                xn_from_str(&x, xs[i]); xn_from_str(&w, ws[i]);
+                if (sg < 0) x.s = 1;
+                xn_mul(&x, &x, &half, 30); xn_add(&x, &x, &mid, 30);
+                xn_to_real(&xr, &x);
+                v_real(&xv, &xr);
+                if ((st = vm_store_ref(V, &a[1], &xv))) return st;
+                if ((st = vm_run_thunk(V, &a[0], &fv))) return st;
+                if ((st = bi_real(&fv, &fr))) { v_decref(&fv); return st; }
+                xn_from_real(&t, &fr);
+                xn_mul(&t, &t, &w, 30); xn_mul(&t, &t, &half, 30);
+                xn_add(&sum, &sum, &t, 30);
+            }
+    }
+    *res = sum;
+    return 0;
+}
+
+static BI(b_integral)
+{
+    real lo, hi, r = {{0, 0, 0}, 0, 0, 0}, prev;
     value saved;
-    int st = 0, k, i, sg;
+    int st = 0, p;
+    xn cur;
     (void)argc;
     if (bi_real(&a[2], &lo) || bi_real(&a[3], &hi)) return E_BADTYPE;
     vm_load_ref(V, &a[1], &saved);
-    dec_zero(&sum);
-    dec_from_int(&two, 2);
-    {
-        real n16; dec_from_int(&n16, 16);
-        dec_sub(&h, &hi, &lo); dec_div(&h, &h, &n16);
-    }
-    dec_div(&half, &h, &two);
-    for (k = 0; k < 16 && !st; k++) {
-        real mid, kk;
-        dec_from_int(&kk, k);
-        dec_mul(&mid, &kk, &h); dec_add(&mid, &mid, &lo); dec_add(&mid, &mid, &half);
-        for (i = 0; i < 5 && !st; i++)
-            for (sg = -1; sg <= 1 && !st; sg += 2) {
-                real x, w, t;
-                value xv, fv;
-                dec_from_str(&x, xs[i], NULL); dec_from_str(&w, ws[i], NULL);
-                if (sg < 0) dec_neg(&x, &x);
-                dec_mul(&x, &x, &half); dec_add(&x, &x, &mid);
-                v_real(&xv, &x);
-                if ((st = vm_store_ref(V, &a[1], &xv))) break;
-                if ((st = vm_run_thunk(V, &a[0], &fv))) break;
-                if ((st = bi_real(&fv, &t))) { v_decref(&fv); break; }
-                dec_mul(&t, &t, &w); dec_mul(&t, &t, &half);
-                dec_add(&sum, &sum, &t);
-            }
+    dec_zero(&prev);
+    for (p = 1; p <= 64; p *= 2) {
+        if ((st = gl_panels(V, a, &lo, &hi, p, &cur))) break;
+        xn_to_real(&r, &cur);
+        if (p > 1 && dec_cmp(&r, &prev) == 0) break;
+        prev = r;
     }
     vm_store_ref(V, &a[1], &saved);
     v_decref(&saved);
     if (st) return st;
-    v_real(out, &sum);
+    v_real(out, &r);
     return 0;
 }
 
