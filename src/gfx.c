@@ -138,6 +138,18 @@ static uint32_t blend(uint32_t d, uint32_t c, unsigned a)
     return (d & 0xFF000000u) | (r << 16) | (gg << 8) | b;
 }
 
+/* fills (RECT, FILLPOLY, TRIANGLE) blend a little differently from single
+ * pixels: (src*(256-a) + dst*a) >> 8 (RGB(255,0,0,128) on white is #FF7F7Fh
+ * from RECT_P, where PIXON_P's rule would give #FE7F7Fh) */
+static uint32_t blend_fill(uint32_t d, uint32_t c, unsigned a)
+{
+    unsigned ia = 256 - a;
+    uint32_t r = ((((c >> 16) & 255u) * ia + ((d >> 16) & 255u) * a) >> 8);
+    uint32_t gg = ((((c >> 8) & 255u) * ia + ((d >> 8) & 255u) * a) >> 8);
+    uint32_t b = (((c & 255u) * ia + (d & 255u) * a) >> 8);
+    return (d & 0xFF000000u) | (r << 16) | (gg << 8) | b;
+}
+
 static void put(grob *g, int x, int y, uint32_t c)
 {
     unsigned a = c >> 24;
@@ -166,7 +178,7 @@ static void hspan(grob *g, int x0, int x1, int y, uint32_t c)
     if (x0 > x1) return;
     p = &g->px[(long)y * g->w];
     if (a == 0) for (; x0 <= x1; x0++) p[x0] = c;
-    else for (; x0 <= x1; x0++) p[x0] = blend(p[x0], c, a);
+    else for (; x0 <= x1; x0++) p[x0] = blend_fill(p[x0], c, a);
 }
 
 void gfx_fill(grob *g, int x0, int y0, int x1, int y1, uint32_t c)
@@ -188,8 +200,8 @@ void gfx_rect(grob *g, int x0, int y0, int x1, int y1, uint32_t edge, uint32_t f
     hspan(g, x0, x1, y0, edge);
     if (y1 > y0) hspan(g, x0, x1, y1, edge);
     for (t = y0 + 1; t < y1; t++) {
-        put(g, x0, t, edge);
-        if (x1 > x0) put(g, x1, t, edge);
+        hspan(g, x0, x0, t, edge);
+        if (x1 > x0) hspan(g, x1, x1, t, edge);
         if (x1 - x0 >= 2) hspan(g, x0 + 1, x1 - 1, t, fill);
     }
 }
@@ -209,24 +221,40 @@ void gfx_invert(grob *g, int x0, int y0, int x1, int y1)
 
 /* ------------------------------------------------------------ lines */
 
+/* Bresenham as the Prime does it (matched pixel for pixel on the Virtual
+ * Calculator): drawn from the left end; along the major axis the minor
+ * coordinate steps when n*dminor - floor(dmajor/2) reaches a multiple of
+ * dmajor, so an odd dmajor rounds up a little below one half (a line from
+ * (137,33) to (160,120) has x = 142 at y = 50, where it is 141.494). */
 void gfx_line(grob *g, int x0, int y0, int x1, int y1, uint32_t c)
 {
-    int dx, dy, sx, sy, err, e2;
+    int dx, dy, sx, sy, err, n, steep, t;
     if ((c >> 24) == 255) return;
     /* whole line on one side of the grob: nothing to draw */
     if ((x0 < 0 && x1 < 0) || (y0 < 0 && y1 < 0) ||
         (x0 >= g->w && x1 >= g->w) || (y0 >= g->h && y1 >= g->h)) return;
-    dx = x1 > x0 ? x1 - x0 : x0 - x1;
-    dy = y1 > y0 ? y0 - y1 : y1 - y0;
-    sx = x0 < x1 ? 1 : -1;
+    if (x0 > x1) { t = x0; x0 = x1; x1 = t; t = y0; y0 = y1; y1 = t; }
+    dx = x1 - x0;
+    dy = y1 > y0 ? y1 - y0 : y0 - y1;
+    sx = 1;
     sy = y0 < y1 ? 1 : -1;
-    err = dx + dy;
-    for (;;) {
-        put(g, x0, y0, c);
-        if (x0 == x1 && y0 == y1) break;
-        e2 = 2 * err;
-        if (e2 >= dy) { err += dy; x0 += sx; }
-        if (e2 <= dx) { err += dx; y0 += sy; }
+    steep = dy > dx;
+    if (!steep) {
+        err = -(dx / 2);
+        for (n = 0; n <= dx; n++) {
+            put(g, x0, y0, c);
+            x0 += sx;
+            err += dy;
+            if (dy && err >= 0) { y0 += sy; err -= dx; }
+        }
+    } else {
+        err = -(dy / 2);
+        for (n = 0; n <= dy; n++) {
+            put(g, x0, y0, c);
+            y0 += sy;
+            err += dx;
+            if (dx && err >= 0) { x0 += sx; err -= dy; }
+        }
     }
 }
 
@@ -290,58 +318,140 @@ void gfx_arc(grob *g, int cx, int cy, int r, const int32_t *s, const int32_t *e,
     }
 }
 
+/* a filled sector (ARC_P with {edge, fill} colours).  Unlike the outline,
+ * the Prime measures these angles clockwise on the screen (y down): from a1
+ * to a2 is the math sector from -a2 to -a1.  s, e: the directions of -a2 and
+ * -a1 (x right, y up, 2^14), s[2]: sweep > pi; p1, p2: the end points.  An
+ * approximation of the Prime's drawing: the pixels inside the circle and
+ * the sector, then the arc and the two radii in the edge colour. */
+void gfx_pie(grob *g, int cx, int cy, int r, const int32_t *s, const int32_t *e,
+             const int *p1, const int *p2, uint32_t edge, uint32_t fill)
+{
+    arcf f;
+    int x, y;
+    if (r < 0) r = -r;
+    if (r > 16384) r = 16384;
+    f.full = 0; f.sx = s[0]; f.sy = s[1]; f.ex = e[0]; f.ey = e[1]; f.big = s[2];
+    for (y = -r; y <= r; y++) {
+        if (cy + y < 0 || cy + y >= g->h) continue;
+        for (x = -r; x <= r; x++)
+            if ((int32_t)x * x + (int32_t)y * y <= (int32_t)r * r && in_arc(&f, x, -y)) put(g, cx + x, cy + y, fill);
+    }
+    gfx_arc(g, cx, cy, r, s, e, edge);
+    gfx_line(g, cx, cy, p1[0], p1[1], edge);
+    gfx_line(g, cx, cy, p2[0], p2[1], edge);
+}
+
 /* ------------------------------------------------------------ polygons */
 
-/* even-odd scanline fill sampled at pixel centres: pixel (x, y) is inside
- * when (x + 1/2, y + 1/2) is; edges are half-open in y */
-typedef struct xing { int64_t n, d; } xing;     /* crossing at x = n/d - 1/2, d > 0 */
+/* FILLPOLY, as the Prime fills (matched on the Virtual Calculator): every
+ * row from the top to the bottom vertex, both included; each edge gives one
+ * x per row, walked from its nearer end with a 16.16 slope truncated toward
+ * that end; the x's of a row are sorted and filled in pairs, both ends
+ * included (even-odd).  A vertex where the outline passes straight through
+ * counts once, a top or bottom vertex twice. */
+/* (each edge P->Q: rows nearer P are walked from P, the rest from Q) */
+static int32_t edge_x(int32_t xp, int32_t yp, int32_t xq, int32_t yq, int32_t y)
+{
+    /* the edge P->Q in the polygon's order: rows nearer P from P, the others
+     * (the middle row too) from Q */
+    int64_t dy = yq > yp ? (int64_t)yq - yp : (int64_t)yp - yq;
+    int64_t adx = xq >= xp ? (int64_t)xq - xp : (int64_t)xp - xq;
+    int64_t slope = (adx << 16) / dy;
+    int64_t k = y > yp ? (int64_t)y - yp : (int64_t)yp - y;
+    int32_t sgn = xq >= xp ? 1 : -1;
+    if (2 * k < dy) return xp + sgn * (int32_t)((k * slope) >> 16);
+    k = dy - k;
+    return xq - sgn * (int32_t)((k * slope) >> 16);
+}
 
-static int64_t ceil_div(int64_t n, int64_t d) { return n >= 0 ? (n + d - 1) / d : -((-n) / d); }
+/* the y direction of the outline arriving at vertex i (skipping flat edges):
+ * +1 down, -1 up, 0 all flat */
+static int dir_into(const int32_t *xy, int n, int i)
+{
+    int k, j = i;
+    for (k = 0; k < n; k++) {
+        int p = (j + n - 1) % n;
+        if (xy[2 * p + 1] != xy[2 * j + 1]) return xy[2 * j + 1] > xy[2 * p + 1] ? 1 : -1;
+        j = p;
+    }
+    return 0;
+}
+static int dir_out(const int32_t *xy, int n, int i)
+{
+    int k, j = i;
+    for (k = 0; k < n; k++) {
+        int q = (j + 1) % n;
+        if (xy[2 * q + 1] != xy[2 * j + 1]) return xy[2 * q + 1] > xy[2 * j + 1] ? 1 : -1;
+        j = q;
+    }
+    return 0;
+}
 
 void gfx_poly(grob *g, const int32_t *xy, int n, uint32_t c)
 {
     int y, ymin, ymax, i, k, nx;
-    xing *xs;
-    if (n < 3 || (c >> 24) == 255) return;
+    int32_t *xs;
+    uint8_t *skip_end;      /* edge i: do not count its lower end (pass-through vertex) */
+    if (n < 2 || (c >> 24) == 255) return;
     ymin = ymax = xy[1];
     for (i = 1; i < n; i++) {
         if (xy[2 * i + 1] < ymin) ymin = xy[2 * i + 1];
         if (xy[2 * i + 1] > ymax) ymax = xy[2 * i + 1];
     }
     if (ymin < 0) ymin = 0;
-    if (ymax > g->h) ymax = g->h;
-    if (ymin >= ymax) return;
-    xs = (xing *)malloc((size_t)n * sizeof *xs);
-    if (!xs) return;
-    for (y = ymin; y < ymax; y++) {
-        int64_t sy2 = 2 * (int64_t)y + 1;            /* 2 * sample y */
+    if (ymax >= g->h) ymax = g->h - 1;
+    if (ymin > ymax) return;
+    xs = (int32_t *)malloc((size_t)n * sizeof *xs);
+    skip_end = (uint8_t *)calloc((size_t)n, 1);
+    if (!xs || !skip_end) { free(xs); free(skip_end); return; }
+    if (ymin == ymax || n == 2) {
+        /* flat: the run(s) between the extreme x's */
+        int32_t lo = xy[0], hi = xy[0];
+        for (i = 1; i < n; i++) { if (xy[2 * i] < lo) lo = xy[2 * i]; if (xy[2 * i] > hi) hi = xy[2 * i]; }
+        if (ymin == ymax) hspan(g, lo, hi, ymin, c);
+        else gfx_line(g, xy[0], xy[1], xy[2], xy[3], c);
+        free(xs); free(skip_end);
+        return;
+    }
+    for (i = 0; i < n; i++) {
+        /* vertex i between edge i-1 (into) and edge i (out of) */
+        int din = dir_into(xy, n, i), dout = dir_out(xy, n, i);
+        if (din && din == dout) {
+            /* passes through: drop it from the edge that ends there lower...
+             * i.e. from whichever adjacent non-flat edge has it as its lower end */
+            int e = din > 0 ? (i + n - 1) % n : i;   /* the edge with i at its bottom */
+            while (xy[2 * e + 1] == xy[2 * ((e + 1) % n) + 1]) e = din > 0 ? (e + n - 1) % n : (e + 1) % n;
+            skip_end[e] = 1;
+        }
+    }
+    for (y = ymin; y <= ymax; y++) {
         nx = 0;
         for (i = 0; i < n; i++) {
             int32_t x0 = xy[2 * i], y0 = xy[2 * i + 1];
             int32_t x1 = xy[2 * ((i + 1) % n)], y1 = xy[2 * ((i + 1) % n) + 1];
-            int64_t den;
             if (y0 == y1) continue;
-            if (y0 > y1) { int32_t t = x0; x0 = x1; x1 = t; t = y0; y0 = y1; y1 = t; }
-            if (sy2 < 2 * (int64_t)y0 || sy2 >= 2 * (int64_t)y1) continue;
-            /* the edge crosses the sample line at X = x0 + (sy2/2 - y0)(x1-x0)/(y1-y0);
-             * pixel x is right of it when x + 1/2 >= X, i.e. x >= X - 1/2 */
-            den = 2 * (int64_t)(y1 - y0);
-            xs[nx].n = (sy2 - 2 * (int64_t)y0) * (x1 - x0) + (2 * (int64_t)x0 - 1) * (y1 - y0);
-            xs[nx].d = den;
-            nx++;
+            if (y < (y0 < y1 ? y0 : y1) || y > (y0 > y1 ? y0 : y1) || (y == (y0 > y1 ? y0 : y1) && skip_end[i])) continue;
+            xs[nx++] = edge_x(x0, y0, x1, y1, y);
         }
         for (i = 1; i < nx; i++)
-            for (k = i; k > 0 && xs[k - 1].n * xs[k].d > xs[k].n * xs[k - 1].d; k--) {
-                xing t = xs[k]; xs[k] = xs[k - 1]; xs[k - 1] = t;
-            }
-        for (i = 0; i + 1 < nx; i += 2) {
-            int64_t xa = ceil_div(xs[i].n, xs[i].d), xb = ceil_div(xs[i + 1].n, xs[i + 1].d) - 1;
-            if (xa < 0) xa = 0;
-            if (xb >= g->w) xb = g->w - 1;
-            if (xa <= xb) hspan(g, (int)xa, (int)xb, y, c);
-        }
+            for (k = i; k > 0 && xs[k - 1] > xs[k]; k--) { int32_t t = xs[k]; xs[k] = xs[k - 1]; xs[k - 1] = t; }
+        for (i = 0; i + 1 < nx; i += 2) hspan(g, xs[i], xs[i + 1], y, c);
     }
-    free(xs);
+    free(xs); free(skip_end);
+}
+
+/* TRIANGLE_P's rows (matched on the Virtual Calculator): from x to x' where
+ * each edge gives the largest integer below its exact crossing, or the
+ * vertex itself on a vertex's row (and a vertical edge its x) */
+static int32_t tri_x(int32_t xt, int32_t yt, int32_t xb, int32_t yb, int32_t y)
+{
+    int64_t dy = (int64_t)yb - yt, num;
+    if (y == yt || xb == xt) return xt;
+    if (y == yb) return xb;
+    num = (int64_t)xt * dy + ((int64_t)y - yt) * ((int64_t)xb - xt);   /* x = num / dy */
+    /* ceil(num / dy) - 1 */
+    return (int32_t)((num >= 0 ? (num + dy - 1) / dy : -((-num) / dy)) - 1);
 }
 
 static int32_t imin3(int32_t a, int32_t b, int32_t c) { int32_t m = a < b ? a : b; return m < c ? m : c; }
@@ -349,43 +459,59 @@ static int32_t imax3(int32_t a, int32_t b, int32_t c) { int32_t m = a > b ? a : 
 
 void gfx_triangle(grob *g, const int32_t *xy, const uint32_t *c3, int ncol, int alpha)
 {
-    int32_t x0 = xy[0], y0 = xy[1], x1 = xy[2], y1 = xy[3], x2 = xy[4], y2 = xy[5];
-    int32_t minx, maxx, miny, maxy, x, y;
+    int32_t miny, maxy, y, x;
     int64_t area;
-    unsigned a = alpha < 0 ? 0 : 255u - (unsigned)(alpha > 255 ? 255 : alpha);
+    unsigned a = alpha < 0 ? 0 : (unsigned)(alpha > 255 ? 255 : alpha);
+    uint32_t solid = c3[0];
     if (ncol < 3) {
-        uint32_t c = c3[0];
-        if (alpha >= 0 && (c >> 24) == 0) c = (c & 0xFFFFFFu) | ((uint32_t)a << 24);
-        if ((c >> 24) == 255) return;
-        gfx_poly(g, xy, 3, c);
-        return;
-    }
-    area = (int64_t)(x1 - x0) * (y2 - y0) - (int64_t)(x2 - x0) * (y1 - y0);
-    if (area == 0) return;
-    minx = imin3(x0, x1, x2); maxx = imax3(x0, x1, x2);
-    miny = imin3(y0, y1, y2); maxy = imax3(y0, y1, y2);
-    if (minx < 0) minx = 0;
+        if (alpha >= 0) solid = (solid & 0xFFFFFFu) | ((uint32_t)a << 24);
+        if ((solid >> 24) == 255) return;
+    } else if (a == 255) return;
+    area = (int64_t)(xy[2] - xy[0]) * (xy[5] - xy[1]) - (int64_t)(xy[4] - xy[0]) * (xy[3] - xy[1]);
+    miny = imin3(xy[1], xy[3], xy[5]); maxy = imax3(xy[1], xy[3], xy[5]);
     if (miny < 0) miny = 0;
-    if (maxx >= g->w) maxx = g->w - 1;
     if (maxy >= g->h) maxy = g->h - 1;
-    for (y = miny; y <= maxy; y++)
-        for (x = minx; x <= maxx; x++) {
-            /* barycentric weights at the pixel centre, times 2 */
-            int64_t px = 2 * (int64_t)x + 1, py = 2 * (int64_t)y + 1;
-            int64_t w0 = (2 * (int64_t)x2 - 2 * x1) * (py - 2 * (int64_t)y1) - (2 * (int64_t)y2 - 2 * y1) * (px - 2 * (int64_t)x1);
-            int64_t w1 = (2 * (int64_t)x0 - 2 * x2) * (py - 2 * (int64_t)y2) - (2 * (int64_t)y0 - 2 * y2) * (px - 2 * (int64_t)x2);
-            int64_t w2 = 4 * area - w0 - w1;
-            int64_t A = 4 * area;
+    for (y = miny; y <= maxy; y++) {
+        int32_t lo = 0, hi = 0;
+        int i, have = 0;
+        for (i = 0; i < 3; i++) {
+            int32_t x0 = xy[2 * i], y0 = xy[2 * i + 1], x1 = xy[2 * ((i + 1) % 3)], y1 = xy[2 * ((i + 1) % 3) + 1], xv;
+            if (y0 == y1) {
+                if (y != y0) continue;
+                if (!have || x0 < lo) lo = x0; if (!have || x0 > hi) hi = x0; have = 1;
+                if (x1 < lo) lo = x1; if (x1 > hi) hi = x1;
+                continue;
+            }
+            if (y0 > y1) { int32_t t = x0; x0 = x1; x1 = t; t = y0; y0 = y1; y1 = t; }
+            if (y < y0 || y > y1) continue;
+            xv = tri_x(x0, y0, x1, y1, y);
+            if (!have || xv < lo) lo = xv;
+            if (!have || xv > hi) hi = xv;
+            have = 1;
+        }
+        if (!have) continue;
+        if (ncol < 3 || area == 0) { hspan(g, lo, hi, y, solid); continue; }
+        for (x = lo < 0 ? 0 : lo; x <= hi && x < g->w; x++) {
+            /* barycentric weights at the pixel, colour per channel */
+            int64_t px = x, py = y, A = area;
+            int64_t w0 = ((int64_t)xy[4] - xy[2]) * (py - xy[3]) - ((int64_t)xy[5] - xy[3]) * (px - xy[2]);
+            int64_t w1 = ((int64_t)xy[0] - xy[4]) * (py - xy[5]) - ((int64_t)xy[1] - xy[5]) * (px - xy[4]);
+            int64_t w2;
             uint32_t col = 0;
             int ch;
-            if (A < 0) { w0 = -w0; w1 = -w1; w2 = -w2; A = -A; }
-            if (w0 < 0 || w1 < 0 || w2 < 0) continue;
+            if (A < 0) { A = -A; w0 = -w0; w1 = -w1; }
+            if (w0 < 0) w0 = 0;
+            if (w1 < 0) w1 = 0;
+            w2 = A - w0 - w1;
+            if (w2 < 0) w2 = 0;
             for (ch = 0; ch < 24; ch += 8) {
                 int64_t v = (int64_t)((c3[0] >> ch) & 255) * w0 + (int64_t)((c3[1] >> ch) & 255) * w1 + (int64_t)((c3[2] >> ch) & 255) * w2;
-                col |= (uint32_t)((v + A / 2) / A) << ch;
+                int64_t s = w0 + w1 + w2;
+                col |= (uint32_t)(s ? (v + s / 2) / s : 0) << ch;
             }
             put(g, x, y, col | ((uint32_t)a << 24));
         }
+    }
 }
 
 /* ------------------------------------------------------------ blit */

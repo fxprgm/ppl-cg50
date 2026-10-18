@@ -217,8 +217,10 @@ static BI(b_getpix) { return getpix(V, argc, a, out, 1); }
 
 /* ------------------------------------------------------------ RECT */
 
-/* RECT_P([G], [x1, y1, [x2, y2]], [edge, [fill]]): with no coordinates the
- * whole grob; no colour: white (RECT() clears the screen) */
+/* RECT_P([G], [x1, y1, [x2, y2]], [edge, [fill]]): optional arguments fill
+ * from the left (one argument alone is the colour); the corners default to
+ * the grob's, the colour to white (RECT() clears the screen); both corners
+ * are drawn */
 static int rect(ppl_vm *V, int argc, value *a, value *out, int cart)
 {
     grob *g;
@@ -226,16 +228,13 @@ static int rect(ppl_vm *V, int argc, value *a, value *out, int cart)
     uint32_t edge = GFX_WHITE, fill;
     if ((st = opt_grob(V, &a, &argc, &g))) return st;
     x1 = g->w - 1; y1 = g->h - 1;
-    switch (argc) {
-    case 0: break;
-    case 1: nc = 1; break;
-    case 2: nc = 2; break;
-    case 3: if ((st = xy(V, cart, a, &x0, &y0))) return st; nc = 1; a += 2; break;
-    default:
+    if (argc == 1) nc = 1;
+    else if (argc == 2 || argc == 3) {
+        if ((st = xy(V, cart, a, &x0, &y0))) return st;
+        a += 2; nc = argc - 2;
+    } else if (argc >= 4) {
         if ((st = xy(V, cart, a, &x0, &y0)) || (st = xy(V, cart, a + 2, &x1, &y1))) return st;
         a += 4; nc = argc - 4; if (nc > 2) nc = 2;
-        if (!nc) edge = GFX_BLACK;
-        break;
     }
     if (nc >= 1 && (st = colour(&a[0], &edge))) return st;
     fill = edge;
@@ -284,42 +283,59 @@ static int direction(ppl_vm *V, const real *t, int32_t *d)
 }
 
 /* ARC_P([G], x, y, r, [a1, a2], [c]): a1 to a2 counterclockwise in the
- * Home angle mode; r in pixels in both forms */
+ * Home angle mode (a1 = a2: just the point at that angle; a sweep of a full
+ * turn or more: the circle); r in pixels in both forms.  c = {edge, fill}
+ * draws a filled sector, measured clockwise (see gfx_pie). */
 static int arc(ppl_vm *V, int argc, value *a, value *out, int cart)
 {
     grob *g;
-    int st, x, y, r, partial = 0;
-    uint32_t c = GFX_BLACK;
+    int st, x, y, r, partial = 0, pie = 0;
+    uint32_t c = GFX_BLACK, fill = GFX_BLACK;
     int32_t s[3], e[2];
+    real a1, a2;
     if ((st = opt_grob(V, &a, &argc, &g))) return st;
     if (argc < 3) return E_ARGC;
     if ((st = xy(V, cart, a, &x, &y)) || (st = num_i(&a[2], &r))) return st;
     if (argc == 4 || argc >= 6) {
         const value *cv = &a[argc == 4 ? 3 : 5];
-        if (cv->t == T_LIST && cv->u.l->n) cv = &cv->u.l->v[0];   /* {edge, fill}: the edge */
+        if (cv->t == T_LIST && cv->u.l->n >= 2) {
+            if ((st = colour(&cv->u.l->v[1], &fill))) return st;
+            pie = 1;
+            cv = &cv->u.l->v[0];
+        } else if (cv->t == T_LIST && cv->u.l->n == 1) cv = &cv->u.l->v[0];
         if ((st = colour(cv, &c))) return st;
     }
     if (argc >= 5) {
-        real a1, a2, d, full, sweep;
+        real d, full, sweep, pi, two;
         if (to_real(&a[3], &a1) || to_real(&a[4], &a2)) return E_BADTYPE;
         /* the sweep from a1 to a2, counterclockwise, in radians */
         dec_sub(&d, &a2, &a1);
         if (dec_angle_to_rad(&sweep, &d, V->set.angle)) return E_BADVAL;
-        dec_pi(&full);
-        {
-            real two;
-            dec_from_int(&two, 2);
-            dec_mul(&full, &full, &two);
-        }
-        if (dec_cmp(&sweep, &full) < 0 && !dec_is_zero(&sweep)) {
-            real pi;
+        dec_pi(&pi);
+        dec_from_int(&two, 2);
+        dec_mul(&full, &pi, &two);
+        if (dec_cmp(&sweep, &full) < 0) {
             if (sweep.s) dec_mod(&sweep, &sweep, &full);
-            dec_pi(&pi);
             partial = 1;
-            if ((st = direction(V, &a1, s)) || (st = direction(V, &a2, e))) return st;
             s[2] = dec_cmp(&sweep, &pi) > 0;
         }
     }
+    if (pie && partial) {
+        real n1, n2;
+        int32_t d1[2], d2[2];
+        int p1[2], p2[2];
+        dec_neg(&n1, &a1); dec_neg(&n2, &a2);
+        if ((st = direction(V, &n2, s)) || (st = direction(V, &n1, e))) return st;
+        if ((st = direction(V, &a1, d1)) || (st = direction(V, &a2, d2))) return st;
+        /* the ends on the screen (y down): centre + r (cos a, sin a) */
+        p1[0] = x + (int)(((int64_t)r * d1[0] + (d1[0] >= 0 ? 8192 : -8192)) / 16384);
+        p1[1] = y + (int)(((int64_t)r * d1[1] + (d1[1] >= 0 ? 8192 : -8192)) / 16384);
+        p2[0] = x + (int)(((int64_t)r * d2[0] + (d2[0] >= 0 ? 8192 : -8192)) / 16384);
+        p2[1] = y + (int)(((int64_t)r * d2[1] + (d2[1] >= 0 ? 8192 : -8192)) / 16384);
+        gfx_pie(g, x, y, r, s, e, p1, p2, c, fill);
+        return done(V, g, y - r, y + r, out);
+    }
+    if (partial && ((st = direction(V, &a1, s)) || (st = direction(V, &a2, e)))) return st;
     gfx_arc(g, x, y, r, partial ? s : NULL, e, c);
     return done(V, g, y - r, y + r, out);
 }
@@ -396,7 +412,7 @@ static int fillpoly(ppl_vm *V, int argc, value *a, value *out, int cart)
     if (argc < 1) return E_ARGC;
     if (argc > 1 && (st = colour(&a[1], &c))) return st;
     if (argc > 2 && (st = alpha_arg(&a[2], &al))) return st;
-    if (al >= 0 && (c >> 24) == 0) c = (c & 0xFFFFFFu) | ((uint32_t)(255 - al) << 24);
+    if (al >= 0) c = (c & 0xFFFFFFu) | ((uint32_t)al << 24);   /* alpha 128 on white: #7FFF7Fh for green */
     if ((st = points(V, &a[0], cart, &p, &n))) return st;
     gfx_poly(g, p, n, c);
     for (i = 0; i < n; i++) { if (p[2 * i + 1] < y0) y0 = p[2 * i + 1]; if (p[2 * i + 1] > y1) y1 = p[2 * i + 1]; }

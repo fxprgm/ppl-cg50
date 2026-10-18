@@ -79,6 +79,8 @@ void gfx_line(grob *g, int x0, int y0, int x1, int y1, uint32_t c);
 /* circle or arc of radius r; full when s == NULL, else between the unit
  * directions s and e (x right, y up, scaled by 2^14), counterclockwise */
 void gfx_arc(grob *g, int cx, int cy, int r, const int32_t *s, const int32_t *e, uint32_t c);
+void gfx_pie(grob *g, int cx, int cy, int r, const int32_t *s, const int32_t *e,
+             const int *p1, const int *p2, uint32_t edge, uint32_t fill);
 void gfx_invert(grob *g, int x0, int y0, int x1, int y1);
 /* polygon of n points (xy pairs), even-odd fill */
 void gfx_poly(grob *g, const int32_t *xy, int n, uint32_t c);
