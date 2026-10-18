@@ -216,6 +216,9 @@ static void call_builtin(comp *C, node *n, const builtin *b, int argc)
     }
     for (i = 0; i < argc; i++) {
         if (i == 0 && (b->flags & BF_QUOTE1)) emit_thunk(C, n->kids[i]);
+        else if (i == 0 && (b->flags & BF_INPLACE) && n->kids[i]->type == N_NAME
+                 && (find_local(C, n->kids[i]->name) >= 0 || find_pvar(C, n->kids[i]->name) >= 0
+                     || sysvar_id(n->kids[i]->name) >= 0)) emit_vref(C, n->kids[i]);
         else if (i == 1 && (b->flags & BF_QUOTE2)) emit_vref(C, n->kids[i]);
         else cexpr(C, n->kids[i]);
     }

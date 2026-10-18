@@ -731,7 +731,13 @@ static int exec(ppl_vm *V, int base)
             pc += 3;
             SAVE();
             v_none(&r);
-            e = b->fn(V, argc, &S[V->sp - argc], &r);
+            if ((b->flags & BF_INPLACE) && argc && S[V->sp - argc].t == T_VREF) {
+                /* editing command on a named variable: store the result back */
+                value ref = S[V->sp - argc];
+                vm_load_ref(V, &ref, &S[V->sp - argc]);
+                e = b->fn(V, argc, &S[V->sp - argc], &r);
+                if (!e) e = vm_store_ref(V, &ref, &r);
+            } else e = b->fn(V, argc, &S[V->sp - argc], &r);
             for (k = 0; k < argc; k++) v_decref(&S[--V->sp]);
             if (e) { v_decref(&r); FAIL(e); }
             S[V->sp++] = r;

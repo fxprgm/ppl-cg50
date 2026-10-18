@@ -229,6 +229,7 @@ typedef struct builtin {
 #define BF_QUOTE2  4   /* arg 2 is a variable reference */
 #define BF_LIST    8   /* map over list arguments */
 #define BF_VAR     16  /* a system variable read as name */
+#define BF_INPLACE 32  /* arg 1 named a variable: the result is stored back */
 const builtin *bi_lookup(const char *name);
 const builtin *bi_get(int id);
 int bi_id(const builtin *b);

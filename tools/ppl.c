@@ -259,6 +259,9 @@ static int run_row(ppl_vm *V, const row *r, int k, sbuf *got)
         {
             int t = v.t < T_THUNK ? v.t : -1, ok;
             size_t want = strlen(r->answer), have = got->n;
+            static const char cutmark[] = " (cut at 160 characters)";
+            if (want > sizeof cutmark - 1 && !strcmp(r->answer + want - (sizeof cutmark - 1), cutmark))
+                want -= sizeof cutmark - 1;   /* the harness kept 160 characters */
             /* the harness keeps 160 characters */
             size_t cut = utf8_prefix(got->p ? got->p : "", 160);
             if (have > cut) have = cut;
