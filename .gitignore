@@ -1,0 +1,7 @@
+# reference material (third-party, HP's copyrighted docs): never commit
+ref/
+# build outputs
+build/
+*.o
+*.a
+/ppl
