@@ -438,6 +438,16 @@ static BI(b_heaviside)
     return 0;
 }
 
+static BI(b_dirac)
+{
+    real x;
+    (void)V; (void)argc;
+    if (bi_real(&a[0], &x)) return E_BADTYPE;
+    if (dec_is_zero(&x)) { dec_from_int(&x, 1); x.k = DEC_INF; v_real(out, &x); return 0; }
+    v_int32(out, 0);
+    return 0;
+}
+
 static BI(b_mouse)
 {
     value l;
@@ -469,7 +479,7 @@ const builtin bi_misc_table[] = {
     { "DDAYS", b_ddays, 2, 2, 0 }, { "DATEADD", b_dateadd, 2, 2, 0 }, { "DAYOFWEEK", b_dayofweek, 1, 1, 0 },
     { "RGB", b_rgb, 3, 4, 0 },
     { "C\xE2\x86\x92PX", b_ctopx, 0, 2, 0 }, { "PX\xE2\x86\x92" "C", b_pxtoc, 0, 2, 0 },
-    { "Heaviside", b_heaviside, 1, 1, 0 }, { "MOUSE", b_mouse, 0, 1, BF_NOPAREN },
+    { "Heaviside", b_heaviside, 1, 1, 0 }, { "Dirac", b_dirac, 1, 1, 0 }, { "MOUSE", b_mouse, 0, 1, BF_NOPAREN },
     { "FREEZE", b_draw1, 0, 0, BF_NOPAREN }, { "DRAWMENU", b_draw1, 0, -1, 0 },
     { "RECT", b_draw1, 0, -1, 0 }, { "RECT_P", b_draw1, 0, -1, 0 },
     { "LINE", b_draw1, 0, -1, 0 }, { "LINE_P", b_draw1, 0, -1, 0 },

@@ -133,7 +133,9 @@ typedef struct ppl_vm {
     value stack[VM_STACK]; uint32_t sp;
     frame frames[VM_FRAMES]; int nframes;
     handler handlers[VM_HANDLERS]; int nhandlers;
-    ppl_settings set;
+    ppl_settings set;                  /* effective settings (read these) */
+    ppl_settings hset;                 /* Home settings, as HAngle... set them */
+    int appset[4];                     /* current app's AAngle AComplex ADigits AFormat */
     value sysvars[80];                 /* A-Z, L0-L9, M0-M9, Z0-Z9, Ans... */
     pprog *progs;
     hvar *hvars;

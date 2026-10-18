@@ -17,6 +17,7 @@ static const builtin bi_core_table[] = {
     { "INSERT", b_insert, 3, 3, 0 }, { "SUPPRESS", b_suppress, 1, 2, 0 },
     { "suppress", b_suppress, 1, 2, 0 },
     { "\xCE\xA3LIST", b_sigmalist, 1, 1, 0 },      /* ΣLIST */
+    { "SUM", b_sigmalist, 1, 1, 0 }, { "AVERAGE", b_mean, 1, 2, 0 },
     { "\xCE\xA0LIST", b_pilist, 1, 1, 0 },         /* ΠLIST */
     { "\xCF\x80LIST", b_pilist, 1, 1, 0 },         /* πLIST */
     { "\xCE\x94LIST", b_deltalist, 1, 1, 0 },      /* ΔLIST */

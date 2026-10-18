@@ -24,9 +24,19 @@ static const struct { const char *name; size_t off; int lo, hi; } SETS[] = {
     { NULL, 0, 0, 0 }
 };
 
-/* app settings that only store a number here */
+/* the current app's settings override Home's when non-zero: AAngle 1
+ * radians, 2 degrees; AComplex 1 off, 2 on; AFormat n = Home format n-1
+ * with ADigits (all measured on the Virtual Calculator, Function app) */
 static const char *APPSETS[] = { "AAngle", "AComplex", "ADigits", "AFormat", NULL };
-static int appset_vals[4] = { 0, 0, 4, 0 };
+
+static void effective(ppl_vm *V)
+{
+    V->set = V->hset;
+    if (V->appset[0] == 1) V->set.angle = ANG_RAD;
+    else if (V->appset[0] == 2) V->set.angle = ANG_DEG;
+    if (V->appset[1]) V->set.complex_ok = V->appset[1] == 2;
+    if (V->appset[3]) { V->set.format = V->appset[3] - 1; V->set.digits = V->appset[2]; }
+}
 
 static int sysinfo_get(ppl_vm *V, const char *name, value *out)
 {
@@ -67,9 +77,9 @@ int vm_setting_get(ppl_vm *V, const char *name, value *out)
     int i;
     if (!sysinfo_get(V, name, out)) return 0;
     for (i = 0; SETS[i].name; i++)
-        if (!strcmp(SETS[i].name, name)) { v_int32(out, *(int *)((char *)&V->set + SETS[i].off)); return 0; }
+        if (!strcmp(SETS[i].name, name)) { v_int32(out, *(int *)((char *)&V->hset + SETS[i].off)); return 0; }
     for (i = 0; APPSETS[i]; i++)
-        if (!strcmp(APPSETS[i], name)) { v_int32(out, appset_vals[i]); return 0; }
+        if (!strcmp(APPSETS[i], name)) { v_int32(out, V->appset[i]); return 0; }
     return -1;
 }
 
@@ -81,13 +91,17 @@ int vm_setting_set(ppl_vm *V, const char *name, const value *v)
         if (!strcmp(SETS[i].name, name)) {
             if (to_index(v, &n)) return E_BADTYPE;
             if (n < SETS[i].lo || n > SETS[i].hi) return E_BADVAL;
-            *(int *)((char *)&V->set + SETS[i].off) = n;
+            *(int *)((char *)&V->hset + SETS[i].off) = n;
+            effective(V);
             return 0;
         }
     for (i = 0; APPSETS[i]; i++)
         if (!strcmp(APPSETS[i], name)) {
+            static const int hi[4] = { 2, 2, 11, 4 };
             if (to_index(v, &n)) return E_BADTYPE;
-            appset_vals[i] = n;
+            if (n < 0 || n > hi[i]) return E_BADVAL;
+            V->appset[i] = n;
+            effective(V);
             return 0;
         }
     return -1;
@@ -109,6 +123,8 @@ void ppl_init(ppl_vm *V)
     V->set.bits = 32;
     V->set.is_signed = 0;
     V->set.language = 1;
+    V->hset = V->set;
+    V->appset[2] = 4;
     for (i = 0; i < SV_COUNT; i++) {
         if (i >= SV_L0 && i < SV_L0 + 10) v_list(&V->sysvars[i], 0);
         else if (i >= SV_M0 && i < SV_M0 + 10) v_mat(&V->sysvars[i], 1, 1, 0);

@@ -105,7 +105,7 @@ static void setup(ppl_vm *V)
     V->ticks = host_ticks;
     V->print = host_print;
     V->now = host_now;
-    if (full_out) { V->set.format = FMT_SCI; V->set.digits = 11; }   /* all 12 digits */
+    if (full_out) { V->set.format = V->hset.format = FMT_SCI; V->set.digits = V->hset.digits = 11; }
 }
 
 static const char *base_name(const char *path, char *out, size_t n)
