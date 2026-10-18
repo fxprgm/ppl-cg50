@@ -448,6 +448,30 @@ int xn_div(xn *r, const xn *a, const xn *b, int P)
 int xn_div_int(xn *r, const xn *a, int32_t m, int P)
 {
     xn b;
+    if (m > 0 && m < 200000 && !dec_round_mode) {
+        /* short division: quotient truncated to >= P+2 digits, then one
+         * rounding (half away from zero needs no sticky bit) */
+        xn A = *a;
+        int s, i;
+        uint32_t rem = 0;
+        if (!A.n) { xn_zero(r); return 0; }
+        s = P + 8 - xn_ndig(&A);
+        if (s > 0) xn_shl(&A, s);
+        for (i = A.n - 1; i >= 0; i--) {
+            uint32_t cur = rem * 10000u + A.d[i];
+            A.d[i] = (uint16_t)(cur / (uint32_t)m);
+            rem = cur % (uint32_t)m;
+        }
+        {
+            int32_t e = A.e;
+            uint8_t sg = A.s;
+            xn_trim(&A);
+            if (A.n) { A.e = e; A.s = sg; }
+        }
+        *r = A;
+        xn_round(r, P);
+        return 0;
+    }
     xn_from_int(&b, m);
     return xn_div(r, a, &b, P);
 }

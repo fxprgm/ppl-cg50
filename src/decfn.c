@@ -567,7 +567,7 @@ int dec_sin(real *r, const real *a, int ang)
     int q;
     if (trig_load(&x, a)) return nan_result(r);
     reduce_angle(&rem, &q, &x, ang);
-    x_sincos(&s, &c, &rem, WP);
+    x_sincos((q & 1) ? NULL : &s, (q & 1) ? &c : NULL, &rem, WP);
     switch (q) {
     case 0: return finish(r, &s);
     case 1: return finish(r, &c);
@@ -582,7 +582,7 @@ int dec_cos(real *r, const real *a, int ang)
     int q;
     if (trig_load(&x, a)) return nan_result(r);
     reduce_angle(&rem, &q, &x, ang);
-    x_sincos(&s, &c, &rem, WP);
+    x_sincos((q & 1) ? &s : NULL, (q & 1) ? NULL : &c, &rem, WP);
     switch (q) {
     case 0: return finish(r, &c);
     case 1: if (s.n) s.s ^= 1; return finish(r, &s);

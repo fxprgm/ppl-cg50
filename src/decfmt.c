@@ -1,10 +1,11 @@
 /* decfmt.c -- reals to text in the Prime's Standard/Fixed/Scientific/
  * Engineering formats.
  *
- * Standard: up to 12 significant digits, trailing zeros dropped.  Positional
- * notation when it fits in 12 digit positions (1E11 -> 100000000000,
- * 1E-12 -> 0.000000000001, 1.234E-9 -> 0.000000001234), otherwise
- * scientific (1E12 -> 1E12, 1.2345E-9).  The Prime writes a negative sign as
+ * Standard (as STRING writes it): up to 12 significant digits, trailing
+ * zeros dropped.  Numbers from 1 up to 1E12 are positional; 1E12 and above
+ * are scientific.  Below 1 the number is rounded to 12 decimal places
+ * (0.0213116411288 -> 0.021311641129, as recorded on the Virtual
+ * Calculator) and is scientific only when that rounds to 0 (1E-13).  The Prime writes a negative sign as
  * U+2212 and the exponent mark as U+1D07 (small capital E); DECF_ASCII gives
  * '-' and 'E' instead.
  */
@@ -160,7 +161,18 @@ int dec_format(char *buf, const real *x, int fmt, int digits, int flags)
             *p++ = '.';
             for (i = e + 1; i < n; i++) *p++ = d[i];
         }
-    } else if (e < 0 && n - e - 1 <= 12) {
+    } else if (e < 0 && e >= -12) {
+        /* below 1: STRING() rounds to 12 decimal places (the oracle shows
+         * 0.021311641129 for 0.0213116411288); scientific only when that
+         * leaves nothing (1E-13) */
+        real y, ax;
+        dec_abs(&ax, x);
+        dec_round_places(&y, &ax, 12, 0);
+        if (dec_is_zero(&y)) { p = put_sci(p, &ax, 12, 0, ascii, 0); *p = 0; return (int)(p - buf); }
+        if (y.e >= 0) { *p++ = '1'; *p = 0; return (int)(p - buf); }   /* 0.9999999999999 -> 1 */
+        digits12(d, &y);
+        n = sig_count(d);
+        e = y.e;
         *p++ = '0'; *p++ = '.';
         for (i = 0; i < -e - 1; i++) *p++ = '0';
         for (i = 0; i < n; i++) *p++ = d[i];
