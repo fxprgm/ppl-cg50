@@ -16,7 +16,8 @@ enum {
     T_REAL = 0, T_INT = 1, T_STR = 2, T_CPLX = 3, T_MAT = 4, T_ERRV = 5,
     T_LIST = 6, T_SYM = 8, T_UNIT = 9,
     /* internal kinds, never seen by programs */
-    T_THUNK = 100, T_VREF = 101, T_NONE = 102
+    T_THUNK = 100, T_VREF = 101, T_NONE = 102,
+    T_GROB = 103        /* G0..G9 (ib = number); TYPE() answers 8, as the Prime */
 };
 
 /* integer bases, as GETBASE answers them */
@@ -149,6 +150,10 @@ typedef struct ppl_vm {
     void (*now)(int *ymdhms);          /* host clock: y, mo, d, h, mi, s */
     /* CAS hook: evaluates CAS.name(args); NULL = no CAS (Not supported) */
     int (*cas)(struct ppl_vm *, const char *name, int argc, value *argv, value *out);
+    /* show rows y0..y1 (inclusive) of G0, read with gfx_row565(); NULL = no
+     * display.  Called by the graphics back end (gfx.h: when and why). */
+    void (*present)(struct ppl_vm *, int y0, int y1);
+    struct gfx_state *gfx;             /* grobs G0..G9 (gfx.c), NULL until used */
     void *user;
     int depth;                         /* re-entrant exec depth */
     uint32_t gen;                      /* bumped when global names change */

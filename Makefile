@@ -6,7 +6,8 @@ CFLAGS  ?= -std=c11 -Wall -Wextra -O2 -g
 SAN     ?=
 CORE    = src/dec.c src/decfn.c src/decfmt.c src/value.c src/arith.c \
           src/parse.c src/compile.c src/vm.c src/builtins.c src/bi_math.c \
-          src/bi_misc.c src/bi_list.c src/bi_mat.c src/bi_prob.c src/bi_cas.c src/hpprgm.c
+          src/bi_misc.c src/bi_list.c src/bi_mat.c src/bi_prob.c src/bi_cas.c src/hpprgm.c \
+          src/gfx.c src/bi_gfx.c src/font/gfx_font.c
 HDRS    = $(wildcard src/*.h)
 
 SHCC    = $(HOME)/.local/bin/sh-elf-gcc
@@ -44,4 +45,15 @@ sh4size:
 clean:
 	rm -rf build
 
-.PHONY: all asan test conform sh4size clean
+# regenerate src/font/gfx_font.c (needs curl and Python with Pillow + fontTools)
+FONTDIR = build/fonts
+fonts:
+	@mkdir -p $(FONTDIR)
+	curl -sSfL "https://android.googlesource.com/platform/frameworks/base/+/refs/heads/kitkat-release/data/fonts/DroidSans.ttf?format=TEXT" | base64 -d > $(FONTDIR)/DroidSans.ttf
+	curl -sSfL -o $(FONTDIR)/freefont.zip https://ftp.gnu.org/gnu/freefont/freefont-ttf-20120503.zip
+	cd $(FONTDIR) && unzip -o -q freefont.zip freefont-20120503/FreeSans.ttf
+	echo "f51b88945f4c1b236f44b8d55a2d304316869127e95248c435c23f1e4142a7db  $(FONTDIR)/DroidSans.ttf" | shasum -a 256 -c
+	echo "c80858440d8fb618e0ac5ff6f16251dbfa6b3316f00f3cdd17d477297dd87b04  $(FONTDIR)/freefont-20120503/FreeSans.ttf" | shasum -a 256 -c
+	python3 -I tools/mkfont.py $(FONTDIR)/DroidSans.ttf $(FONTDIR)/freefont-20120503/FreeSans.ttf > src/font/gfx_font.c
+
+.PHONY: all asan test conform sh4size clean fonts

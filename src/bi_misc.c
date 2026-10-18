@@ -1,5 +1,5 @@
-/* bi_misc.c -- # integers, program and system built-ins, I/O, and the
- * plug-in point for graphics (stubs until the gint front end exists). */
+/* bi_misc.c -- # integers, program and system built-ins, I/O.  The drawing
+ * commands are in bi_gfx.c. */
 #include "bi.h"
 #include "decx.h"
 #include <string.h>
@@ -165,7 +165,7 @@ static BI(b_getbits)
 static BI(b_type)
 {
     (void)V; (void)argc;
-    v_int32(out, a[0].t < T_THUNK ? a[0].t : 0);
+    v_int32(out, a[0].t < T_THUNK ? a[0].t : a[0].t == T_GROB ? 8 : 0);
     return 0;
 }
 
@@ -375,13 +375,9 @@ static BI(b_dayofweek)
 
 /* ------------------------------------------------------------ graphics */
 
-/* Drawing commands answer 1 on the Prime.  Until the gint front end
- * supplies a drawing back end they do nothing here and answer 1, so that
- * computing programs run unchanged. */
-static BI(b_draw1) { (void)V; (void)argc; (void)a; v_int32(out, 1); return 0; }
+/* CHECK/UNCHECK (menu items, the input side): answer 0 for now */
+static BI(b_check) { (void)V; (void)argc; (void)a; v_int32(out, 0); return 0; }
 
-static BI(b_draw0) { (void)V; (void)argc; (void)a; v_int32(out, 0); return 0; }
-static BI(b_getpix) { (void)V; (void)argc; (void)a; set_int(out, 0, B_DEFAULT, 0); return 0; }
 static BI(b_lengthf)
 {
     (void)V; (void)argc;
@@ -389,57 +385,6 @@ static BI(b_lengthf)
     if (a[0].t == T_STR) { v_int32(out, (int32_t)a[0].u.s->len); return 0; }
     if (a[0].t == T_MAT) { v_int32(out, a[0].u.m->vec ? a[0].u.m->cols : a[0].u.m->rows); return 0; }
     v_int32(out, 1);
-    return 0;
-}
-
-static BI(b_rgb)
-{
-    int32_t r, g, b, al = 0;
-    (void)V;
-    if (bi_int(&a[0], &r) || bi_int(&a[1], &g) || bi_int(&a[2], &b)) return E_BADVAL;
-    if (argc > 3 && bi_int(&a[3], &al)) return E_BADVAL;
-    set_int(out, ((uint64_t)(al & 255) << 24) | ((uint64_t)(r & 255) << 16) | ((uint64_t)(g & 255) << 8) | (uint64_t)(b & 255), B_HEX, 0);
-    out->ib = B_DEFAULT;
-    return 0;
-}
-
-/* C->PX and PX->C use the Function app's default window: x from -16,
- * y down from 10.9, 0.1 per pixel (C->PX(0,0) is {160,109} on the Prime) */
-static int plot_xy(const value *a, int argc, real *x, real *y)
-{
-    if (argc < 2) { dec_zero(x); dec_zero(y); return 1; }
-    if (bi_real(&a[0], x) || bi_real(&a[1], y)) return -1;
-    return 0;
-}
-static BI(b_ctopx)
-{
-    real x, y, t, k;
-    int st = plot_xy(a, argc, &x, &y);
-    (void)V;
-    if (st < 0) return E_BADTYPE;
-    if ((st = v_list(out, 2))) return st;
-    if (argc < 2) return 0;
-    dec_from_int(&k, 16); dec_add(&t, &x, &k);
-    dec_from_int(&k, 10); dec_mul(&t, &t, &k); dec_floor(&t, &t);
-    v_real(&out->u.l->v[0], &t);
-    dec_from_str(&k, "10.9", NULL); dec_sub(&t, &k, &y);
-    dec_from_int(&k, 10); dec_mul(&t, &t, &k); dec_floor(&t, &t);
-    v_real(&out->u.l->v[1], &t);
-    return 0;
-}
-static BI(b_pxtoc)
-{
-    real x, y, t, k;
-    int st = plot_xy(a, argc, &x, &y);
-    (void)V;
-    if (st < 0) return E_BADTYPE;
-    if ((st = v_list(out, 2))) return st;
-    dec_from_int(&k, 10);
-    dec_div(&t, &x, &k); dec_from_int(&k, 16); dec_sub(&t, &t, &k);
-    v_real(&out->u.l->v[0], &t);
-    dec_from_int(&k, 10);
-    dec_div(&t, &y, &k); dec_from_str(&k, "10.9", NULL); dec_sub(&t, &k, &t);
-    v_real(&out->u.l->v[1], &t);
     return 0;
 }
 
@@ -510,26 +455,8 @@ const builtin bi_misc_table[] = {
     { "CAS", b_cas, 1, -1, 0 },
     { "FNROOT", bi_fnroot_impl, 3, 3, BF_QUOTE1 | BF_QUOTE2 },
     { "DDAYS", b_ddays, 2, 2, 0 }, { "DATEADD", b_dateadd, 2, 2, 0 }, { "DAYOFWEEK", b_dayofweek, 1, 1, 0 },
-    { "RGB", b_rgb, 3, 4, 0 },
-    { "C\xE2\x86\x92PX", b_ctopx, 0, 2, 0 }, { "PX\xE2\x86\x92" "C", b_pxtoc, 0, 2, 0 },
     { "_UNIT", b_unit, 2, 2, 0 }, { "_DEG", b_deg, 1, 1, 0 }, { "Heaviside", b_heaviside, 1, 1, 0 }, { "Dirac", b_dirac, 1, 1, 0 }, { "MOUSE", b_mouse, 0, 1, BF_NOPAREN },
-    { "FREEZE", b_draw1, 0, 0, BF_NOPAREN }, { "DRAWMENU", b_draw1, 0, -1, 0 },
-    { "RECT", b_draw1, 0, -1, 0 }, { "RECT_P", b_draw1, 0, -1, 0 },
-    { "LINE", b_draw1, 0, -1, 0 }, { "LINE_P", b_draw1, 0, -1, 0 },
-    { "ARC", b_draw1, 0, -1, 0 }, { "ARC_P", b_draw1, 0, -1, 0 },
-    { "PIXON", b_draw1, 0, -1, 0 }, { "PIXON_P", b_draw1, 0, -1, 0 },
-    { "PIXOFF", b_draw1, 0, -1, 0 }, { "PIXOFF_P", b_draw1, 0, -1, 0 },
-    { "TEXTOUT", b_draw1, 0, -1, 0 }, { "TEXTOUT_P", b_draw1, 0, -1, 0 },
-    { "BLIT", b_draw1, 0, -1, 0 }, { "BLIT_P", b_draw1, 0, -1, 0 },
-    { "DIMGROB", b_draw1, 0, -1, 0 }, { "DIMGROB_P", b_draw1, 0, -1, 0 },
-    { "FILLPOLY", b_draw1, 0, -1, 0 }, { "FILLPOLY_P", b_draw1, 0, -1, 0 },
-    { "TRIANGLE", b_draw1, 0, -1, 0 }, { "TRIANGLE_P", b_draw1, 0, -1, 0 },
-    { "INVERT", b_draw1, 0, -1, 0 }, { "INVERT_P", b_draw1, 0, -1, 0 },
-    { "GETPIX", b_getpix, 0, -1, 0 }, { "GETPIX_P", b_getpix, 0, -1, 0 },
-    { "GROBW", b_draw0, 0, -1, 0 }, { "GROBW_P", b_draw0, 0, -1, 0 },
-    { "GROBH", b_draw0, 0, -1, 0 }, { "GROBH_P", b_draw0, 0, -1, 0 },
-    { "SUBGROB", b_draw1, 0, -1, 0 }, { "SUBGROB_P", b_draw1, 0, -1, 0 },
-    { "CHECK", b_draw0, 0, -1, 0 }, { "UNCHECK", b_draw0, 0, -1, 0 },
+    { "CHECK", b_check, 0, -1, 0 }, { "UNCHECK", b_check, 0, -1, 0 },
     { "when", b_ifte, 3, 3, 0 }, { "length", b_lengthf, 1, 1, 0 },
     { NULL, NULL, 0, 0, 0 }
 };

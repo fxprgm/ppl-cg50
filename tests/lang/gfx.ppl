@@ -1,0 +1,90 @@
+// Graphics values, each checked on HP's Virtual Calculator (macOS, Home
+// view, 2026-10-18); see notes/ppl.md, "Graphics".
+
+// rows of a 13x13 (or 17x17) grob as binary numbers, pixel x = 0 the highest bit
+EXPORT ROWS(n, y0, y1)
+BEGIN
+  RETURN MAKELIST(POLYEVAL(MAKELIST(GETPIX_P(G1,X,Y)==0,X,0,n-1),2),Y,y0,y1);
+END;
+
+EXPORT CIRC5() BEGIN DIMGROB_P(G1,13,13,#FFFFFFh); ARC_P(G1,6,6,5); RETURN ROWS(13,0,12); END;
+EXPORT CIRC7() BEGIN DIMGROB_P(G1,17,17,#FFFFFFh); ARC_P(G1,8,8,7); RETURN ROWS(17,0,16); END;
+EXPORT QUARTER() BEGIN DIMGROB_P(G1,17,17,#FFFFFFh); ARC_P(G1,8,8,7,0,1.5707963); RETURN ROWS(17,0,16); END;
+EXPORT FONTS() BEGIN DIMGROB_P(G9,512,22); RETURN MAKELIST(TEXTOUT_P("abc",G9,0,0,F),F,0,7); END;
+EXPORT OUTSIDE()
+BEGIN
+  DIMGROB_P(G9,512,22);
+  RETURN {TEXTOUT_P("abc",G9,0,100,7),TEXTOUT_P("abc",G9,0,21,7),TEXTOUT_P("abc",G9,600,0,7),
+          TEXTOUT_P("abc",G9,0,-30,7),TEXTOUT_P("abc",G9,0,-10,7)};
+END;
+
+// colours: 32-bit, alpha in the high byte
+//> RGB(255,0,0,200) => #C8FF0000h
+//> RGB(255,0,0,100) => #64FF0000h
+//> RGB(0,0,255) => #FFh
+//> DIMGROB_P(G1,20,20,0);PIXON_P(G1,1,1,RGB(255,128,64));GETPIX_P(G1,1,1) => #FF8040h
+//> DIMGROB_P(G1,20,20,0);PIXON_P(G1,2,2,RGB(1,2,3));GETPIX_P(G1,2,2) => #10203h
+//> DIMGROB_P(G2,4,4,#80123456h);GETPIX_P(G2,1,1) => #80123456h
+//> DIMGROB_P(G2,4,4,#FF000000h);GETPIX_P(G2,1,1) => #FF000000h
+//> DIMGROB_P(G2,3,3);GETPIX_P(G2,1,1) => #FFFFFFh
+//> TYPE(G1) => 8
+// alpha 1..254 blends (src*(255-a) + dst*a) >> 8; 255 draws nothing
+//> DIMGROB_P(G1,20,20,0);PIXON_P(G1,3,3,RGB(255,0,0,200));GETPIX_P(G1,3,3) => #360000h
+//> DIMGROB_P(G1,20,20,#FFFFFFh);PIXON_P(G1,1,1,RGB(0,0,0,200));GETPIX_P(G1,1,1) => #C7C7C7h
+//> DIMGROB_P(G1,20,20,#FFFFFFh);PIXON_P(G1,2,2,RGB(0,0,0,100));GETPIX_P(G1,2,2) => #636363h
+//> DIMGROB_P(G1,20,20,#FFFFFFh);PIXON_P(G1,1,1,RGB(0,0,0,254));GETPIX_P(G1,1,1) => #FDFDFDh
+//> DIMGROB_P(G1,20,20,#FFFFFFh);PIXON_P(G1,2,2,RGB(255,0,0,1));GETPIX_P(G1,2,2) => #FE0000h
+//> DIMGROB_P(G1,20,20,#FFFFFFh);PIXON_P(G1,3,3,#FF000000h);GETPIX_P(G1,3,3) => #FFFFFFh
+// fills blend as (src*(256-a) + dst*a) >> 8
+//> DIMGROB_P(G2,3,3,#FFFFFFh);RECT_P(G2,0,0,2,2,#80000000h);GETPIX_P(G2,1,1) => #7F7F7Fh
+//> DIMGROB_P(G2,3,3,#FFFFFFh);RECT_P(G2,0,0,2,2,#80FF0000h);GETPIX_P(G2,1,1) => #FF7F7Fh
+//> DIMGROB_P(G2,3,3,#FF8040h);INVERT_P(G2);GETPIX_P(G2,1,1) => #7FBFh
+// outside a grob
+//> DIMGROB_P(G1,20,20,0);GETPIX_P(G1,30,30) => #FF000000h
+//> DIMGROB(G1,10,5,0);GETPIX(G1,0,0) => #FF000000h
+// pixel coordinates truncate toward zero
+//> DIMGROB_P(G1,20,20,0);PIXON_P(G1,5.7,5.7,#FFh);{GETPIX_P(G1,5,5),GETPIX_P(G1,6,6)} => {#FFh,#0h}
+//> DIMGROB_P(G1,20,20,#FFFFFFh);PIXON_P(G1,-0.5,-0.5,#FFh);GETPIX_P(G1,0,0) => #FFh
+// Cartesian coordinates (default window): x rounds, y = 0 is row 110
+//> DIMGROB_P(G1,320,240,#FFFFFFh);PIXON(G1,0.05,-0.05,0);{GETPIX_P(G1,160,109),GETPIX_P(G1,161,110)} => {#FFFFFFh,#0h}
+//> DIMGROB_P(G1,320,240,#FFFFFFh);PIXON(G1,-0.06,0.06,#FF00h);GETPIX_P(G1,159,109) => #FF00h
+//> C→PX(0,0) => {160,109}
+//> C→PX(1,1) => {170,99}
+//> PX→C(100,50) => {-6,5.9}
+//> Xmin:=0;C→PX(0,0) => {1,109}
+//> Ymax:=0;C→PX(0,0) => {160,0}
+// lines include both ends; rectangles both corners
+//> DIMGROB_P(G1,20,20,#FFFFFFh);LINE_P(G1,2,4,8,4,0);{GETPIX_P(G1,2,4),GETPIX_P(G1,8,4),GETPIX_P(G1,9,4)} => {#0h,#0h,#FFFFFFh}
+//> DIMGROB_P(G1,20,20,#FFFFFFh);RECT_P(G1,10,10,12,12,#FFh,#FF00h);{GETPIX_P(G1,10,10),GETPIX_P(G1,11,11),GETPIX_P(G1,12,12),GETPIX_P(G1,13,13)} => {#FFh,#FF00h,#FFh,#FFFFFFh}
+// circles: y = ceil(sqrt(r^2 - x^2)) in the first octant; arcs counterclockwise
+//> CIRC5() => {0,496,520,1028,2050,2050,2050,2050,2050,1028,520,496,0}
+//> CIRC7() => {0,4064,4112,8200,16388,32770,32770,32770,32770,32770,32770,32770,16388,8200,4112,4064,0}
+//> QUARTER() => {0,480,16,8,4,2,2,2,2,0,0,0,0,0,0,0,0}
+// grob sizes; Cartesian sizes go through the window (one unit = 10 pixels)
+//> DIMGROB_P(G1,100,50,0);{GROBW_P(G1),GROBH_P(G1),GROBW(G1),GROBH(G1)} => {100,50,10,5}
+//> DIMGROB(G4,10,5,0);GROBW_P(G4) => 100
+//> {GROBW_P(G0),GROBH_P(G0)} => {320,240}
+//> DIMGROB_P(G1,10,10,0);SUBGROB_P(G1,0,0,4,4,G3);GROBW_P(G3) => 4
+//> DIMGROB(G1,10,5,0);SUBGROB(G1,0,0,4,4,G3) => *error*
+// TEXTOUT answers the x where the text ended; fonts 1..7 (0 = 3)
+//> FONTS() => {22,16,19,22,25,29,32,35}
+//> DIMGROB_P(G9,512,22);TEXTOUT_P("abc",G9,10,0,2) => 29
+//> DIMGROB_P(G9,512,22);TEXTOUT("abc",G9,0,0,2) => 182
+//> DIMGROB_P(G9,512,22);TEXTOUT_P("abc",G9,0,0) => 22
+//> DIMGROB_P(G9,512,22);TEXTOUT_P("HH",G9,0,0,2,0,3) => 3
+//> TEXTOUT("Hi",G0,5,-3,7,#FF0000h) => 231
+//> OUTSIDE() => {22,35,622,22,35}
+//> DIMGROB_P(G9,512,22);TEXTOUT_P("abc",G9,0,0,8) => *error*
+//> DIMGROB_P(G9,512,22);TEXTOUT_P("abc",G9,0,0,-1) => *error*
+// commands answer 1
+//> DIMGROB_P(G1,20,20,0);RECT_P(G1,0,0,4,4,RGB(0,255,0)) => 1
+//> FREEZE => 1
+// RGB truncates reals and refuses values outside 0..255
+//> RGB(127.5,0.7,255.9) => #7F00FFh
+//> RGB(300,-5,256) => *error*
+// a colour may be {colour, alpha}
+//> DIMGROB_P(G2,3,3,#FFFFFFh);RECT_P(G2,0,0,2,2,0,{#0h,80});{GETPIX_P(G2,0,0),GETPIX_P(G2,1,1)} => {#0h,#4F4F4Fh}
+//> DIMGROB_P(G2,3,3,#FFFFFFh);PIXON_P(G2,1,1,{#FF0000h,128});GETPIX_P(G2,1,1) => #FE7F7Fh
+// DIMGROB_P from pixel data: 4 x A1R5G5B5 per integer, lowest first
+//> DIMGROB_P(G2,4,1,{#7C00001F03E07FFF:64h});{GETPIX_P(G2,0,0),GETPIX_P(G2,1,0),GETPIX_P(G2,2,0),GETPIX_P(G2,3,0)} => {#FFFFFFh,#FF00h,#FFh,#FF0000h}
+//> DIMGROB_P(G2,3,1,{#C2104210:64h});{GETPIX_P(G2,0,0),GETPIX_P(G2,1,0),GETPIX_P(G2,2,0)} => {#848484h,#FFFFFFh,#0h}
