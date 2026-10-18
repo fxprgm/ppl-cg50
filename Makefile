@@ -6,7 +6,7 @@ CFLAGS  ?= -std=c11 -Wall -Wextra -O2 -g
 SAN     ?=
 CORE    = src/dec.c src/decfn.c src/decfmt.c src/value.c src/arith.c \
           src/parse.c src/compile.c src/vm.c src/builtins.c src/bi_math.c \
-          src/bi_misc.c src/bi_list.c src/bi_mat.c src/bi_prob.c src/bi_cas.c
+          src/bi_misc.c src/bi_list.c src/bi_mat.c src/bi_prob.c src/bi_cas.c src/hpprgm.c
 HDRS    = $(wildcard src/*.h)
 
 SHCC    = $(HOME)/.local/bin/sh-elf-gcc

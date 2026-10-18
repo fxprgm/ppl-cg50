@@ -67,6 +67,14 @@ static char *read_file(const char *path, size_t *n)
     *n = fread(buf, 1, (size_t)len, f);
     buf[*n] = 0;
     fclose(f);
+    if (hpprgm_is((const uint8_t *)buf, *n)) {
+        char *src;
+        size_t sn;
+        if (hpprgm_source((const uint8_t *)buf, *n, &src, &sn)) { free(buf); return NULL; }
+        free(buf);
+        *n = sn;
+        return src;
+    }
     /* UTF-16LE text (with a byte-order mark): convert to UTF-8 */
     if (*n >= 2 && (unsigned char)buf[0] == 0xFF && (unsigned char)buf[1] == 0xFE) {
         size_t units = (*n - 2) / 2, i, k;

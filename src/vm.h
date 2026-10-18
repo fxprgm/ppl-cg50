@@ -244,6 +244,10 @@ int  vm_setting_get(ppl_vm *V, const char *name, value *out);   /* -1: no such *
 int  vm_setting_set(ppl_vm *V, const char *name, const value *v);
 pfunc *vm_find_func(ppl_vm *V, const char *name, int exported_only);
 
+/* .hpprgm files (hpprgm.c) */
+int hpprgm_is(const uint8_t *buf, size_t n);
+int hpprgm_source(const uint8_t *buf, size_t n, char **out, size_t *outn);
+
 /* system variable ids (sysvars[]) */
 enum { SV_A = 0, SV_Z = 25, SV_L0 = 26, SV_M0 = 36, SV_Z0 = 46, SV_ANS = 56, SV_G0 = 57, SV_COUNT = 67 };
 
