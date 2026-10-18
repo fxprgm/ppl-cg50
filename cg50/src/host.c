@@ -239,8 +239,8 @@ static BI(b_mouse)
 static BI(b_freeze)
 {
 	(void)V; (void)argc; (void)a;
+	refresh(0);                /* first: a present clears the freeze */
 	home_freeze = true;
-	refresh(0);
 	v_int32(out, 1);
 	return 0;
 }
