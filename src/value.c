@@ -496,7 +496,7 @@ const char *ppl_errmsg(int e)
         "Index outside range", "Insufficient memory", "Infinite result",
         "Non-real result", "Wrong number of arguments", "Not supported",
         "Program stopped", "Undefined result", "Insufficient statistics data",
-        "Not implemented yet"
+        "Not implemented yet", "Break"
     };
     return (e >= 0 && e < E_COUNT) ? m[e] : "Error";
 }

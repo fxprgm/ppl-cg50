@@ -207,6 +207,21 @@ static void emit_thunk(comp *C, node *n)
     }
 }
 
+/* BF_REF1: a variable reference, or a list of them where a sub-list's first
+ * element is the reference ({var, [types], {pos}} fields of INPUT) */
+static void emit_reflist(comp *C, node *n, int depth)
+{
+    int i;
+    if (n->type == N_NAME) { emit_vref(C, n); return; }
+    if (n->type != N_LIST || depth > 1) { cexpr(C, n); return; }
+    for (i = 0; i < n->nkids; i++) {
+        if (i == 0 || depth == 0) emit_reflist(C, n->kids[i], depth + 1);
+        else cexpr(C, n->kids[i]);
+    }
+    emit(C, BC_MKLIST);
+    emit16(C, n->nkids);
+}
+
 static void call_builtin(comp *C, node *n, const builtin *b, int argc)
 {
     int i;
@@ -216,6 +231,7 @@ static void call_builtin(comp *C, node *n, const builtin *b, int argc)
     }
     for (i = 0; i < argc; i++) {
         if (i == 0 && (b->flags & BF_QUOTE1)) emit_thunk(C, n->kids[i]);
+        else if (i == 0 && (b->flags & BF_REF1)) emit_reflist(C, n->kids[i], 0);
         else if (i == 0 && (b->flags & BF_INPLACE) && n->kids[i]->type == N_NAME
                  && (find_local(C, n->kids[i]->name) >= 0 || find_pvar(C, n->kids[i]->name) >= 0
                      || sysvar_id(n->kids[i]->name) >= 0)) emit_vref(C, n->kids[i]);
