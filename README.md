@@ -19,3 +19,8 @@ developed and tested on a desktop first.
 
 Design notes, the number semantics with their sources, and the current state are in
 [`notes/ppl.md`](notes/ppl.md).
+
+## Licence
+
+GPL-3.0-or-later (see `LICENSE`), the same as giac. The conformance table in
+`tests/conformance/` is derived from hp-prime-kit (MIT, see `LICENSE-hp-prime-kit` there).
