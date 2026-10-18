@@ -389,6 +389,55 @@ static BI(b_rgb)
     return 0;
 }
 
+/* C->PX and PX->C use the Function app's default window: x from -16,
+ * y down from 10.9, 0.1 per pixel (C->PX(0,0) is {160,109} on the Prime) */
+static int plot_xy(const value *a, int argc, real *x, real *y)
+{
+    if (argc < 2) { dec_zero(x); dec_zero(y); return 1; }
+    if (bi_real(&a[0], x) || bi_real(&a[1], y)) return -1;
+    return 0;
+}
+static BI(b_ctopx)
+{
+    real x, y, t, k;
+    int st = plot_xy(a, argc, &x, &y);
+    (void)V;
+    if (st < 0) return E_BADTYPE;
+    if ((st = v_list(out, 2))) return st;
+    if (argc < 2) return 0;
+    dec_from_int(&k, 16); dec_add(&t, &x, &k);
+    dec_from_int(&k, 10); dec_mul(&t, &t, &k); dec_floor(&t, &t);
+    v_real(&out->u.l->v[0], &t);
+    dec_from_str(&k, "10.9", NULL); dec_sub(&t, &k, &y);
+    dec_from_int(&k, 10); dec_mul(&t, &t, &k); dec_floor(&t, &t);
+    v_real(&out->u.l->v[1], &t);
+    return 0;
+}
+static BI(b_pxtoc)
+{
+    real x, y, t, k;
+    int st = plot_xy(a, argc, &x, &y);
+    (void)V;
+    if (st < 0) return E_BADTYPE;
+    if ((st = v_list(out, 2))) return st;
+    dec_from_int(&k, 10);
+    dec_div(&t, &x, &k); dec_from_int(&k, 16); dec_sub(&t, &t, &k);
+    v_real(&out->u.l->v[0], &t);
+    dec_from_int(&k, 10);
+    dec_div(&t, &y, &k); dec_from_str(&k, "10.9", NULL); dec_sub(&t, &k, &t);
+    v_real(&out->u.l->v[1], &t);
+    return 0;
+}
+
+static BI(b_heaviside)
+{
+    real x;
+    (void)V; (void)argc;
+    if (bi_real(&a[0], &x)) return E_BADTYPE;
+    v_int32(out, (x.s && !dec_is_zero(&x)) ? 0 : 1);
+    return 0;
+}
+
 static BI(b_mouse)
 {
     value l;
@@ -418,7 +467,9 @@ const builtin bi_misc_table[] = {
     { "CAS", b_cas, 1, -1, 0 },
     { "FNROOT", b_fnroot, 3, 3, BF_QUOTE1 | BF_QUOTE2 },
     { "DDAYS", b_ddays, 2, 2, 0 }, { "DATEADD", b_dateadd, 2, 2, 0 }, { "DAYOFWEEK", b_dayofweek, 1, 1, 0 },
-    { "RGB", b_rgb, 3, 4, 0 }, { "MOUSE", b_mouse, 0, 1, BF_NOPAREN },
+    { "RGB", b_rgb, 3, 4, 0 },
+    { "C\xE2\x86\x92PX", b_ctopx, 0, 2, 0 }, { "PX\xE2\x86\x92" "C", b_pxtoc, 0, 2, 0 },
+    { "Heaviside", b_heaviside, 1, 1, 0 }, { "MOUSE", b_mouse, 0, 1, BF_NOPAREN },
     { "FREEZE", b_draw1, 0, 0, BF_NOPAREN }, { "DRAWMENU", b_draw1, 0, -1, 0 },
     { "RECT", b_draw1, 0, -1, 0 }, { "RECT_P", b_draw1, 0, -1, 0 },
     { "LINE", b_draw1, 0, -1, 0 }, { "LINE_P", b_draw1, 0, -1, 0 },

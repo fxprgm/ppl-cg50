@@ -107,7 +107,7 @@ static int is_opglyph(uint32_t c)
 
 static int is_idstart(uint32_t c)
 {
-    return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '_' || (c >= 0x80 && !is_opglyph(c));
+    return c == '%' || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '_' || (c >= 0x80 && !is_opglyph(c));
 }
 
 static int is_idchar(uint32_t c)

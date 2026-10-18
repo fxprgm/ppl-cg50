@@ -456,6 +456,69 @@ static int v_absval(ppl_vm *V, const value *v, real *r)
     return 0;
 }
 
+/* Gauss-Jordan on real matrices in the xn engine: 26 digits, one rounding
+ * per element at the end, so [[1,2],[3,4]]^-1 is exactly [[-2,1],[1.5,-0.5]] */
+static int mat_inv_real(const pmat *A, value *out, value *det)
+{
+    int n = A->rows, i, j, k, sign = 0, st;
+    const int P = XN_WP;
+    xn *w = (xn *)malloc((size_t)n * (size_t)(2 * n) * sizeof(xn)), d;
+    real r;
+    if (!w) return E_MEM;
+#define W(i, j) w[(i) * 2 * n + (j)]
+    for (i = 0; i < n; i++)
+        for (j = 0; j < 2 * n; j++) {
+            if (j < n) xn_from_real(&W(i, j), &A->v[i * n + j].u.r);
+            else xn_from_int(&W(i, j), i == j - n);
+        }
+    xn_from_int(&d, 1);
+    for (k = 0; k < n; k++) {
+        int p = -1;
+        for (i = k; i < n; i++)
+            if (W(i, k).n && (p < 0 || xn_cmpmag(&W(i, k), &W(p, k)) > 0)) p = i;
+        if (p < 0) {
+            free(w);
+            if (det) { v_int32(det, 0); return out ? E_BADVAL : 0; }
+            return E_BADVAL;
+        }
+        if (p != k) {
+            for (j = 0; j < 2 * n; j++) { xn t = W(k, j); W(k, j) = W(p, j); W(p, j) = t; }
+            sign ^= 1;
+        }
+        {
+            xn piv = W(k, k);
+            xn_mul(&d, &d, &piv, P);
+            for (j = k; j < 2 * n; j++) xn_div(&W(k, j), &W(k, j), &piv, P);
+        }
+        for (i = 0; i < n; i++) {
+            xn f, t;
+            if (i == k || !W(i, k).n) continue;
+            f = W(i, k);
+            for (j = k; j < 2 * n; j++) {
+                if (!W(k, j).n) continue;
+                xn_mul(&t, &f, &W(k, j), P);
+                xn_sub(&W(i, j), &W(i, j), &t, P);
+            }
+        }
+    }
+    if (det) {
+        if (sign && d.n) d.s ^= 1;
+        xn_to_real(&r, &d);
+        v_real(det, &r);
+    }
+    if (out) {
+        if ((st = v_mat(out, n, n, 0))) { free(w); return st; }
+        for (i = 0; i < n; i++)
+            for (j = 0; j < n; j++) {
+                xn_to_real(&r, &W(i, n + j));
+                v_real(&out->u.m->v[i * n + j], &r);
+            }
+    }
+#undef W
+    free(w);
+    return 0;
+}
+
 /* Gauss-Jordan with partial pivoting; det may be NULL */
 int mat_inv(ppl_vm *V, const value *a, value *out, value *det)
 {
@@ -463,6 +526,11 @@ int mat_inv(ppl_vm *V, const value *a, value *out, value *det)
     int n = A->rows, i, j, k, st, sign = 0;
     value w, inv, d;
     if (A->vec || A->rows != A->cols) return E_DIM;
+    {
+        int allreal = 1;
+        for (i = 0; i < n * n; i++) if (A->v[i].t != T_REAL) allreal = 0;
+        if (allreal) return mat_inv_real(A, out, det);
+    }
     if ((st = v_mat(&w, n, n, 0))) return st;
     memcpy(w.u.m->v, A->v, (size_t)n * n * sizeof(value));
     if ((st = v_mat(&inv, n, n, 0))) { v_decref(&w); return st; }

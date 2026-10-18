@@ -1,0 +1,130 @@
+// Core language: declarations, functions, recursion, loops, globals.
+EXPORT gv := 10;
+counter;
+sq(x);
+
+EXPORT FACT(n)
+BEGIN
+  IF n <= 1 THEN RETURN 1; END;
+  RETURN n * FACT(n - 1);
+END;
+
+sq(x)
+BEGIN
+  RETURN x * x;
+END;
+
+EXPORT USESQ(a) BEGIN RETURN sq(a) + gv; END;
+
+EXPORT FIB(n)
+BEGIN
+  IF n < 2 THEN RETURN n; ELSE RETURN FIB(n-1) + FIB(n-2); END;
+END;
+
+EXPORT LOOPS()
+BEGIN
+  LOCAL i, s := 0, L := {};
+  FOR i FROM 1 TO 10 STEP 3 DO s := s + i; END;
+  L(0) := s;
+  FOR i FROM 5 DOWNTO 1 DO L(SIZE(L)+1) := i; END;
+  WHILE s > 0 DO s := s - 7; END;
+  L := CONCAT(L, s);
+  REPEAT s := s + 1; UNTIL s >= 3;
+  L(0) := s;
+  RETURN L;
+END;
+
+EXPORT FORVAR()
+BEGIN
+  LOCAL i;
+  FOR i FROM 1 TO 4 DO END;
+  RETURN i;
+END;
+
+EXPORT BRK()
+BEGIN
+  LOCAL i, j, n := 0;
+  FOR i FROM 1 TO 5 DO
+    FOR j FROM 1 TO 5 DO
+      IF j == 3 THEN BREAK; END;
+      IF i == 4 THEN BREAK 2; END;
+      n := n + 1;
+    END;
+  END;
+  RETURN {i, j, n};
+END;
+
+EXPORT CONT()
+BEGIN
+  LOCAL i := 0, s := 0;
+  WHILE i < 10 DO
+    i := i + 1;
+    IF i MOD 2 == 0 THEN CONTINUE; END;
+    s := s + i;
+  END;
+  RETURN s;
+END;
+
+EXPORT CASES(x)
+BEGIN
+  CASE
+    IF x < 0 THEN RETURN "neg"; END;
+    IF x == 0 THEN RETURN "zero"; END;
+  DEFAULT RETURN "pos";
+  END;
+END;
+
+EXPORT LASTVAL()
+BEGIN
+  LOCAL z;
+  z := 41;
+  z := z + 1;
+END;
+
+EXPORT BARERET()
+BEGIN
+  RETURN;
+END;
+
+EXPORT COUNT()
+BEGIN
+  counter := counter + 1;
+  RETURN counter;
+END;
+
+EXPORT STORE()
+BEGIN
+  LOCAL a;
+  5 ▶ a;
+  a + 1 ▶ A;
+  RETURN A * 2;
+END;
+
+EXPORT SCOPE()
+BEGIN
+  LOCAL x := 1;
+  IF x == 1 THEN
+    LOCAL y := 2;
+    x := x + y;
+  END;
+  RETURN x;
+END;
+
+//> FACT(10) => 3628800
+//> FACT(20) => 2.43290200818E18
+//> USESQ(3) => 19
+//> FIB(15) => 610
+//> LOOPS() => {22,5,4,3,2,1,-6,3}
+//> FORVAR() => 5
+//> BRK() => {4,1,6}
+//> CONT() => 25
+//> CASES(-2) => "neg"
+//> CASES(0) => "zero"
+//> CASES(7) => "pos"
+//> LASTVAL() => 42
+//> BARERET() => 0
+//> COUNT() => 1
+//> STORE() => 12
+//> SCOPE() => 3
+//> gv => 10
+//> FIB(3)+FIB(4) => 5

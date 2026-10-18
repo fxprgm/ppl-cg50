@@ -20,6 +20,14 @@ static int ascii_out;
 
 static uint32_t host_ticks(void) { return (uint32_t)(clock() / (CLOCKS_PER_SEC / 1000)); }
 
+static void host_now(int *t)
+{
+    time_t now = time(NULL);
+    struct tm *tm = localtime(&now);
+    t[0] = tm->tm_year + 1900; t[1] = tm->tm_mon + 1; t[2] = tm->tm_mday;
+    t[3] = tm->tm_hour; t[4] = tm->tm_min; t[5] = tm->tm_sec;
+}
+
 static void host_print(ppl_vm *V, const char *s) { (void)V; if (s) printf("%s\n", s); }
 
 static void put_text(const char *s)
@@ -87,6 +95,7 @@ static void setup(ppl_vm *V)
     ppl_init(V);
     V->ticks = host_ticks;
     V->print = host_print;
+    V->now = host_now;
 }
 
 static const char *base_name(const char *path, char *out, size_t n)

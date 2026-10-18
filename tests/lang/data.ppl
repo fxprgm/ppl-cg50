@@ -1,0 +1,112 @@
+// Lists, matrices, strings: indexing, assignment, value semantics.
+EXPORT NESTED()
+BEGIN
+  LOCAL L := {{1,2},{3,4}};
+  L(2,1) := 30;
+  RETURN L;
+END;
+
+EXPORT COPYSEM()
+BEGIN
+  LOCAL a := {1,2,3}, b;
+  b := a;
+  b(1) := 99;
+  RETURN {a(1), b(1)};
+END;
+
+EXPORT MATSET()
+BEGIN
+  LOCAL m := [[1,2],[3,4]];
+  m(2,2) := 40;
+  m(1,3) := 5;
+  RETURN m;
+END;
+
+EXPORT ROW()
+BEGIN
+  LOCAL m := [[1,2],[3,4]];
+  RETURN m(2);
+END;
+
+EXPORT STRIDX()
+BEGIN
+  LOCAL s := "abc";
+  RETURN {s(1), SIZE(s), s + 1, 1 + s};
+END;
+
+EXPORT LAST()
+BEGIN
+  LOCAL L := {10,20,30};
+  RETURN L(0);
+END;
+
+EXPORT ERRS()
+BEGIN
+  LOCAL r := {}, L := {1};
+  IFERR L(5); THEN r(0) := 1; ELSE r(0) := 2; END;
+  IFERR 1/0; THEN r(0) := 3; END;
+  IFERR r(0) := 4; THEN r(0) := 0; ELSE r(0) := 5; END;
+  RETURN r;
+END;
+
+EXPORT ERRDEEP(n)
+BEGIN
+  IF n == 0 THEN RETURN MID("x", 0, 1); END;
+  RETURN ERRDEEP(n - 1);
+END;
+
+EXPORT CATCH()
+BEGIN
+  LOCAL r := 0;
+  IFERR r := ERRDEEP(5); THEN r := -1; END;
+  RETURN r;
+END;
+
+EXPORT BRKTRY()
+BEGIN
+  LOCAL i, r := 0;
+  FOR i FROM 1 TO 3 DO
+    IFERR
+      IF i == 2 THEN BREAK; END;
+      r := r + i;
+    THEN r := 100; END;
+  END;
+  IFERR 1/0; THEN r := r + 10; END;
+  RETURN r;
+END;
+
+//> NESTED() => {{1,2},{30,4}}
+//> COPYSEM() => {1,99}
+//> MATSET() => [[1,2,5],[3,40,0]]
+//> ROW() => [3,4]
+//> STRIDX() => {97,3,"abc1","1abc"}
+//> LAST() => 30
+//> ERRS() => {1,3,4,5}
+//> CATCH() => -1
+//> BRKTRY() => 11
+//> SIZE([[1,2,3],[4,5,6]]) => {2,3}
+//> {1,2,3}*2 => {2,4,6}
+//> [1,2,3]*[4,5,6] => 32
+//> [[1,2],[3,4]]^-1 => [[-2,1],[1.5,-0.5]]
+//> DET([[1,2],[3,4]]) => -2
+//> {1,2}=={1,2} => {1,1}
+//> "abc"=="abc" => 1
+//> "b"==98 => 0
+//> "abc"<"abd" => 1
+//> MID("abcdef",2,3) => "bcd"
+//> LEFT("abcdef",0) => "abcdef"
+//> INSTRING("banana","na") => 3
+//> CHAR({72,80}) => "HP"
+//> UPPER("aBc") => "ABC"
+//> ROTATE("abcdef",2) => "cdefab"
+//> REPLACE("a-b-c","-","+") => "a+b+c"
+//> STRING({1,"a"}) => "{1,"a"}"
+//> SORT({3,1,2}) => {1,2,3}
+//> REVERSE({1,2,3}) => {3,2,1}
+//> POS({3,5,7},5) => 2
+//> ΣLIST({1,2,3,4}) => 10
+//> ΔLIST({1,4,9}) => {3,5}
+//> MAKELIST(2*X,X,1,3) => {2,4,6}
+//> Σ(X^2,X,1,4) => 30
+//> ITERATE(X*2,X,1,3) => 8
+//> EXECON("&1+&2",{1,2,3},{10,20,30}) => {11,22,33}

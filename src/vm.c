@@ -28,9 +28,44 @@ static const struct { const char *name; size_t off; int lo, hi; } SETS[] = {
 static const char *APPSETS[] = { "AAngle", "AComplex", "ADigits", "AFormat", NULL };
 static int appset_vals[4] = { 0, 0, 4, 0 };
 
+static int sysinfo_get(ppl_vm *V, const char *name, value *out)
+{
+    int t[6] = { 2026, 1, 1, 0, 0, 0 };
+    if (!strcmp(name, "Date") || !strcmp(name, "Time")) {
+        real r, h;
+        if (V->now) V->now(t);
+        if (name[0] == 'D') {
+            dec_from_int(&r, t[0] * 10000 + t[1] * 100 + t[2]);
+            dec_from_int(&h, 10000);
+        } else {
+            dec_from_int(&r, t[3] * 3600 + t[4] * 60 + t[5]);
+            dec_from_int(&h, 3600);
+        }
+        dec_div(&r, &r, &h);
+        v_real(out, &r);
+        if (name[0] == 'T') out->x = 1;
+        return 0;
+    }
+    if (!strcmp(name, "HVars") || !strcmp(name, "Programs")) {
+        value s;
+        v_list(out, 0);
+        if (name[0] == 'H') {
+            hvar *h;
+            for (h = V->hvars; h; h = h->next) { v_str_utf8(&s, h->name, strlen(h->name)); list_push(out->u.l, &s); v_decref(&s); }
+        } else {
+            pprog *p;
+            for (p = V->progs; p; p = p->next) { v_str_utf8(&s, p->name, strlen(p->name)); list_push(out->u.l, &s); v_decref(&s); }
+        }
+        return 0;
+    }
+    if (!strcmp(name, "Notes")) { v_list(out, 0); return 0; }
+    return -1;
+}
+
 int vm_setting_get(ppl_vm *V, const char *name, value *out)
 {
     int i;
+    if (!sysinfo_get(V, name, out)) return 0;
     for (i = 0; SETS[i].name; i++)
         if (!strcmp(SETS[i].name, name)) { v_int32(out, *(int *)((char *)&V->set + SETS[i].off)); return 0; }
     for (i = 0; APPSETS[i]; i++)

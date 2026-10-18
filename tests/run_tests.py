@@ -1,0 +1,28 @@
+"""Run the PPL regression tests in tests/lang.
+
+Each .ppl file is a program; lines of the form
+    //> EXPR => RESULT
+are evaluated on Home after loading it (`ppl --ascii run FILE EXPR...`) and
+the printed result compared with RESULT.  RESULT `*error*` expects an error.
+"""
+import glob, os, subprocess, sys
+
+here = os.path.dirname(os.path.abspath(__file__))
+ppl = os.path.join(here, '..', 'build', 'ppl')
+fails = total = 0
+for path in sorted(glob.glob(os.path.join(here, 'lang', '*.ppl'))):
+    cases = []
+    for line in open(path, encoding='utf-8'):
+        if line.startswith('//>'):
+            expr, want = line[3:].rsplit('=>', 1)
+            cases.append((expr.strip(), want.strip()))
+    for expr, want in cases:
+        total += 1
+        p = subprocess.run([ppl, '--ascii', 'run', path, expr], capture_output=True, text=True)
+        got = p.stdout.strip() if p.returncode == 0 else '*error*'
+        if got != want:
+            fails += 1
+            err = p.stderr.strip().splitlines()[-1] if p.stderr.strip() else ''
+            print('FAIL %s: %s => %s (want %s) %s' % (os.path.basename(path), expr, got, want, err))
+print('%d/%d language tests pass' % (total - fails, total))
+sys.exit(1 if fails else 0)
