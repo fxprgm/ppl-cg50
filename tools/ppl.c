@@ -8,7 +8,7 @@
  *
  * Options: --ascii  write '-', 'E' and 'i' instead of the Prime's glyphs
  *          --full   show every number in scientific format with 12 digits
- *          --even   ties round to even (default: away from zero)
+ *          --away   ties round away from zero (default: to even, as the Prime)
  *          -v       conform: print every row
  */
 #include "../src/vm.h"
@@ -366,7 +366,7 @@ int main(int argc, char **argv)
     extern int dec_round_mode;
     for (i = 1; i < argc; i++) {
         if (!strcmp(argv[i], "--ascii")) ascii_out = 1;
-        else if (!strcmp(argv[i], "--even")) dec_round_mode = 1;
+        else if (!strcmp(argv[i], "--away")) dec_round_mode = 0;
         else if (!strcmp(argv[i], "--full")) full_out = 1;
         else args[k++] = argv[i];
     }
