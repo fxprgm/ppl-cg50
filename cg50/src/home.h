@@ -9,6 +9,8 @@
 
 void home_init(ppl_vm *V);
 void home_loop(void);
+/* a line in the history (start-up notes) */
+void home_note(const char *in, const char *out, bool err);
 /* redraw what the LCD should show now (after a dialog) */
 void home_restore(void);
 /* the program ran FREEZE: keep G0 on the screen after it ends, until a key */

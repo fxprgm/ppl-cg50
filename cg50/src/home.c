@@ -61,6 +61,8 @@ static void hist_clear(void)
 	nhist = 0;
 }
 
+void home_note(const char *in, const char *out, bool err) { hist_add(in, out, err); }
+
 /* ---- drawing ----------------------------------------------------------------------------- */
 
 #define HIST_Y 19

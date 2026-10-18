@@ -51,6 +51,12 @@ int main(void)
 	g0_set_vm(V);
 	progs_init(V);
 	home_init(V);
+	/* the programs in \\fls0\PPL\ are there from the start, as on the Prime */
+	char loaded[400];
+	bool err;
+	progs_autoload(loaded, sizeof loaded, &err);
+	if (loaded[0])
+		home_note("PPL folder:", loaded, err);
 	home_loop();
 	clock_quit();
 	return 0;

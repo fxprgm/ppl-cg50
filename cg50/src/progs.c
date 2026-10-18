@@ -260,6 +260,31 @@ void progs_picker(void)
 	}
 }
 
+void progs_autoload(char *out, int n, bool *any_error)
+{
+	static files_entry_t all[LMAX];
+	int k = 0, m = files_list("PPL\\", all, LMAX), ok = 0, bad = 0;
+	out[0] = 0;
+	*any_error = false;
+	for (int i = 0; i < m; i++) {
+		if (!is_program(all[i].name) || all[i].size > 256 * 1024)
+			continue;
+		char name[48];
+		base_name(all[i].name, name, sizeof name);
+		int e = progs_load(all[i].name, true);
+		if (e) {
+			bad++;
+			*any_error = true;
+		}
+		else
+			ok++;
+		if (k < n - 60)
+			k += snprintf(out + k, n - k, "%s%s%s", k ? " " : "", name, e ? "(error)" : "");
+	}
+	ST->phase = PH_HOME;
+	(void)ok, (void)bad;
+}
+
 /* ---- exported functions ------------------------------------------------------------------ */
 
 int progs_functions(char *call, int n, int *run)

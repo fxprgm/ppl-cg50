@@ -7,6 +7,8 @@
 #include "vm.h"
 
 void progs_init(ppl_vm *V);
+/* at start: load every program file in \\fls0\PPL\ quietly; a summary into out */
+void progs_autoload(char *out, int n, bool *any_error);
 /* the file picker; returns after a load (or EXIT) */
 void progs_picker(void);
 /* load storage-memory file path (relative to \\fls0\); 0 or an E_* code (screens shown) */
