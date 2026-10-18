@@ -16,10 +16,12 @@
 
 static bool g0_used;          /* the running program drew on G0 */
 static uint32_t last_panel;
+static ppl_vm *VM;
 
 /* the screen while a program runs: what changed, at most every few tens of ms */
 static void refresh(int every)
 {
+	gfx_flush(VM);             /* the back end presents rows it holds back */
 	g0_flush(every);
 	term_flush(every ? 60 : 0);
 	uint32_t now = clock_real_ms();
@@ -60,7 +62,7 @@ static void h_present(ppl_vm *V, int y0, int y1)
 		return;
 	}
 	g0_mark(y0, y1);
-	g0_flush(40);
+	g0_flush(0);               /* the back end paces its presents (GFX_PRESENT_MS) */
 }
 
 static int h_poll(ppl_vm *V)
@@ -93,6 +95,7 @@ static int h_getkey(void)
 
 void host_hooks(ppl_vm *V)
 {
+	VM = V;
 	V->print = h_print;
 	V->present = h_present;
 	V->poll = h_poll;
@@ -105,6 +108,9 @@ void host_hooks(ppl_vm *V)
 
 /* a run starts (home.c) */
 void host_run_start(void) { g0_used = false; }
+
+/* the end of a run, a dialog: everything drawn is on the screen */
+void host_flush(void) { refresh(0); }
 
 /* ---- built-ins --------------------------------------------------------------------------- */
 

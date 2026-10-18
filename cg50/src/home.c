@@ -191,9 +191,7 @@ static void run(const char *line)
 	ST->run_ms = clock_real_ms() - t0;
 	running = false;
 	panel_state = e == E_BREAK ? "Break" : e && e != E_KILL ? "Error" : "Done";
-	g0_flush(0);
-	term_flush(0);
-	panel_update();
+	host_flush();
 	ST->last_err = e;
 	ST->last_errline = e ? V->errline : 0;
 	if (!e) {

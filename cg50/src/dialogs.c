@@ -1,6 +1,7 @@
 /* INPUT, CHOOSE and MSGBOX on the CG50 (dialogs.h). */
 #include "dialogs.h"
 #include "home.h"
+#include "host.h"
 #include "io.h"
 #include "screen.h"
 #include "stats.h"
@@ -60,8 +61,7 @@ static void str_arg(ppl_vm *V, const value *v, int i, char *out, int n)
 /* what the program drew or printed so far is on the screen before a dialog covers it */
 static void flush_screen(void)
 {
-	g0_flush(0);
-	term_flush(0);
+	host_flush();
 }
 
 /* ---- INPUT ------------------------------------------------------------------------------- */

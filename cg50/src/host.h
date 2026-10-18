@@ -9,5 +9,6 @@
 extern const builtin host_table[];
 void host_hooks(ppl_vm *V);
 void host_run_start(void);   /* a Home evaluation starts */
+void host_flush(void);       /* show what was drawn or printed now */
 
 #endif

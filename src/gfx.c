@@ -29,6 +29,8 @@ void gfx_init(ppl_vm *V)
 
 void gfx_free(ppl_vm *V) { (void)V; free(g0); g0 = NULL; }
 
+void gfx_flush(ppl_vm *V) { (void)V; }
+
 void gfx_row565(ppl_vm *V, int y, uint16_t *dst)
 {
     (void)V;
