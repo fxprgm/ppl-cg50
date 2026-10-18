@@ -93,10 +93,13 @@ typedef struct pfunc {
     uint8_t *code; uint32_t ncode, capcode;
     value *k; uint16_t nk, capk;       /* constants */
     char **names; uint16_t nnames, capnames;   /* run-time resolved names */
+    struct ncache *nc;                 /* resolution cache, one per name */
     struct pprog *prog;
     int line;
     uint8_t home;                      /* Home code: := creates variables */
 } pfunc;
+
+typedef struct ncache { uint32_t gen; uint8_t kind; void *p; } ncache;
 
 typedef struct pvar { char *name; value v; uint8_t exported; } pvar;
 
@@ -145,6 +148,7 @@ typedef struct ppl_vm {
     int (*cas)(struct ppl_vm *, const char *name, int argc, value *argv, value *out);
     void *user;
     int depth;                         /* re-entrant exec depth */
+    uint32_t gen;                      /* bumped when global names change */
 } ppl_vm;
 
 /* ---- value helpers (value.c) ---- */

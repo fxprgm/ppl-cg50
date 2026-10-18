@@ -124,6 +124,7 @@ static void free_func(pfunc *f)
     for (i = 0; i < f->nk; i++) v_decref(&f->k[i]);
     for (i = 0; i < f->nnames; i++) free(f->names[i]);
     free(f->names);
+    free(f->nc);
     free(f->k);
     free(f->code);
     free(f->name);
@@ -263,6 +264,7 @@ int ppl_load(ppl_vm *V, const char *name, const char *src, size_t n, char *msg, 
         if (!strcmp((*pp)->name, name)) { pprog *old = *pp; *pp = old->next; free_prog(old); break; }
     prog->next = V->progs;
     V->progs = prog;
+    V->gen++;
     return 0;
 }
 
@@ -321,7 +323,31 @@ static value *new_hvar(ppl_vm *V, const char *name)
     v_int32(&h->v, 0);
     h->next = V->hvars;
     V->hvars = h;
+    V->gen++;
     return &h->v;
+}
+
+/* resolve through the function's cache (settings are never cached) */
+static int resolve_cached(ppl_vm *V, pfunc *f, int idx, value **slot, pfunc **fn)
+{
+    int k;
+    ncache *c;
+    if (!f->nc) {
+        f->nc = (ncache *)calloc(f->nnames ? f->nnames : 1, sizeof(ncache));
+        if (!f->nc) return resolve(V, f->names[idx], slot, fn);
+    }
+    c = &f->nc[idx];
+    if (c->gen == V->gen + 1u && c->kind) {
+        if (c->kind == R_VAR) { *slot = (value *)c->p; return R_VAR; }
+        *fn = (pfunc *)c->p; return R_FUNC;
+    }
+    k = resolve(V, f->names[idx], slot, fn);
+    if (k == R_VAR || k == R_FUNC) {
+        c->gen = V->gen + 1u;
+        c->kind = (uint8_t)k;
+        c->p = k == R_VAR ? (void *)*slot : (void *)*fn;
+    }
+    return k;
 }
 
 /* ------------------------------------------------------------ indexing */
@@ -612,13 +638,14 @@ static int exec(ppl_vm *V, int base)
             break;
         }
         case BC_NLOAD: case BC_NSTORE: {
-            const char *nm = fr->fn->names[RD16(code + pc)];
+            int ni = RD16(code + pc);
+            const char *nm = fr->fn->names[ni];
             value *slot = NULL;
             pfunc *fn = NULL;
             int k;
             pc += 2;
             SAVE();
-            k = resolve(V, nm, &slot, &fn);
+            k = resolve_cached(V, fr->fn, ni, &slot, &fn);
             if (op == BC_NLOAD) {
                 NEED(1);
                 if (k == R_VAR) v_copy(&S[V->sp++], slot);
@@ -705,13 +732,14 @@ static int exec(ppl_vm *V, int base)
             break;
         }
         case BC_CALLN: {
-            const char *nm = fr->fn->names[RD16(code + pc)];
+            int ni = RD16(code + pc);
+            const char *nm = fr->fn->names[ni];
             int argc = code[pc + 2], e, k;
             value *slot = NULL;
             pfunc *fn = NULL;
             pc += 3;
             SAVE();
-            k = resolve(V, nm, &slot, &fn);
+            k = resolve_cached(V, fr->fn, ni, &slot, &fn);
             if (k == R_FUNC) {
                 e = push_frame(V, fn, argc, 0, 0, 0);
                 if (e) FAIL(e);
