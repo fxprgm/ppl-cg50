@@ -366,7 +366,19 @@ static void cexpr(comp *C, node *n)
         } else { cexpr(C, n->a); emit(C, BC_NEG); }
         break;
     case N_NOT: cexpr(C, n->a); emit(C, BC_NOT); break;
-    case N_BIN: cexpr(C, n->a); cexpr(C, n->b); emit(C, BC_BIN); emit(C, n->op); break;
+    case N_BIN:
+        cexpr(C, n->a);
+        if (n->op == OP_AND || n->op == OP_OR) {
+            /* short-circuit, as on the Prime: 0 AND (A:=1) and 1 OR (A:=1) leave A alone */
+            int j;
+            emit(C, BC_SC); emit(C, n->op);
+            emit16(C, 0); j = here(C) - 2;
+            cexpr(C, n->b); emit(C, BC_BIN); emit(C, n->op);
+            patch(C, j);
+            break;
+        }
+        cexpr(C, n->b); emit(C, BC_BIN); emit(C, n->op);
+        break;
     case N_CHAIN:
         emit(C, BC_SINT); emit(C, 1);
         cexpr(C, n->kids[0]);

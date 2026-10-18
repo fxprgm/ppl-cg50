@@ -161,18 +161,11 @@ int dec_format(char *buf, const real *x, int fmt, int digits, int flags)
             *p++ = '.';
             for (i = e + 1; i < n; i++) *p++ = d[i];
         }
-    } else if (e < 0 && e >= -12) {
-        /* below 1: STRING() rounds to 12 decimal places (the oracle shows
-         * 0.021311641129 for 0.0213116411288); scientific only when that
-         * leaves nothing (1E-13) */
-        real y, ax;
-        dec_abs(&ax, x);
-        dec_round_places(&y, &ax, 12, 0);
-        if (dec_is_zero(&y)) { p = put_sci(p, &ax, 12, 0, ascii, 0); *p = 0; return (int)(p - buf); }
-        if (y.e >= 0) { *p++ = '1'; *p = 0; return (int)(p - buf); }   /* 0.9999999999999 -> 1 */
-        digits12(d, &y);
-        n = sig_count(d);
-        e = y.e;
+    } else if (e < 0 && -e - 1 + n <= 12) {
+        /* below 1: fixed when the leading zeros and every significant digit fit
+         * in 12 decimal places, else scientific (HP's Virtual Calculator,
+         * 2026-10-18: 0.333333333333, 0.000012345 fixed; 0.0213116411288 and
+         * 1/7000 give 2.13116411288E-2 and 1.42857142857E-4) */
         *p++ = '0'; *p++ = '.';
         for (i = 0; i < -e - 1; i++) *p++ = '0';
         for (i = 0; i < n; i++) *p++ = d[i];

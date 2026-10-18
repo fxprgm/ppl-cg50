@@ -419,16 +419,27 @@ static void str_text(sbuf *b, const pstr *s, int quote)
     if (quote) sb_puts(b, "\"");
 }
 
+/* as the Prime shows them: 2+3*i, i, -i, 2-i; a zero imaginary part shows the real part only */
 static void cplx_text(ppl_vm *V, sbuf *b, const cplx *c)
 {
-    real im = c->im;
+    real im = c->im, one;
+    int neg = im.s;
+    if (dec_is_zero(&im)) { real_text(V, b, &c->re); return; }
     if (!dec_is_zero(&c->re)) {
         real_text(V, b, &c->re);
-        sb_puts(b, im.s ? "-" : "+");
-        im.s = 0;
+        /* the operator between the parts is a plain '-' (recorded STRINGs: 3-4*i,
+           −0.552220307199-1.1052954935*i); a sign is U+2212 */
+        sb_puts(b, neg ? "-" : "+");
+    } else if (neg) {
+        sb_puts(b, "\xE2\x88\x92");
     }
-    real_text(V, b, &im);
-    sb_puts(b, "*\xEE\x80\x83");   /* U+E003: the Prime's imaginary unit */
+    im.s = 0;
+    dec_from_int(&one, 1);
+    if (dec_cmp(&im, &one) != 0) {
+        real_text(V, b, &im);
+        sb_puts(b, "*");
+    }
+    sb_puts(b, "\xEE\x80\x83");   /* U+E003: the Prime's imaginary unit */
 }
 
 void v_to_text(ppl_vm *V, sbuf *b, const value *v, int quote)

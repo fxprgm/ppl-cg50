@@ -128,3 +128,13 @@ END;
 //> SCOPE() => 3
 //> gv => 10
 //> FIB(3)+FIB(4) => 5
+
+// AND/OR short-circuit (HP's Virtual Calculator: 0 AND (A:=1) and 1 OR (A:=1) leave A = 0)
+EXPORT SCIRC()
+BEGIN
+  LOCAL a := 0, b := 0;
+  0 AND (a := 1);
+  1 OR (b := 1);
+  RETURN {a, b, 1 AND 2, 0 OR 0, {1,0} AND {1,1}};
+END;
+//> SCIRC() => {0,0,1,0,{1,0}}

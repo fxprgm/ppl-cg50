@@ -52,7 +52,7 @@ enum { ANG_RAD = 0, ANG_DEG = 1, ANG_GRAD = 2 };
  * that a caller can tell; the interpreter ignores both. */
 #define DEC_SOFT(st) ((st) == DEC_EOVERFLOW || (st) == DEC_EUNDERFLOW)
 
-extern int dec_round_mode;   /* 0: ties away from zero, 1: ties to even */
+extern int dec_round_mode;   /* 1 (default): ties to even, as the Prime; 0: ties away from zero */
 
 /* ---- construction and conversion ---- */
 int    dec_maxreal(real *r, int neg);   /* sets +-MAXREAL, returns DEC_EOVERFLOW */

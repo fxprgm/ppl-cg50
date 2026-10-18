@@ -67,8 +67,12 @@ int main(void)
     tfmt("1E-12", FMT_STD, 0, "0.000000000001");
     tfmt("1E-13", FMT_STD, 0, "1E-13");
     tfmt("1.234E-9", FMT_STD, 0, "0.000000001234");
-    tfmt("1.2345E-9", FMT_STD, 0, "0.000000001235");
-    tfmt("0.0213116411288", FMT_STD, 0, "0.021311641129");
+    /* below 1: fixed only if everything fits in 12 decimal places (HP's Virtual Calculator) */
+    tfmt("1.2345E-9", FMT_STD, 0, "1.2345E-9");
+    tfmt("1.234E-9", FMT_STD, 0, "0.000000001234");
+    tfmt("0.0213116411288", FMT_STD, 0, "2.13116411288E-2");
+    tfmt("0.021311641129", FMT_STD, 0, "0.021311641129");
+    tfmt("0.000012345", FMT_STD, 0, "0.000012345");
     tfmt("-0.0000000000004", FMT_STD, 0, "-4E-13");
     tfmt("9.99999999999E499", FMT_STD, 0, "9.99999999999E499");
     tfmt("1E-499", FMT_STD, 0, "1E-499");

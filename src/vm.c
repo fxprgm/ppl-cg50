@@ -853,6 +853,17 @@ static int exec(ppl_vm *V, int base)
             else pc += 2;
             break;
         }
+        case BC_SC: {
+            /* a scalar left operand that decides AND (false) or OR (true): the result
+               replaces it and the right operand is skipped; lists etc. fall through */
+            int t, sop = code[pc];
+            if (!v_truth(&S[V->sp - 1], &t) && (sop == OP_AND ? !t : t)) {
+                v_decref(&S[V->sp - 1]);
+                v_int32(&S[V->sp - 1], t);
+                pc = (uint32_t)((int)pc + 3 + RDS16(code + pc + 1));
+            } else pc += 3;
+            break;
+        }
         case BC_POP: v_decref(&S[--V->sp]); break;
         case BC_DUP: NEED(1); v_copy(&S[V->sp], &S[V->sp - 1]); V->sp++; break;
         case BC_SETLAST: v_decref(&fr->last); fr->last = S[--V->sp]; break;

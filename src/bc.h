@@ -41,6 +41,7 @@ enum {
     BC_VREF,      /* u8 kind, u16 idx */
     BC_LINE,      /* u16 line */
     BC_KILL,
+    BC_SC,        /* u8 OP_AND/OP_OR, i16   AND/OR left operand decides: replace it with the result, jump */
     BC_COUNT
 };
 

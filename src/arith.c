@@ -47,7 +47,7 @@ static void v_bool(value *v, int b) { v_int32(v, b ? 1 : 0); }
 int c_make(value *v, const real *re, const real *im)
 {
     v_none(v);
-    if (dec_is_zero(im)) { v_real(v, re); return 0; }
+    /* a zero imaginary part stays complex, as on the Prime: TYPE((3,0)) = 3 */
     v->t = T_CPLX;
     v->u.c.re = *re;
     v->u.c.im = *im;
