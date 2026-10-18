@@ -1,6 +1,7 @@
 /* vm.c -- the PPL virtual machine: programs, frames, the interpreter loop,
  * indexing, run-time names, Home settings and EXPR. */
 #include "vm.h"
+#include "gfx.h"
 #include "bc.h"
 #include "compile.h"
 #include <stdlib.h>
@@ -136,6 +137,7 @@ void ppl_init(ppl_vm *V)
     for (i = 0; i < SV_COUNT; i++) {
         if (i >= SV_L0 && i < SV_L0 + 10) v_list(&V->sysvars[i], 0);
         else if (i >= SV_M0 && i < SV_M0 + 10) v_mat(&V->sysvars[i], 1, 1, 0);
+        else if (i >= SV_G0 && i < SV_G0 + 10) { v_none(&V->sysvars[i]); V->sysvars[i].t = T_GROB; V->sysvars[i].ib = (uint8_t)(i - SV_G0); }
         else v_int32(&V->sysvars[i], 0);
     }
     V->rng[0] = 0x12345678u; V->rng[1] = 0x9ABCDEF1u; V->rng[2] = 0x0F1E2D3Cu; V->rng[3] = 0x4B5A6978u;
@@ -170,6 +172,7 @@ void ppl_free(ppl_vm *V)
     hvar *h;
     while (V->sp) v_decref(&V->stack[--V->sp]);
     for (i = 0; i < SV_COUNT; i++) v_decref(&V->sysvars[i]);
+    gfx_free(V);
     while (V->progs) { pprog *n = V->progs->next; free_prog(V->progs); V->progs = n; }
     for (h = V->hvars; h;) { hvar *n = h->next; v_decref(&h->v); free(h->name); free(h); h = n; }
     V->hvars = NULL;

@@ -484,6 +484,7 @@ void v_to_text(ppl_vm *V, sbuf *b, const value *v, int quote)
         break;
     }
     case T_SYM: str_text(b, v->u.y->text, 0); break;
+    case T_GROB: { char g[3] = { 'G', (char)('0' + v->ib), 0 }; sb_puts(b, g); break; }
     default: break;
     }
 }

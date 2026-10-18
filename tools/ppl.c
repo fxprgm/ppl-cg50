@@ -7,17 +7,103 @@
  *   ppl conform FILE.tsv       run a conformance table (see tests/conformance)
  *
  * Options: --ascii  write '-', 'E' and 'i' instead of the Prime's glyphs
+ *          --png FILE  run/eval: write the screen G0 as a PNG at the end
  *          --full   show every number in scientific format with 12 digits
  *          --away   ties round away from zero (default: to even, as the Prime)
  *          -v       conform: print every row
  */
 #include "../src/vm.h"
+#include "../src/gfx.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 
 static int ascii_out, full_out;
+static const char *png_out;
+
+/* ------------------------------------------------------------ PNG */
+
+static uint32_t crc_table[256];
+
+static uint32_t crc32_of(uint32_t crc, const unsigned char *p, size_t n)
+{
+    size_t i;
+    if (!crc_table[1]) {
+        uint32_t c, k, j;
+        for (k = 0; k < 256; k++) {
+            for (c = k, j = 0; j < 8; j++) c = (c & 1) ? 0xEDB88320u ^ (c >> 1) : c >> 1;
+            crc_table[k] = c;
+        }
+    }
+    crc = ~crc;
+    for (i = 0; i < n; i++) crc = crc_table[(crc ^ p[i]) & 255] ^ (crc >> 8);
+    return ~crc;
+}
+
+static void put32(unsigned char *p, uint32_t v) { p[0] = (unsigned char)(v >> 24); p[1] = (unsigned char)(v >> 16); p[2] = (unsigned char)(v >> 8); p[3] = (unsigned char)v; }
+
+static void png_chunk(FILE *f, const char *type, const unsigned char *data, size_t n)
+{
+    unsigned char h[8];
+    uint32_t crc;
+    put32(h, (uint32_t)n);
+    memcpy(h + 4, type, 4);
+    fwrite(h, 1, 8, f);
+    if (n) fwrite(data, 1, n, f);
+    crc = crc32_of(0, (const unsigned char *)type, 4);
+    crc = crc32_of(crc, data, n);
+    put32(h, crc);
+    fwrite(h, 1, 4, f);
+}
+
+/* an RGB PNG of a grob, with stored (uncompressed) deflate blocks */
+static int write_png(const char *path, const grob *g)
+{
+    FILE *f = fopen(path, "wb");
+    size_t raw_n = (size_t)g->h * (1 + 3 * (size_t)g->w), i, z_n, pos;
+    unsigned char *raw, *z, ihdr[13];
+    uint32_t s1 = 1, s2 = 0;
+    int x, y;
+    if (!f) return -1;
+    raw = (unsigned char *)malloc(raw_n + 1);
+    z = (unsigned char *)malloc(raw_n + raw_n / 65535 * 5 + 16);
+    for (y = 0, i = 0; y < g->h; y++) {
+        raw[i++] = 0;
+        for (x = 0; x < g->w; x++) {
+            uint32_t c = g->px[(long)y * g->w + x];
+            raw[i++] = (unsigned char)(c >> 16); raw[i++] = (unsigned char)(c >> 8); raw[i++] = (unsigned char)c;
+        }
+    }
+    z[0] = 0x78; z[1] = 0x01; z_n = 2;
+    for (pos = 0; pos < raw_n || pos == 0;) {
+        size_t n = raw_n - pos > 65535 ? 65535 : raw_n - pos;
+        z[z_n++] = pos + n >= raw_n ? 1 : 0;
+        z[z_n++] = (unsigned char)n; z[z_n++] = (unsigned char)(n >> 8);
+        z[z_n++] = (unsigned char)~n; z[z_n++] = (unsigned char)(~n >> 8);
+        memcpy(z + z_n, raw + pos, n);
+        z_n += n; pos += n;
+        if (!n) break;
+    }
+    for (i = 0; i < raw_n; i++) { s1 = (s1 + raw[i]) % 65521; s2 = (s2 + s1) % 65521; }
+    put32(z + z_n, (s2 << 16) | s1); z_n += 4;
+    fwrite("\x89PNG\r\n\x1a\n", 1, 8, f);
+    put32(ihdr, (uint32_t)g->w); put32(ihdr + 4, (uint32_t)g->h);
+    ihdr[8] = 8; ihdr[9] = 2; ihdr[10] = 0; ihdr[11] = 0; ihdr[12] = 0;
+    png_chunk(f, "IHDR", ihdr, 13);
+    png_chunk(f, "IDAT", z, z_n);
+    png_chunk(f, "IEND", NULL, 0);
+    free(raw); free(z);
+    return fclose(f);
+}
+
+static void maybe_png(ppl_vm *V)
+{
+    grob *g;
+    if (!png_out) return;
+    g = gfx_grob(V, 0);
+    if (!g || write_png(png_out, g)) fprintf(stderr, "ppl: cannot write %s\n", png_out);
+}
 
 static uint32_t host_ticks(void) { return (uint32_t)(clock() / (CLOCKS_PER_SEC / 1000)); }
 
@@ -152,6 +238,7 @@ static int cmd_run(int argc, char **argv)
         show(V, &r);
         v_decref(&r);
     }
+    maybe_png(V);
     ppl_free(V);
     free(V);
     return rc;
@@ -195,6 +282,7 @@ static int cmd_eval(int argc, char **argv)
         show(V, &r);
         v_decref(&r);
     }
+    maybe_png(V);
     ppl_free(V);
     free(V);
     return rc;
@@ -368,6 +456,7 @@ int main(int argc, char **argv)
         if (!strcmp(argv[i], "--ascii")) ascii_out = 1;
         else if (!strcmp(argv[i], "--away")) dec_round_mode = 0;
         else if (!strcmp(argv[i], "--full")) full_out = 1;
+        else if (!strcmp(argv[i], "--png") && i + 1 < argc) png_out = argv[++i];
         else args[k++] = argv[i];
     }
     if (k < 1) {
