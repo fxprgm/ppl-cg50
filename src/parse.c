@@ -646,13 +646,15 @@ static node *rootexpr(parser *P)
     return n;
 }
 
+/* ^ groups from the right, as on the Prime: 2^3^2 = 2^(3^2) = 512 (checked on HP's app,
+   2026-10-18) */
 static node *powexpr(parser *P)
 {
     node *n = rootexpr(P);
-    while (is_op(P, P_POW)) {
+    if (is_op(P, P_POW)) {
         node *b = mk(P, N_BIN);
         next(P);
-        b->op = OP_POW; b->a = n; b->b = signed_operand(P, rootexpr);
+        b->op = OP_POW; b->a = n; b->b = signed_operand(P, powexpr);
         n = b;
     }
     return n;
