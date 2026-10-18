@@ -141,6 +141,8 @@ typedef struct ppl_vm {
     uint32_t (*ticks)(void);           /* milliseconds, for TICKS */
     int (*getkey)(void);               /* GETKEY: -1 when none */
     void (*now)(int *ymdhms);          /* host clock: y, mo, d, h, mi, s */
+    /* CAS hook: evaluates CAS.name(args); NULL = no CAS (Not supported) */
+    int (*cas)(struct ppl_vm *, const char *name, int argc, value *argv, value *out);
     void *user;
     int depth;                         /* re-entrant exec depth */
 } ppl_vm;

@@ -722,9 +722,20 @@ static int exec(ppl_vm *V, int base)
                 for (k = 0; k < argc; k++) v_decref(&S[--V->sp]);
                 if (e) FAIL(e);
                 S[V->sp++] = r;
+            } else if (!strncmp(nm, "CAS.", 4)) {
+                /* native helpers first, then the pluggable CAS */
+                const builtin *b = bi_lookup(nm + 4);
+                value r;
+                v_none(&r);
+                if (b && argc >= b->minargs && (b->maxargs < 0 || argc <= b->maxargs))
+                    e = b->fn(V, argc, &S[V->sp - argc], &r);
+                else if (V->cas) e = V->cas(V, nm + 4, argc, &S[V->sp - argc], &r);
+                else e = E_UNSUPPORTED;
+                for (k = 0; k < argc; k++) v_decref(&S[--V->sp]);
+                if (e) { v_decref(&r); strncpy(V->errname, nm, sizeof V->errname - 1); FAIL(e); }
+                S[V->sp++] = r;
             } else {
                 strncpy(V->errname, nm, sizeof V->errname - 1);
-                if (!strncmp(nm, "CAS.", 4)) FAIL(E_UNSUPPORTED);
                 FAIL(E_UNDEF);
             }
             break;
