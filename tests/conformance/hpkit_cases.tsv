@@ -1,0 +1,1257 @@
+# Conformance cases from hp-prime-kit (https://github.com/JordiRigau/hp-prime-kit, MIT,
+# see LICENSE-hp-prime-kit). Answers recorded on HP's Virtual Calculator 2.4
+# (source "emulator"), measured on a G2, or stated by HP's built-in help.
+# entry	call	answer	type	source	group
+!	RETURN 5!;	120	0	emulator	probability
+%	%(100,25)	25	0	emulator	arithmetic
+%CHANGE	%CHANGE(20,25)	25	0	emulator	more
+%TOTAL	%TOTAL(20,5)	25	0	emulator	more
+AAngle	EXPR("AAngle")	0	0	emulator	common-app-mode
+AAngle	LOCAL o, r; o := EXPR("AAngle"); EXPR("AAngle:=0"); IFERR r := {EXPR("AAngle"), SIN(90)}; THEN r := "refused"; END; EXPR("AAngle:=" + STRING(o)); RETURN r;	{0,0.893996663601}	6	emulator	common-app-mode
+AAngle	LOCAL o, r; o := EXPR("AAngle"); EXPR("AAngle:=1"); IFERR r := {EXPR("AAngle"), SIN(90)}; THEN r := "refused"; END; EXPR("AAngle:=" + STRING(o)); RETURN r;	{1,0.893996663601}	6	emulator	common-app-mode
+AAngle	LOCAL o, r; o := EXPR("AAngle"); EXPR("AAngle:=2"); IFERR r := {EXPR("AAngle"), SIN(90)}; THEN r := "refused"; END; EXPR("AAngle:=" + STRING(o)); RETURN r;	{2,1}	6	emulator	common-app-mode
+AAngle	LOCAL o, r; o := EXPR("AAngle"); EXPR("AAngle:=2"); r := EXPR("AAngle"); EXPR("AAngle:=" + STRING(o)); RETURN r;	2	0	emulator	common-app-mode
+AAS	EXPR("AAS(30,60,10)")	*error*		emulator	triangle-solver
+AAS	EXPR("AAS(40,60,10)")	{13.4729635533,15.3208888624,80}	6	emulator	triangle-solver
+ABS	ABS(-3.14)	3.14	0	emulator	matrix
+ABS	ABS([[1,2],[3,4]])	5.47722557505	0	emulator	matrix
+abscissa	EXPR("abscissa(point(3,4))")	3	0	emulator	geometry
+Accrued	EXPR("Accrued")	0	0	emulator	finance
+AComplex	EXPR("AComplex")	0	0	emulator	common-app-mode
+AComplex	LOCAL o, r; o := EXPR("AComplex"); EXPR("AComplex:=1"); IFERR r := {EXPR("AComplex"), EXPR("(-4)^0.5")}; THEN r := "refused"; END; EXPR("AComplex:=" + STRING(o)); RETURN r;	"refused"	2	emulator	common-app-mode
+AComplex	LOCAL o, r; o := EXPR("AComplex"); EXPR("AComplex:=1"); r := EXPR("AComplex"); EXPR("AComplex:=" + STRING(o)); RETURN r;	1	0	emulator	common-app-mode
+AComplex	LOCAL o, r; o := EXPR("AComplex"); EXPR("AComplex:=2"); IFERR r := {EXPR("AComplex"), EXPR("(-4)^0.5")}; THEN r := "refused"; END; EXPR("AComplex:=" + STRING(o)); RETURN r;	{2,2*}	6	emulator	common-app-mode
+ACOS	ACOS(0.5)	1.0471975512	0	emulator	catalog
+ACOSH	ACOSH(2)	1.31695789692	0	emulator	hyperbolic
+ACOT	ACOT(1)	0.785398163397	0	emulator	trigonometry
+ACSC	ACSC(2)	0.523598775598	0	emulator	trigonometry
+ADDCOL	ADDCOL([[1,2],[3,4]],[[5],[6]],3)	*error*		emulator	matrix
+ADDCOL	ADDCOL([[1,2],[3,4]],{5,6},2)	*error*		emulator	matrix
+ADDCOL	ADDCOL([[1,2],[3,4]],{5,6},3)	*error*		emulator	matrix
+ADDCOL	ADDCOL({5,6},[[1,2],[3,4]],3)	*error*		emulator	matrix
+ADDCOL	M1 := [[1,2],[3,4]]; ADDCOL(M1,{5,6},3); RETURN M1;	*error*		emulator	matrix
+ADDROW	ADDROW([[1,2],[3,4]],[[5,6]],3)	*error*		emulator	matrix
+ADDROW	ADDROW([[1,2],[3,4]],{5,6},2)	*error*		emulator	matrix
+ADDROW	ADDROW([[1,2],[3,4]],{5,6},3)	*error*		emulator	matrix
+ADDROW	M1 := [[1,2],[3,4]]; ADDROW(M1,{5,6},3); RETURN M1;	*error*		emulator	matrix
+ADigits	EXPR("ADigits")	4	0	emulator	common-app-mode
+ADigits	LOCAL f, d, r; f := EXPR("AFormat"); d := EXPR("ADigits"); EXPR("AFormat:=2"); EXPR("ADigits:=2"); IFERR r := STRING(1/3); THEN r := "refused"; END; EXPR("ADigits:=" + STRING(d)); EXPR("AFormat:=" + STRING(f)); RETURN r;	"0.33"	2	emulator	common-app-mode
+ADigits	LOCAL o, r; o := EXPR("ADigits"); EXPR("ADigits:=2"); IFERR r := {EXPR("ADigits"), STRING(1/3)}; THEN r := "refused"; END; EXPR("ADigits:=" + STRING(o)); RETURN r;	{2,"0.333333333333"}	6	emulator	common-app-mode
+ADigits	LOCAL o, r; o := EXPR("ADigits"); EXPR("ADigits:=3"); r := EXPR("ADigits"); EXPR("ADigits:=" + STRING(o)); RETURN r;	3	0	emulator	common-app-mode
+affix	EXPR("affix(point(3,4))")	3+4*	3	emulator	geometry
+AFiles	EXPR(" AFiles")	{}	6	emulator	common-numeric-view
+AFiles	EXPR("AFiles")	{}	6	emulator	common-numeric-view
+AFilesB	EXPR("AFilesB")	{}	6	emulator	common-numeric-view
+AFormat	EXPR("AFormat")	0	0	emulator	common-app-mode
+AFormat	LOCAL o, r; o := EXPR("AFormat"); EXPR("AFormat:=1"); IFERR r := {EXPR("AFormat"), STRING(1/3)}; THEN r := "refused"; END; EXPR("AFormat:=" + STRING(o)); RETURN r;	{1,"0.333333333333"}	6	emulator	common-app-mode
+AFormat	LOCAL o, r; o := EXPR("AFormat"); EXPR("AFormat:=2"); IFERR r := {EXPR("AFormat"), STRING(1/3)}; THEN r := "refused"; END; EXPR("AFormat:=" + STRING(o)); RETURN r;	{2,"0.3333"}	6	emulator	common-app-mode
+AFormat	LOCAL o; o := EXPR("AFormat"); EXPR("AFormat:=" + STRING(o)); RETURN EXPR("AFormat");	0	0	emulator	common-app-mode
+ALOG	ALOG(3)	1000	0	emulator	arithmetic
+ALOG	EXPR("ALOG(2)")	100	0	emulator	arithmetic
+ALOG	EXPR("Alog(2)")	100	0	emulator	arithmetic
+ALOG	EXPR("alog(2)")	100	0	emulator	arithmetic
+ALPHA	EXPR("ALPHA")	*error*		emulator	catalog
+Alpha	EXPR(" Alpha")	0.05	0	emulator	inference
+Alpha	EXPR("(Alpha)")	0.01	0	emulator	inference
+Alpha	EXPR("Alpha")	*error*		emulator	inference
+Alpha	EXPR("Alpha:=0.01")	0.01	0	emulator	inference
+Alpha	EXPR("Alpha:=0.05")	*error*		emulator	inference
+Alpha	EXPR("Inference.Alpha")	0.05	0	emulator	inference
+AltHyp	EXPR("AltHyp")	0	0	emulator	inference
+altitude	EXPR("altitude(point(0,0),point(4,0),point(0,3))")	line(y=4/3*x)	8	emulator	geometry
+AMORT	EXPR("AMORT(12,5,-1000,85.6)")	*error*		emulator	spreadsheet
+AMORT	EXPR("AMORT(A1:A5,12,5,-1000,85.61)")	*error*		emulator	spreadsheet
+angle	EXPR("angle(point(0,0),point(1,0),point(0,1))")	1/2*π	8	emulator	geometry
+AngleA	EXPR("    AngleA")	*error*		emulator	triangle-solver
+AngleA	EXPR("   AngleA")	*error*		emulator	triangle-solver
+AngleA	EXPR("  AngleA")	36.8698976458	0	emulator	triangle-solver
+AngleA	EXPR(" AngleA")	−1	0	emulator	triangle-solver
+AngleA	EXPR("(AngleA)")	*error*		emulator	triangle-solver
+AngleA	EXPR("AngleA")	*error*		emulator	triangle-solver
+AngleA	EXPR("AngleA:=30")	*error*		emulator	triangle-solver
+AngleA	EXPR("Triangle_Solver.AngleA")	−1	0	emulator	triangle-solver
+AngleA	EXPR("ZQREAD()")	−1	0	emulator	triangle-solver
+AngleB	EXPR("  AngleB")	53.1301023542	0	emulator	triangle-solver
+AngleB	EXPR(" AngleB")	−1	0	emulator	triangle-solver
+AngleC	EXPR("  AngleC")	90	0	emulator	triangle-solver
+AngleC	EXPR(" AngleC")	−1	0	emulator	triangle-solver
+ANote	EXPR("ANote")	""	2	emulator	common-numeric-view
+ANote	LOCAL o; o := EXPR("ANote"); EXPR("ANote:=" + STRING(o)); RETURN EXPR("ANote");	""	2	emulator	common-numeric-view
+AnovaOneWay	EXPR("AnovaOneWay({1,2,3},{4,5,6})")	{13.5,0.021311641129,1,13.5,13.5,4,4,1}	6	emulator	inference
+AnovaOneWay	EXPR("AnovaOneWay({1,2,3},{4,5,6},{7,8,9},{10,11,12})")	{45,0.000023559647,3,135,45,8,8,1}	6	emulator	inference
+Ans	EXPR(" Ans")	0	0	emulator	home
+Ans	EXPR("2+3")	5	0	emulator	home
+Ans	EXPR("Ans")	0	0	emulator	home
+Apps	EXPR("Apps")	{"Función","Solucionador","Var 1 estadística","Var 2 estadística","Inferencia","Paramétrica","Polar","Secuencia","Finanzas","Solucionador lineal","Solucionador  (cut at 160 characters)	6	emulator	geometry
+apps.qualified-names	EXPORT ZQREAD()\nBEGIN\n  RETURN Triangle_Solver.AngleA;\nEND;\n	*compiles*		emulator	topics
+apps.qualified-names	EXPORT ZQSTAT()\nBEGIN\n  Statistics_1Var.D1 := {1,2,2,3,7};\n  Statistics_1Var.Do1VStats(Statistics_1Var.H1);\n  RETURN Statistics_1Var.MeanX;\nEND;\n	*compiles*		emulator	topics
+AProgram	EXPR("AProgram")	""	2	emulator	common-numeric-view
+AProgram	LOCAL o; o := EXPR("AProgram"); EXPR("AProgram:=" + STRING(o)); RETURN EXPR("AProgram");	""	2	emulator	common-numeric-view
+ARC	DIMGROB(G1,20,20,0); RETURN ARC(G1,10,10,5);	1	0	emulator	drawing
+ARC_P	DIMGROB_P(G1,20,20,0); RETURN ARC_P(G1,10,10,5);	1	0	emulator	drawing
+arcLen	EXPR("arcLen(X^2,0,1)")	1	0	emulator	geometry
+AREA	EXPR(" AREA(F1,0,2)")	−5.33333333333	0	emulator	function
+AREA	EXPR("AREA(F1,0,1)")	−4	0	emulator	function
+AREA	EXPR("AREA(F1,0,2)")	−5.33333333333	0	emulator	function
+area	EXPR("area(circle(point(0,0),point(1,0)))")	1/4*π	8	emulator	geometry
+ARG	ARG(3+4*i)	0.927295218002	0	emulator	arithmetic
+ASA	EXPR("ASA(30,10,60)")	*error*		emulator	triangle-solver
+ASA	EXPR("ASA(40,10,60)")	{6.52703644666,8.79385241572,80}	6	emulator	triangle-solver
+ASC	ASC("A")	{65}	6	emulator	strings
+ASC	ASC("abc")	{97,98,99}	6	emulator	strings
+ASEC	ASEC(2)	1.0471975512	0	emulator	trigonometry
+ASIN	ASIN(0.5)	0.523598775598	0	emulator	catalog
+ASINH	ASINH(1)	0.88137358702	0	emulator	hyperbolic
+ATAN	ATAN(1)	0.785398163397	0	emulator	catalog
+ATANH	ATANH(0.5)	0.549306144334	0	emulator	hyperbolic
+AVars	EXPR(" AVars")	{}	6	emulator	common-numeric-view
+AVars	EXPR("AVars")	{}	6	emulator	common-numeric-view
+AVERAGE	EXPR("AVERAGE({1,2,3})")	*error*		emulator	spreadsheet
+AVERAGE	EXPR("AVERAGE({2,4,6})")	4	0	emulator	spreadsheet
+Axes	EXPR("Axes")	0	0	emulator	common-plot-view
+Axes	LOCAL o; o := EXPR("Axes"); EXPR("Axes:=" + STRING(o)); RETURN EXPR("Axes");	0	0	emulator	common-plot-view
+Base	EXPR("Base")	3	0	emulator	home-settings
+Base	EXPR("STRING(R→B(255))")	"#FFh"	2	emulator	home-settings
+Base	LOCAL o, r; o := EXPR("Base"); EXPR("Base:=0"); IFERR r := {EXPR("Base"), STRING(R→B(255))}; THEN r := "refused"; END; EXPR("Base:=" + STRING(o)); RETURN r;	{0,"#11111111b"}	6	emulator	home-settings
+Base	LOCAL o, r; o := EXPR("Base"); EXPR("Base:=1"); IFERR r := {EXPR("Base"), STRING(R→B(255))}; THEN r := "refused"; END; EXPR("Base:=" + STRING(o)); RETURN r;	{1,"#377o"}	6	emulator	home-settings
+Base	LOCAL o, r; o := EXPR("Base"); EXPR("Base:=2"); IFERR r := {EXPR("Base"), STRING(R→B(255))}; THEN r := "refused"; END; EXPR("Base:=" + STRING(o)); RETURN r;	{2,"#255d"}	6	emulator	home-settings
+Base	LOCAL o, r; o := EXPR("Base"); EXPR("Base:=3"); r := EXPR("Base"); EXPR("Base:=" + STRING(o)); RETURN r;	3	0	emulator	home-settings
+Base	LOCAL o, r; o := EXPR("Base"); EXPR("Base:=3"); r := {EXPR("Base"), STRING(R→B(255))}; EXPR("Base:=" + STRING(o)); RETURN r;	{3,"#FFh"}	6	emulator	home-settings
+BEG	EXPR(" BEG")	1.00	0	emulator	finance
+BEG	EXPR("BEG")	*error*		emulator	finance
+Beta	Beta(2,3)	1/12	8	emulator	special
+BINOMIAL	BINOMIAL(10,0.5,5)	0.24609375	0	emulator	probability
+BINOMIAL_CDF	BINOMIAL_CDF(10,0.5,5)	0.623046875	0	emulator	probability
+BINOMIAL_ICDF	BINOMIAL_ICDF(10,0.5,0.5)	5	0	emulator	probability
+bisector	EXPR("bisector(point(0,0),point(4,0),point(0,4))")	line(y=x)	8	emulator	geometry
+BITAND	BITAND(12, 10)	8	0	emulator	integer
+BITNOT	BITNOT(12)	549755813875	0	emulator	integer
+BITOR	BITOR(12, 10)	14	0	emulator	integer
+Bits	EXPR("Bits")	32	0	emulator	home-settings
+Bits	LOCAL o, r; o := EXPR("Bits"); EXPR("Bits:=16"); r := EXPR("Bits"); EXPR("Bits:=" + STRING(o)); RETURN r;	16	0	emulator	home-settings
+Bits	LOCAL o, r; o := EXPR("Bits"); EXPR("Bits:=8"); r := {EXPR("Bits"), STRING(R→B(300))}; EXPR("Bits:=" + STRING(o)); RETURN r;	{8,"#FFh"}	6	emulator	home-settings
+BITSL	BITSL(1)	2	0	emulator	integer
+BITSL	BITSL(1, 3)	8	0	emulator	integer
+BITSR	BITSR(8)	4	0	emulator	integer
+BITSR	BITSR(8, 2)	2	0	emulator	integer
+BITXOR	BITXOR(12, 10)	6	0	emulator	integer
+BlackScholes	EXPR("BlackScholes(100,95,1,5,0.2,0)")	{9.63320467243,0}	6	emulator	finance
+BLIT	DIMGROB(G1,10,5,0); DIMGROB(G2,10,5,0); RETURN BLIT(G2,G1);	1	0	emulator	drawing
+BLIT_P	DIMGROB_P(G1,10,10,0); DIMGROB_P(G2,10,10,0); RETURN BLIT_P(G2,G1);	1	0	emulator	drawing
+Bond360	EXPR("Bond360")	0	0	emulator	finance
+BondPrice	EXPR("BondPrice(1.012024,1.012034,5,100,6,2,0)")	*error*		emulator	finance
+BondYield	EXPR("BondYield(1.012024,1.012034,95,5,100,2,0)")	*error*		emulator	finance
+BREAK	LOCAL z; z := 0; FOR z FROM 1 TO 5 DO IF z == 3 THEN BREAK; END; END; RETURN z;	3	0	emulator	loop
+BREAK	LOCAL zi, zj, z; z := 0; FOR zi FROM 1 TO 3 DO FOR zj FROM 1 TO 3 DO BREAK 2; END; z := 9; END; RETURN z;	0	0	emulator	loop
+BrkEvCost	EXPR("BrkEvCost(1000,100,20,500)")	5	0	emulator	finance
+BrkEvFixed	EXPR("BrkEvFixed(100,5,20,500)")	1000	0	emulator	finance
+BrkEvPrice	EXPR("BrkEvPrice(1000,100,5,500)")	20	0	emulator	finance
+BrkEvProfit	EXPR("BrkEvProfit(1000,100,5,20)")	500	0	emulator	finance
+BrkEvQuant	EXPR("BrkEvQuant(1000,5,20,500)")	100	0	emulator	finance
+BrkEvQuant	EXPR("BrkEvQuant(1000,5,20,BrkEvProfit(1000,100,5,20))")	100	0	emulator	finance
+BSCall	EXPR(" BSCall")	0.00	0	emulator	finance
+BSCall	EXPR("BSCall")	0	0	emulator	finance
+BSPut	EXPR(" BSPut")	*error*		emulator	finance
+BSPut	EXPR("BSPut")	*error*		emulator	finance
+B→R	B→R(SETBITS(12))	12	0	emulator	integer
+CallPrice	EXPR("CallPrice")	100	0	emulator	finance
+CAS	CAS("1/2+1/3")	5/6	8	emulator	more
+CAS	CAS(1/2+1/3)	5/6	8	emulator	more
+CASE	LOCAL z; z := 0; CASE IF 1 == 2 THEN z := 1; END; DEFAULT z := 3; END; RETURN z;	3	0	emulator	branch
+CASE	LOCAL z; z := 0; CASE IF 1 == 2 THEN z := 1; END; IF 1 == 1 THEN z := 2; END; DEFAULT z := 3; END; RETURN z;	2	0	emulator	branch
+CashFlowFMRR	EXPR("CashFlowFMRR({-1000,300,400,500},10,5)")	9.22317710801	0	emulator	finance
+CashFlowIRR	EXPR("CashFlowIRR({-1000,300,400,500})")	8.89633946933	0	emulator	finance
+CashFlowMIRR	EXPR("CashFlowMIRR({-1000,300,400,500},10,5)")	9.22317710801	0	emulator	finance
+CashFlowNFV	EXPR("CashFlowNFV({-1000,300,400,500},10)")	−28	0	emulator	finance
+CashFlowNPV	EXPR("CashFlowNPV({-1000,300,400,500},10)")	−21.0368144252	0	emulator	finance
+CashFlowNUS	EXPR("CashFlowNUS({-1000,300,400,500},10)")	−8.45921450151	0	emulator	finance
+CashFlowPB	EXPR("CashFlowPB({-1000,300,400,500})")	2.6	0	emulator	finance
+CashFlowTotal	EXPR("CashFlowTotal({-1000,300,400,500})")	200	0	emulator	finance
+CEILING	CEILING(-3.2)	−3	0	emulator	numbers
+CEILING	CEILING(3.2)	4	0	emulator	numbers
+CEILING	CEILING({3.2,-3.2})	{4,−3}	6	emulator	numbers
+CellHasData	EXPR("CellHasData( )")	0	0	emulator	spreadsheet
+CellHasData	EXPR("CellHasData()")	*error*		emulator	spreadsheet
+center	EXPR("center(circle(point(0,0),point(2,0)))")	point(1,0)	8	emulator	geometry
+CFData	EXPR("CFData")	{}	6	emulator	finance
+CFPYR	EXPR(" CFPYR")	12.00	0	emulator	finance
+CFPYR	EXPR("CFPYR")	12	0	emulator	finance
+Change	EXPR("Change")	0	0	emulator	finance
+ChangeCost	EXPR("ChangeCost(100,10,0)")	90.9090909091	0	emulator	finance
+ChangeNew	EXPR("ChangeNew(100,10,0)")	10	0	emulator	finance
+ChangeOld	EXPR("ChangeOld(110,10,0)")	1100	0	emulator	finance
+ChangePrice	EXPR("ChangePrice(60,10,0)")	66	0	emulator	finance
+CHAR	CHAR(65)	"A"	2	emulator	strings
+CHAR	CHAR({72,80})	"HP"	2	emulator	strings
+CHECK	EXPR("CHECK(1)")	1	0	emulator	statistics-1var
+Chi2GOF	EXPR("Chi2GOF(1,2,3)")	*error*		emulator	inference
+Chi2TwoWay	EXPR("Chi2TwoWay([[10,20],[30,40]])")	{0.793650793651,0.372998483613,1}	6	emulator	inference
+CHISQUARE	CHISQUARE(3,2)	0.20755374871	0	emulator	probability
+CHISQUARE_CDF	CHISQUARE_CDF(3,2)	0.427593295529	0	emulator	probability
+CHISQUARE_ICDF	CHISQUARE_ICDF(3,0.5)	2.36597388438	0	emulator	probability
+cholesky	cholesky([[4,2],[2,3]])	[[2,0],[1,1.41421356237]]	4	emulator	matrix
+Ci	Ci(1)	Ci(1)	8	emulator	special
+circle	EXPR("circle(point(0,0),point(2,0))")	circle(point(1,0),1)	8	emulator	geometry
+circumcircle	EXPR("circumcircle(point(0,0),point(3,0),point(0,4))")	circle(point(3/2,2),5/2)	8	emulator	geometry
+ClearCell	EXPR("ClearCell( )")	0	0	emulator	spreadsheet
+ClearCell	EXPR("ClearCell()")	*error*		emulator	spreadsheet
+CoefDet	EXPR("CoefDet")	*error*		emulator	statistics-2var
+CoefDet	EXPR("Statistics_2Var.C1:={1,2,3,4}"); EXPR("Statistics_2Var.C2:={2,3,5,9}"); EXPR("Statistics_2Var.Do2VStats(Statistics_2Var.S1)"); RETURN EXPR("Statistics_2Var.CoefDet");	0.92	0	emulator	statistics-2var
+CoefDet	EXPR("Statistics_2Var.CoefDet")	*error*		emulator	statistics-2var
+CoefDet	LOCAL o, r; EXPR("Statistics_2Var.C1:={1,2,3,4}"); EXPR("Statistics_2Var.C2:={2,3,5,9}"); EXPR("Statistics_2Var.Do2VStats(Statistics_2Var.S1)"); o := EXPR("Statistics_2Var.CoefDet"); IFERR EXPR("Statistics_2Var.CoefDet:=99"); r := EXPR("Statistics_2Var.CoefDet"); THEN r := "refused"; END; IFERR EXPR("Statistics_2Var.CoefDet:=" + STRING(o)); THEN r := r; END; RETURN r;	"refused"	2	emulator	statistics-2var
+coefDet	EXPR("coefDet")	0	0	emulator	inference
+Col	EXPR("Col")	*error*		emulator	spreadsheet
+Col	EXPR("Spreadsheet.Col")	0	0	emulator	spreadsheet
+Col	LOCAL o, r; o := EXPR("Spreadsheet.Col"); IFERR EXPR("Spreadsheet.Col:=2"); r := EXPR("Spreadsheet.Col"); THEN r := "refused"; END; IFERR EXPR("Spreadsheet.Col:=" + STRING(o)); THEN r := r; END; RETURN r;	"refused"	2	emulator	spreadsheet
+COLNORM	COLNORM([[1,2],[3,4]])	6	0	emulator	matrix
+COLOR	EXPR("COLOR")	COLOR	8	emulator	catalog
+ColWidth	EXPR("(ColWidth)")	*error*		emulator	spreadsheet
+ColWidth	EXPR("ColWidth")	*error*		emulator	spreadsheet
+ColWidth	EXPR("ColWidth:=40")	*error*		emulator	spreadsheet
+ColWidth	EXPR("Spreadsheet.ColWidth")	−1	0	emulator	spreadsheet
+ColWidth	LOCAL o, r; o := EXPR("Spreadsheet.ColWidth"); IFERR EXPR("Spreadsheet.ColWidth:=40"); r := EXPR("Spreadsheet.ColWidth"); THEN r := "refused"; END; IFERR EXPR("Spreadsheet.ColWidth:=" + STRING(o)); THEN r := r; END; RETURN r;	40	0	emulator	spreadsheet
+COMB	COMB(5,2)	10	0	emulator	probability
+CONCAT	CONCAT(1,2,3,4)	{1,2,3,4}	6	emulator	list
+CONCAT	CONCAT({1,2,3},4)	{1,2,3,4}	6	emulator	list
+CONCAT	CONCAT({1,2},3,{{4,5},6,{7,8}})	{1,2,3,{4,5},6,{7,8}}	6	emulator	list
+COND	COND([[1,2],[3,4]])	21	0	emulator	matrix
+Conf	EXPR("Conf")	0.99	0	emulator	inference
+ConfT1mean	EXPR("ConfT1mean({1,2,3,4,5})")	*error*		emulator	spreadsheet
+ConfT1mean	EXPR("ConfT1mean({2,4,6,8,10})")	*error*		emulator	spreadsheet
+ConfT2mean	EXPR("ConfT2mean({1,2,3,4,5})")	*error*		emulator	spreadsheet
+ConfT2mean	EXPR("ConfT2mean({2,4,6,8,10})")	*error*		emulator	spreadsheet
+ConfZ1mean	EXPR("ConfZ1mean({1,2,3,4,5})")	*error*		emulator	spreadsheet
+ConfZ1mean	EXPR("ConfZ1mean({2,4,6,8,10})")	*error*		emulator	spreadsheet
+ConfZ1prop	EXPR("ConfZ1prop({1,2,3,4,5})")	*error*		emulator	spreadsheet
+ConfZ1prop	EXPR("ConfZ1prop({2,4,6,8,10})")	*error*		emulator	spreadsheet
+ConfZ2mean	EXPR("ConfZ2mean({1,2,3,4,5})")	*error*		emulator	spreadsheet
+ConfZ2mean	EXPR("ConfZ2mean({2,4,6,8,10})")	*error*		emulator	spreadsheet
+ConfZ2prop	EXPR("ConfZ2prop(10,12,50,50)")	*error*		emulator	spreadsheet
+ConfZ2prop	EXPR("ConfZ2prop(10,12,50,60)")	*error*		emulator	spreadsheet
+conic	EXPR("conic(X^2+Y^2-1)")	{}	6	emulator	geometry
+CONJ	CONJ(3+4*i)	3-4*	3	emulator	arithmetic
+CONTINUE	LOCAL zi, zs; zs := 0; FOR zi FROM 1 TO 5 DO IF zi == 3 THEN CONTINUE; END; zs := zs + zi; END; RETURN zs;	12	0	emulator	loop
+ContribList	EXPR(" ContribList")	{}	6	emulator	inference
+ContribList	EXPR("ContribList")	{}	6	emulator	inference
+ContribMat	EXPR("ContribMat")	[[0]]	4	emulator	inference
+CONVERT	CONVERT(2_m, 1_ft)	6.56167979003_ft	9	emulator	units
+coordinates	EXPR("coordinates(point(3,4))")	[3,4]	4	emulator	geometry
+CopyVar	EXPR("CopyVar(L1,L2)")	{}	6	emulator	catalog
+Corr	EXPR("Corr")	*error*		emulator	statistics-2var
+Corr	EXPR("Statistics_2Var.C1:={1,2,3,4}"); EXPR("Statistics_2Var.C2:={2,3,5,9}"); EXPR("Statistics_2Var.Do2VStats(Statistics_2Var.S1)"); RETURN EXPR("Statistics_2Var.Corr");	0.959166304663	0	emulator	statistics-2var
+Corr	EXPR("Statistics_2Var.Corr")	*error*		emulator	statistics-2var
+Corr	LOCAL o, r; EXPR("Statistics_2Var.C1:={1,2,3,4}"); EXPR("Statistics_2Var.C2:={2,3,5,9}"); EXPR("Statistics_2Var.Do2VStats(Statistics_2Var.S1)"); o := EXPR("Statistics_2Var.Corr"); IFERR EXPR("Statistics_2Var.Corr:=99"); r := EXPR("Statistics_2Var.Corr"); THEN r := "refused"; END; IFERR EXPR("Statistics_2Var.Corr:=" + STRING(o)); THEN r := r; END; RETURN r;	"refused"	2	emulator	statistics-2var
+corr	EXPR("corr")	0	0	emulator	inference
+COS	COS(1)	0.540302305868	0	emulator	catalog
+COSH	COSH(1)	1.54308063482	0	emulator	hyperbolic
+Cost	EXPR("Cost")	0	0	emulator	finance
+CostAsset	EXPR("CostAsset")	0	0	emulator	finance
+COT	COT(1)	0.642092615934	0	emulator	trigonometry
+CpnPer	EXPR("CpnPer")	0	0	emulator	finance
+CPYR	EXPR(" CPYR")	12.00	0	emulator	finance
+CPYR	EXPR("CPYR")	*error*		emulator	finance
+CritScore	EXPR("CritScore")	0	0	emulator	inference
+CritVal1	EXPR(" CritVal1")	0.432843347747	0	emulator	inference
+CritVal1	EXPR("CritVal1")	0	0	emulator	inference
+CritVal2	EXPR("CritVal2")	0	0	emulator	inference
+CROSS	CROSS([1,2,3],[4,5,6])	[−3,6,−3]	4	emulator	matrix
+CSC	CSC(1)	1.18839510578	0	emulator	trigonometry
+Cursor	EXPR("Cursor")	0	0	emulator	common-plot-view
+Cursor	LOCAL o; o := EXPR("Cursor"); EXPR("Cursor:=" + STRING(o)); RETURN EXPR("Cursor");	0	0	emulator	common-plot-view
+C→PX	C→PX(0,0)	{160,109}	6	emulator	drawing
+C→PX	C→PX(1)	{0,0}	6	emulator	drawing
+C→PX	C→PX(1,1)	{170,99}	6	emulator	drawing
+C→PX	C→PX(10)	{0,0}	6	emulator	drawing
+DataType	EXPR("DataType")	0	0	emulator	inference
+Date	EXPR("Date")	2026.0924	0	emulator	system
+Date	EXPR("TYPE(Date)")	0	0	emulator	system
+Date	LOCAL o; o := EXPR("Date"); EXPR("Date:=" + STRING(o)); RETURN EXPR("Date");	2026.0924	0	emulator	system
+Date360	EXPR("Date360")	0	0	emulator	finance
+DATEADD	DATEADD(2026.0101,30)	2026.0131	0	emulator	more
+DateDays	EXPR("DateDays(1.012024,12.312024)")	*error*		emulator	finance
+DateDiff	EXPR("DateDiff")	0	0	emulator	finance
+DateOne	EXPR("DateOne")	2017.0101	0	emulator	finance
+DateTwo	EXPR("DateTwo")	2017.0101	0	emulator	finance
+DAYOFWEEK	DAYOFWEEK(2026.0912)	6	0	emulator	more
+DDAYS	DDAYS(2026.0101,2026.0201)	31	0	emulator	more
+DelAFiles	EXPR("DelAFiles")	*error*		emulator	common-numeric-view
+DelAVars	EXPR("DelAVars")	*error*		emulator	common-numeric-view
+DELCOL	DELCOL([[1,2,3],[4,5,6]],2)	[[1,3],[4,6]]	4	emulator	matrix
+DelHVars	LOCAL q, a, b; q := CHAR(34); EXPR("ZQ:=5"); a := SIZE(EXPR("HVars")); EXPR("DelHVars(" + q + "ZQ" + q + ")"); b := SIZE(EXPR("HVars")); RETURN {a, b};	*error*		emulator	system
+DelInstruction	EXPR("DelInstruction")	*error*		emulator	geometry
+DELROW	DELROW([[1,2],[3,4]],1)	[[3,4]]	4	emulator	matrix
+Depreciate	EXPR("Depreciate(\"SL\",1000,100,5)")	*error*		emulator	finance
+DET	DET([[1,2],[3,4]])	−2	0	emulator	matrix
+DET	DET({[[1,2],[5,6]],[[3,4],[-6,-2]]})	{−4,18}	6	emulator	matrix
+DF	EXPR("DF")	0	0	emulator	inference
+DFerr	EXPR("DFerr")	0	0	emulator	inference
+diag	diag([[1,2],[3,4]])	[1,4]	4	emulator	matrix
+diag	diag({1,2})	[[1,0],[0,2]]	4	emulator	matrix
+DIFFERENCE	DIFFERENCE({1,2,3},{2,3,4})	{1,4}	6	emulator	list
+DIM	DIM("12345")	5	0	emulator	strings
+DIM	DIM("abcdef")	6	0	emulator	strings
+DIM	DIM([[1,2,3],[4,5,6]])	{2,3}	6	emulator	strings
+DIM	DIM([[1,2],[4,5],[7,8]])	{3,2}	6	emulator	strings
+DIMGROB	DIMGROB(G2,10,5,0)	1	0	emulator	drawing
+DIMGROB	DIMGROB(G4,10,5,0); RETURN GROBW_P(G4);	100	0	emulator	drawing
+DIMGROB_P	DIMGROB_P(G1,100,50,0)	1	0	emulator	drawing
+Dirac	EXPR("STRING(Dirac(0))")	"+Inf"	2	emulator	catalog
+Dirac	EXPR("TYPE(Dirac(0))")	0	0	emulator	catalog
+DiscPayback	EXPR(" DiscPayback")	*error*		emulator	finance
+DiscPayback	EXPR("DiscPayback")	*error*		emulator	finance
+distance	EXPR("distance(point(0,0),point(3,4))")	5	0	emulator	geometry
+Dividend	EXPR("Dividend")	0	0	emulator	finance
+Do1VStats	EXPR("Do1VStats(H1)")	*error*		emulator	statistics-1var
+Do1VStats	EXPR("Statistics_1Var.D1:={1,2,2,3,7}")	{1,2,2,3,7}	6	emulator	statistics-1var
+Do1VStats	EXPR("Statistics_1Var.Do1VStats(Statistics_1Var.H1)")	1	0	emulator	statistics-1var
+Do2VStats	EXPR("Do2VStats(S1)")	*error*		emulator	statistics-2var
+Do2VStats	EXPR("S1")	*error*		emulator	statistics-2var
+Do2VStats	EXPR("S1:=[[1,2],[2,4],[3,6]]")	*error*		emulator	statistics-2var
+Do2VStats	EXPR("S1:=[[1,2],[2,4],[3,6]]"); RETURN EXPR("Do2VStats(S1)");	*error*		emulator	statistics-2var
+Do2VStats	EXPR("Statistics_2Var.C1:={1,2,3,4}")	{1,2,3,4}	6	emulator	statistics-2var
+Do2VStats	EXPR("Statistics_2Var.C2:={2,3,5,9}")	{2,3,5,9}	6	emulator	statistics-2var
+Do2VStats	EXPR("Statistics_2Var.Do2VStats(Statistics_2Var.S1)")	1	0	emulator	statistics-2var
+DoInference	EXPR(" DoInference( )")	1	0	emulator	inference
+DoInference	EXPR("DoInference")	1	0	emulator	inference
+DoInference	EXPR("DoInference()")	*error*		emulator	inference
+DoSolve	EXPR(" DoSolve( )")	{}	6	emulator	triangle-solver
+DoSolve	EXPR("DoSolve")	{36.8698976458,53.1301023542,90}	6	emulator	triangle-solver
+DoSolve	EXPR("DoSolve( )")	*error*		emulator	triangle-solver
+DoSolve	EXPR("DoSolve()")	*error*		emulator	triangle-solver
+DOT	DOT([1,2,3],[4,5,6])	32	0	emulator	matrix
+DRAWMENU	DRAWMENU("a","b","c","d","e","f")	1	0	emulator	drawing
+DrawSlp	EXPR("DrawSlp(1,2,3)")	line(y=3*x-1)	8	emulator	catalog
+EEX	EXPR("EEX")	*error*		emulator	catalog
+EffInt	EXPR("EffInt")	0	0	emulator	finance
+Ei	Ei(1)	Ei(1)	8	emulator	special
+EIGENVAL	EIGENVAL([[1,2],[3,4]])	[5.37228132327,−0.372281323269]	4	emulator	matrix
+EIGENVV	EIGENVV([[1,2],[3,4]])	{[[0.415973557919,−0.83696500723],[0.909376709132,0.574275723826]],[[5.37228132327,0],[0,−0.372281323269]]}	6	emulator	matrix
+element	EXPR("element(segment(point(0,0),point(4,0)),0.5)")	point(2,0)	8	emulator	geometry
+ellipse	EXPR("ellipse(point(-1,0),point(1,0),point(0,1))")	plotparam((√2+√2)/2*COS(t)+*SIN(t),t,0,6.28318530718)	8	emulator	geometry
+Entry	EXPR("Entry")	0	0	emulator	home-settings
+Entry	LOCAL o, r; o := EXPR("Entry"); EXPR("Entry:=2"); r := EXPR("Entry"); EXPR("Entry:=" + STRING(o)); RETURN r;	2	0	emulator	home-settings
+EQ	EQ(1,1)	1	0	emulator	list
+equation	EXPR("equation(line(point(0,0),point(1,1)))")	"Error: entrada no válida"	2	emulator	geometry
+equation	EXPR("equation(segment(point(0,0),point(4,0)))")	y=0	8	emulator	geometry
+erf	erf(1)	erf(1)	8	emulator	special
+erfc	erfc(1)	1-erf(1)	8	emulator	special
+EVAL	EVAL(2+3)	5	0	emulator	more
+EVALLIST	EXPR("EVALLIST({1+1,2+2})")	{2,4}	6	emulator	catalog
+excircle	EXPR("excircle(point(0,0),point(3,0),point(0,4))")	circle(point(6,6),6)	8	emulator	geometry
+EXECON	EXECON("&1+&2",{1,2,3},{10,20,30})	{11,22,33}	6	emulator	more
+EXECON	EXECON("&1+1",{1,2,3})	{2,3,4}	6	emulator	more
+EXP	EXP(5)	148.413159103	0	emulator	catalog
+EXP	EXP({-2.3,0})	{0.100258843723,1}	6	emulator	catalog
+ExpList	EXPR(" ExpList")	{}	6	emulator	inference
+ExpList	EXPR("ExpList")	{}	6	emulator	inference
+EXPM1	EXPM1(0.5)	0.6487212707	0	emulator	arithmetic
+ExpMat	EXPR("ExpMat")	[[0]]	4	emulator	inference
+EXPR	EXPR("")	*error*		emulator	strings
+EXPR	EXPR("2+3")	5	0	emulator	strings
+EXTREMUM	EXPR(" EXTREMUM(F1,0)")	0	0	emulator	function
+EXTREMUM	EXPR("EXTREMUM(F1)")	*error*		emulator	function
+EXTREMUM	EXPR("EXTREMUM(F1,0)")	0	0	emulator	function
+Extremum	EXPR("  Extremum")	0	0	emulator	?
+Extremum	EXPR("Extremum")	0	0	emulator	?
+F1	EXPR("(F1)")	X^2-4	8	emulator	?
+F1	EXPR("F1:='X^2-4'")	X^2-4	8	emulator	?
+F2	EXPR("(F2)")	X	8	emulator	?
+F2	EXPR("F2:=""X""")	X	8	emulator	?
+FactorDepr	EXPR("FactorDepr")	200	0	emulator	finance
+FILLPOLY	DIMGROB(G1,20,20,0); RETURN FILLPOLY(G1,{{0,0},{9,0},{0,9}},RGB(255,0,0));	1	0	emulator	drawing
+FILLPOLY_P	DIMGROB_P(G1,20,20,0); RETURN FILLPOLY_P(G1,{0,9,{9,9}},RGB(255,0,0));	1	0	emulator	drawing
+FinType	EXPR("FinType")	0	0	emulator	finance
+FirstAsset	EXPR("FirstAsset")	1	0	emulator	finance
+FirstDateAsset	EXPR("FirstDateAsset")	2017.0101	0	emulator	finance
+FISHER	FISHER(2,3,1)	0.278854800927	0	emulator	probability
+FISHER_CDF	FISHER_CDF(2,3,1)	0.535241998455	0	emulator	probability
+FISHER_ICDF	FISHER_ICDF(2,3,0.5)	0.881101577954	0	emulator	probability
+FixedCost	EXPR("FixedCost")	0	0	emulator	finance
+FLOOR	FLOOR(-3.2)	−4	0	emulator	numbers
+FLOOR	FLOOR(3.2)	3	0	emulator	numbers
+FLOOR	FLOOR({3.2,-3.2})	{3,−4}	6	emulator	numbers
+FMRR	EXPR(" FMRR")	*error*		emulator	finance
+FMRR	EXPR("FMRR")	*error*		emulator	finance
+FNROOT	FNROOT(X^2-4,X,1)	2	0	emulator	arithmetic
+FOR	LOCAL zi, z; FOR zi FROM 1 TO 2 DO z := zi; END;	2	0	emulator	loop
+FOR	LOCAL zi, zs; zs := {}; FOR zi FROM 1 TO 10 STEP 2 DO zs := CONCAT(zs, {zi}); END; RETURN zs;	{1,3,5,7,9}	6	emulator	loop
+FOR	LOCAL zi, zs; zs := {}; FOR zi FROM 10 DOWNTO 1 STEP 2 DO zs := CONCAT(zs, {zi}); END; RETURN zs;	{10,8,6,4,2}	6	emulator	loop
+FP	FP(-23.2)	−0.2	0	emulator	numbers
+FP	FP(23.2)	0.2	0	emulator	numbers
+FP	FP({23.2,15+1/4,51/2,10-4/5})	{0.2,0.25,0.5,0.2}	6	emulator	numbers
+FREEZE	FREEZE	1	0	emulator	drawing
+FV	EXPR(" FV")	0.00	0	emulator	finance
+FV	EXPR("FV")	*error*		emulator	finance
+Fval	EXPR("Fval")	0	0	emulator	inference
+Gamma	Gamma(5)	24	0	emulator	special
+GEOMETRIC	GEOMETRIC(0.5,3)	0.125	0	emulator	probability
+geometric_cdf	geometric_cdf(0.5,3)	0.875	0	emulator	probability
+geometric_icdf	geometric_icdf(0.5,0.5)	1	0	emulator	probability
+GET	EXPR("GET")	*error*		emulator	other
+GET	EXPR("GET(1)")	*error*		emulator	other
+GET	EXPR("GET(QPI(0.5))")	*error*		emulator	other
+GETBASE	EXPR("GETBASE(#12h)")	#4h	1	emulator	catalog
+GETBITS	GETBITS(12)	*error*		emulator	integer
+GETKEY	GETKEY	−1	0	emulator	io
+GETPIX	DIMGROB(G1,10,5,0); RETURN GETPIX(G1,0,0);	#FF000000h	1	emulator	drawing
+GETPIX_P	DIMGROB_P(G1,10,10,0); RETURN GETPIX_P(G1,0,0);	#0h	1	emulator	drawing
+GF	EXPR("GF(2,3)")	"GF(2,v^3+v+1,[v,k,g],undef)"	2	emulator	catalog
+GridDots	EXPR("GridDots")	0	0	emulator	common-plot-view
+GridDots	LOCAL o; o := EXPR("GridDots"); EXPR("GridDots:=" + STRING(o)); RETURN EXPR("GridDots");	0	0	emulator	common-plot-view
+GridLines	EXPR("GridLines")	0	0	emulator	common-plot-view
+GridLines	LOCAL o; o := EXPR("GridLines"); EXPR("GridLines:=" + STRING(o)); RETURN EXPR("GridLines");	0	0	emulator	common-plot-view
+GROBH	DIMGROB_P(G1,100,50,0); RETURN GROBH(G1);	5	0	emulator	drawing
+GROBH_P	DIMGROB_P(G1,100,50,0); RETURN GROBH_P(G1);	50	0	emulator	drawing
+GROBW	DIMGROB_P(G1,100,50,0); RETURN GROBW(G1);	10	0	emulator	drawing
+GROBW_P	DIMGROB_P(G1,100,50,0); RETURN GROBW_P(G1);	100	0	emulator	drawing
+GSize	EXPR(" GSize")	12.00	0	emulator	finance
+GSize	EXPR("GSize")	*error*		emulator	finance
+half_line	EXPR("half_line(point(0,0),point(3,4))")	half_line(point(0,0),point(3,4))	8	emulator	geometry
+HAngle	EXPR("HAngle")	0	0	emulator	home-settings
+HAngle	HAngle	0	0	emulator	home-settings
+HAngle	LOCAL o, r; o := EXPR("HAngle"); EXPR("HAngle:=1"); r := EXPR("HAngle"); EXPR("HAngle:=" + STRING(o)); RETURN r;	1	0	emulator	home-settings
+HAngle	LOCAL o, r; o := EXPR("HAngle"); EXPR("HAngle:=1"); r := {EXPR("HAngle"), SIN(90)}; EXPR("HAngle:=" + STRING(o)); RETURN r;	{1,1}	6	emulator	home-settings
+HAngle	LOCAL o, r; o := EXPR("HAngle"); EXPR("HAngle:=2"); IFERR r := {EXPR("HAngle"), SIN(100)}; THEN r := "refused"; END; EXPR("HAngle:=" + STRING(o)); RETURN r;	{2,1}	6	emulator	home-settings
+HComplex	EXPR("(-4)^0.5")	*error*		emulator	home-settings
+HComplex	EXPR("HComplex")	0	0	emulator	home-settings
+HComplex	LOCAL o, r; o := EXPR("HComplex"); EXPR("HComplex:=1"); IFERR r := {EXPR("HComplex"), EXPR("2 NTHROOT (-4)"), EXPR("3 NTHROOT (-8)")}; THEN r := "refused"; END; EXPR("HComplex:=" + STRING(o)); RETURN r;	{1,2*,−2}	6	emulator	home-settings
+HComplex	LOCAL o, r; o := EXPR("HComplex"); EXPR("HComplex:=1"); r := EXPR("HComplex"); EXPR("HComplex:=" + STRING(o)); RETURN r;	1	0	emulator	home-settings
+HComplex	LOCAL o, r; o := EXPR("HComplex"); EXPR("HComplex:=1"); r := {EXPR("HComplex"), EXPR("(-4)^0.5")}; EXPR("HComplex:=" + STRING(o)); RETURN r;	{1,2*}	6	emulator	home-settings
+HDigits	EXPR("HDigits")	8	0	emulator	home-settings
+HDigits	LOCAL f, d, r; f := EXPR("HFormat"); d := EXPR("HDigits"); EXPR("HFormat:=1"); EXPR("HDigits:=2"); r := STRING(1/3); EXPR("HDigits:=" + STRING(d)); EXPR("HFormat:=" + STRING(f)); RETURN r;	"0.33"	2	emulator	home-settings
+HDigits	LOCAL o, r; o := EXPR("HDigits"); EXPR("HDigits:=2"); r := {EXPR("HDigits"), STRING(1/3)}; EXPR("HDigits:=" + STRING(o)); RETURN r;	{2,"0.333333333333"}	6	emulator	home-settings
+HDigits	LOCAL o, r; o := EXPR("HDigits"); EXPR("HDigits:=5"); r := EXPR("HDigits"); EXPR("HDigits:=" + STRING(o)); RETURN r;	5	0	emulator	home-settings
+Heaviside	EXPR("Heaviside(1)")	1	0	emulator	catalog
+hessenberg	hessenberg([[1,2],[3,4]])	{[[1,0],[0,1]],[[1,2],[3,4]]}	6	emulator	matrix
+HFormat	EXPR("HFormat")	0	0	emulator	home-settings
+HFormat	LOCAL o, r; o := EXPR("HFormat"); EXPR("HFormat:=1"); r := {EXPR("HFormat"), STRING(1/3)}; EXPR("HFormat:=" + STRING(o)); RETURN r;	{1,"0.33333333"}	6	emulator	home-settings
+HFormat	LOCAL o; o := EXPR("HFormat"); EXPR("HFormat:=" + STRING(o)); RETURN EXPR("HFormat");	0	0	emulator	home-settings
+hilbert	hilbert(3)	[[1,0.5,0.333333333333],[0.5,0.333333333333,0.25],[0.333333333333,0.25,0.2]]	4	emulator	matrix
+Hmax	EXPR("Hmax")	*error*		emulator	statistics-1var
+Hmax	EXPR("Statistics_1Var.D1:={1,2,2,3,7}"); EXPR("Statistics_1Var.Do1VStats(Statistics_1Var.H1)"); RETURN EXPR("Statistics_1Var.Hmax");	24	0	emulator	statistics-1var
+Hmax	EXPR("Statistics_1Var.Hmax")	24	0	emulator	statistics-1var
+Hmax	LOCAL o, r; o := EXPR("Statistics_1Var.Hmax"); IFERR EXPR("Statistics_1Var.Hmax:=20"); r := EXPR("Statistics_1Var.Hmax"); THEN r := "refused"; END; IFERR EXPR("Statistics_1Var.Hmax:=" + STRING(o)); THEN r := r; END; RETURN r;	20	0	emulator	statistics-1var
+Hmin	EXPR("Hmin")	*error*		emulator	statistics-1var
+Hmin	EXPR("Statistics_1Var.D1:={1,2,2,3,7}"); EXPR("Statistics_1Var.Do1VStats(Statistics_1Var.H1)"); RETURN EXPR("Statistics_1Var.Hmin");	0	0	emulator	statistics-1var
+Hmin	EXPR("Statistics_1Var.Hmin")	0	0	emulator	statistics-1var
+Hmin	LOCAL o, r; o := EXPR("Statistics_1Var.Hmin"); IFERR EXPR("Statistics_1Var.Hmin:=-1"); r := EXPR("Statistics_1Var.Hmin"); THEN r := "refused"; END; IFERR EXPR("Statistics_1Var.Hmin:=" + STRING(o)); THEN r := r; END; RETURN r;	−1	0	emulator	statistics-1var
+HMS→	HMS→(1.3)	1.3	0	emulator	more
+homothety	EXPR("homothety(point(0,0),2,point(1,1))")	point(2,2)	8	emulator	geometry
+HSeparator	EXPR("HSeparator")	0	0	emulator	home-settings
+HSeparator	LOCAL o, r; o := EXPR("HSeparator"); EXPR("HSeparator:=1"); r := {EXPR("HSeparator"), STRING(1234.5)}; EXPR("HSeparator:=" + STRING(o)); RETURN r;	{1,"1234.5"}	6	emulator	home-settings
+HSeparator	LOCAL o; o := EXPR("HSeparator"); EXPR("HSeparator:=" + STRING(o)); RETURN EXPR("HSeparator");	0	0	emulator	home-settings
+HVars	EXPR("HVars")	{}	6	emulator	system
+Hwidth	EXPR("Hwidth")	*error*		emulator	statistics-1var
+Hwidth	EXPR("Statistics_1Var.D1:={1,2,2,3,7}"); EXPR("Statistics_1Var.Do1VStats(Statistics_1Var.H1)"); RETURN EXPR("Statistics_1Var.Hwidth");	1	0	emulator	statistics-1var
+Hwidth	EXPR("Statistics_1Var.Hwidth")	1	0	emulator	statistics-1var
+Hwidth	LOCAL o, r; o := EXPR("Statistics_1Var.Hwidth"); IFERR EXPR("Statistics_1Var.Hwidth:=2"); r := EXPR("Statistics_1Var.Hwidth"); THEN r := "refused"; END; IFERR EXPR("Statistics_1Var.Hwidth:=" + STRING(o)); THEN r := r; END; RETURN r;	2	0	emulator	statistics-1var
+hyperbola	EXPR("hyperbola(point(-1,0),point(1,0),point(0,1))")	{plotparam(*SINH(t),t,−3,3),plotparam(-(*SINH(t)),t,−3,3)}	6	emulator	geometry
+HypT1mean	EXPR("HypT1mean({1,2,3,4,5})")	*error*		emulator	spreadsheet
+HypT1mean	EXPR("HypT1mean({2,4,6,8,10})")	*error*		emulator	spreadsheet
+HypT2mean	EXPR("HypT2mean({1,2,3,4,5})")	*error*		emulator	spreadsheet
+HypT2mean	EXPR("HypT2mean({2,4,6,8,10})")	*error*		emulator	spreadsheet
+HypZ1mean	EXPR("HypZ1mean({1,2,3,4,5})")	*error*		emulator	spreadsheet
+HypZ1mean	EXPR("HypZ1mean({2,4,6,8,10})")	*error*		emulator	spreadsheet
+HypZ1prop	EXPR("HypZ1prop({1,2,3,4,5})")	*error*		emulator	spreadsheet
+HypZ1prop	EXPR("HypZ1prop({2,4,6,8,10})")	*error*		emulator	spreadsheet
+HypZ2mean	EXPR("HypZ2mean({1,2,3,4,5})")	*error*		emulator	spreadsheet
+HypZ2mean	EXPR("HypZ2mean({2,4,6,8,10})")	*error*		emulator	spreadsheet
+HypZ2prop	EXPR("HypZ2prop({1,2,3,4,5})")	*error*		emulator	spreadsheet
+HypZ2prop	EXPR("HypZ2prop({2,4,6,8,10})")	*error*		emulator	spreadsheet
+ICON	EXPR("ICON")	*error*		emulator	catalog
+IDENMAT	IDENMAT(2)	[[1,0],[0,1]]	4	emulator	matrix
+IDENMAT	IDENMAT({2,3})	{[[1,0],[0,1]],[[1,0,0],[0,1,0],[0,0,1]]}	6	emulator	matrix
+IF	LOCAL z; z := 0; IF 1 == 1 THEN z := 5; END; RETURN z;	5	0	emulator	branch
+IF	LOCAL z; z := 0; IF 1 == 2 THEN z := 5; ELSE z := 7; END; RETURN z;	7	0	emulator	branch
+IF	LOCAL z; z := 3; IF 1 == 2 THEN z := 5; END; RETURN z;	3	0	emulator	branch
+IFERR	LOCAL z; z := 0; IFERR z := MID("abcdef", 0, 2); THEN z := -1; END; RETURN z;	−1	0	emulator	branch
+IFERR	LOCAL z; z := 0; IFERR z := MID("abcdef", 2, 3); THEN z := -1; END; RETURN z;	"bcd"	2	emulator	branch
+IFTE	EXPR("IFTE(1<2,10,20)")	10	0	emulator	catalog
+ihermite	ihermite([[1,2],[3,4]])	{[[−2,1],[3,−1]],[[1,0],[0,2]]}	6	emulator	matrix
+IM	IM(3+4*i)	4	0	emulator	arithmetic
+ImageDisplay	EXPR("ImageDisplay")	0	0	emulator	common-plot-view
+ImageDisplay	LOCAL o; o := EXPR("ImageDisplay"); EXPR("ImageDisplay:=" + STRING(o)); RETURN EXPR("ImageDisplay");	0	0	emulator	common-plot-view
+ImageName	EXPR("ImageName")	""	2	emulator	common-plot-view
+ImageName	LOCAL o; o := EXPR("ImageName"); EXPR("ImageName:=" + STRING(o)); RETURN EXPR("ImageName");	""	2	emulator	common-plot-view
+ImageOpacity	EXPR("ImageOpacity")	75	0	emulator	common-plot-view
+ImageOpacity	LOCAL o, r; o := EXPR("ImageOpacity"); IFERR EXPR("ImageOpacity:=50"); r := EXPR("ImageOpacity"); THEN r := "refused"; END; EXPR("ImageOpacity:=" + STRING(o)); RETURN r;	50	0	emulator	common-plot-view
+ImageXmax	EXPR("ImageXmax")	30	0	emulator	common-plot-view
+ImageXmax	LOCAL o; o := EXPR("ImageXmax"); EXPR("ImageXmax:=" + STRING(o)); RETURN EXPR("ImageXmax");	30	0	emulator	common-plot-view
+ImageXmin	EXPR("ImageXmin")	0	0	emulator	common-plot-view
+ImageXmin	LOCAL o; o := EXPR("ImageXmin"); EXPR("ImageXmin:=" + STRING(o)); RETURN EXPR("ImageXmin");	0	0	emulator	common-plot-view
+ImageYmax	EXPR("ImageYmax")	20	0	emulator	common-plot-view
+ImageYmax	LOCAL o; o := EXPR("ImageYmax"); EXPR("ImageYmax:=" + STRING(o)); RETURN EXPR("ImageYmax");	20	0	emulator	common-plot-view
+ImageYmin	EXPR("ImageYmin")	0	0	emulator	common-plot-view
+ImageYmin	LOCAL o; o := EXPR("ImageYmin"); EXPR("ImageYmin:=" + STRING(o)); RETURN EXPR("ImageYmin");	0	0	emulator	common-plot-view
+incircle	EXPR("incircle(point(0,0),point(3,0),point(0,4))")	circle(point(1,1),1)	8	emulator	geometry
+InfType	EXPR("InfType")	0	0	emulator	inference
+INSERT	INSERT({1,2,3},2,9)	{1,9,2,3}	6	emulator	list
+INSTRING	INSTRING("ab", "abc")	0	0	emulator	strings
+INSTRING	INSTRING("abcdef", "")	1	0	emulator	strings
+INSTRING	INSTRING("abcdef", "cd")	3	0	emulator	strings
+INSTRING	INSTRING("abcdef", "f")	6	0	emulator	strings
+INSTRING	INSTRING("abcdef", "zz")	0	0	emulator	strings
+INSTRING	INSTRING("banana", "na")	3	0	emulator	strings
+Instruction	EXPR("Instruction")	*error*		emulator	geometry
+IntConvCPYR	EXPR("IntConvCPYR(12,12.6825)")	11.9994580668	0	emulator	finance
+IntConvEff	EXPR("IntConvEff(12,12)")	12.6825030132	0	emulator	finance
+IntConvNom	EXPR("IntConvNom(12.6825,12)")	11.9999972992	0	emulator	finance
+IntCPYR	EXPR("IntCPYR")	12	0	emulator	finance
+Inter	EXPR("Inter")	0	0	emulator	inference
+inter	EXPR("inter(line(point(0,0),point(4,0)),line(point(2,-1),point(2,1)))")	{"Error: entrada no válida"}	6	emulator	geometry
+inter	EXPR("inter(segment(point(0,0),point(4,0)),segment(point(2,-1),point(2,1)))")	{point(2,0)}	6	emulator	geometry
+INTERSECT	INTERSECT({1,2,3},{2,3,4})	{2,3}	6	emulator	list
+INVERSE	EXPR("INVERSE(4)")	*error*		emulator	catalog
+INVERSE	EXPR("INVERSE([[1,2],[3,4]])")	*error*		emulator	catalog
+inversion	EXPR("inversion(point(0,0),1,point(2,0))")	point(1/2,0)	8	emulator	geometry
+INVERT	DIMGROB(G1,10,5,0); RETURN INVERT(G1);	1	0	emulator	drawing
+INVERT_P	DIMGROB_P(G1,10,10,0); RETURN INVERT_P(G1);	1	0	emulator	drawing
+InvestInt	EXPR("InvestInt")	0	0	emulator	finance
+IP	IP(-23.2)	−23	0	emulator	numbers
+IP	IP(23.2)	23	0	emulator	numbers
+IP	IP({23.2,15+1/4,51/2,10-4/5})	{23,15,25,9}	6	emulator	numbers
+IPYR	EXPR(" IPYR")	0.00	0	emulator	finance
+IPYR	EXPR("IPYR")	*error*		emulator	finance
+IRR	EXPR(" IRR")	*error*		emulator	finance
+IRR	EXPR("IRR")	*error*		emulator	finance
+is_collinear	EXPR("is_collinear(point(0,0),point(1,1),point(2,2))")	1	0	emulator	geometry
+is_concyclic	EXPR("is_concyclic(point(1,0),point(0,1),point(-1,0),point(0,-1))")	1	0	emulator	geometry
+is_conjugate	EXPR("is_conjugate(circle(point(0,0),point(2,0)),point(1,0),point(3,0))")	0	0	emulator	geometry
+is_element	EXPR("is_element(point(2,0),segment(point(0,0),point(4,0)))")	1	0	emulator	geometry
+is_equilateral	EXPR("is_equilateral(point(0,0),point(3,0),point(0,4))")	0	0	emulator	geometry
+is_isosceles	EXPR("is_isosceles(point(0,0),point(2,0),point(1,2))")	3	0	emulator	geometry
+is_orthogonal	EXPR("is_orthogonal(segment(point(0,0),point(4,0)),segment(point(0,0),point(0,4)))")	1	0	emulator	geometry
+is_parallelogram	EXPR("is_parallelogram(point(0,0),point(2,0),point(2,2),point(0,2))")	4	0	emulator	geometry
+is_perpendicular	EXPR("is_perpendicular(segment(point(0,0),point(4,0)),segment(point(0,0),point(0,4)))")	1	0	emulator	geometry
+ISCHECK	EXPR("ISCHECK(1)")	0	0	emulator	statistics-1var
+ISECT	EXPR(" ISECT(F1,F2,2)")	2.56155281281	0	emulator	function
+ISECT	EXPR("ISECT(F1,F1)")	*error*		emulator	function
+ISECT	EXPR("ISECT(F1,F2,2)")	2.56155281281	0	emulator	function
+Isect	EXPR("  Isect")	0	0	emulator	?
+Isect	EXPR("Isect")	0	0	emulator	?
+ISKEYDOWN	ISKEYDOWN(30)	1	0	emulator	io
+ismith	ismith([[1,2],[3,4]])	{[[1,0],[3,−1]],[[1,0],[0,2]],[[1,−2],[0,1]]}	6	emulator	matrix
+isopolygon	EXPR("isopolygon(point(0,0),point(1,0),5)")	polygon(point(0,0),point(1/2+/(2*√(5-2*√5))+(-(1/2)-/(2*√(5-2*√5)))*(√5-1)/4+*(-(1/2)-/(2*√(5-2*√5)))*√(2*√5+10)/4),point(1/2+/(2*√(5-2*√5))-(-(1/2)-/(2*√ (cut at 160 characters)	8	emulator	geometry
+ITERATE	ITERATE(X*2,X,1,3)	8	0	emulator	more
+jordan	jordan([[1,2],[3,4]])	{[[2.74456264654,−8.74456264654],[6,6]],[[5.37228132327,0],[0,−0.372281323269]]}	6	emulator	matrix
+JordanBlock	JordanBlock(2,3)	[[2,1,0],[0,2,1],[0,0,2]]	4	emulator	matrix
+l1norm	l1norm([1,2,3])	6	0	emulator	matrix
+l2norm	l2norm([1,2,3])	√14	8	emulator	matrix
+Labels	EXPR("Labels")	0	0	emulator	common-plot-view
+Labels	LOCAL o; o := EXPR("Labels"); EXPR("Labels:=" + STRING(o)); RETURN EXPR("Labels");	0	0	emulator	common-plot-view
+Language	EXPR("Language")	5	0	emulator	system
+Language	LOCAL o; o := EXPR("Language"); EXPR("Language:=" + STRING(o)); RETURN EXPR("Language");	5	0	emulator	system
+LEFT	LEFT("MOMOGUMBO", 3)	"MOM"	2	emulator	strings
+LEFT	LEFT("abcdef", -1)	*error*		emulator	strings
+LEFT	LEFT("abcdef", 0)	"abcdef"	2	emulator	strings
+LEFT	LEFT("abcdef", 3)	"abc"	2	emulator	strings
+LEFT	LEFT("abcdef", 99)	"abcdef"	2	emulator	strings
+LEFT	LEFT(42, 2)	*error*		emulator	strings
+LifeAsset	EXPR("LifeAsset")	1	0	emulator	finance
+LINE	DIMGROB(G1,10,5,0); RETURN LINE(G1,0,0,9,4,RGB(0,0,255));	1	0	emulator	drawing
+line	EXPR("line(point(0,0),point(3,4))")	*error*		emulator	geometry
+LINE_P	DIMGROB_P(G1,10,10,0); RETURN LINE_P(G1,0,0,9,9,RGB(0,0,255));	1	0	emulator	drawing
+LinearSlope	EXPR("LinearSlope(0,0,2,1)")	0.5	0	emulator	explorer
+LinearYIntercept	EXPR("LinearYIntercept(2,3,1)")	1	0	emulator	explorer
+LineHorz	EXPR("LineHorz(2)")	line(y=2)	8	emulator	catalog
+LineTan	EXPR("LineTan(QUOTE(X^2),X,1)")	line(y=diff(0,0)*x-diff(0,0))	8	emulator	catalog
+LineTan	EXPR("LineTan(X^2,X,1)")	line(y=diff(0,0)*x-diff(0,0))	8	emulator	catalog
+LineVert	EXPR("LineVert(2)")	line(x=2)	8	emulator	catalog
+LinRegrTConfInt	EXPR("LinRegrTConfInt({1,2,3},{2,4,6},0.95)")	{0.95,12.7062047361,1,0,0,0,0}	6	emulator	inference
+LinRegrTConfSlope	EXPR("LinRegrTConfSlope({1,2,3},{2,4,6},0.95)")	{0.95,12.7062047361,1,2,0,2,2}	6	emulator	inference
+LinRegrTMeanResp	EXPR("LinRegrTMeanResp({1,2,3},{2,4,6},2,0.95)")	{2,0.95,12.7062047361,1,4,0,4,4}	6	emulator	inference
+LinRegrTPredInt	EXPR("LinRegrTPredInt({1,2,3},{2,4,6},2,0.95)")	{2,0.95,12.7062047361,1,4,0,4,4}	6	emulator	inference
+LinRegrTTest	EXPR("LinRegrTTest(1,2,3)")	*error*		emulator	inference
+LinSolve	EXPR("LinSolve([[1,0,1],[0,1,2]])")	*error*		emulator	linear-solver
+LinSolve	EXPR("LinSolve([[1,0,1],[0,1,2]],[x,y])")	*error*		emulator	linear-solver
+LinSolve	EXPR("LinSolve([[1,2],[3,4]])")	*error*		emulator	linear-solver
+LinSolve	EXPR("LinSolve([[2,1,5],[1,-1,1]])")	{2,1}	6	emulator	linear-solver
+ListToMat	ListToMat({{1,2},{3,4}})	[[1,2],[3,4]]	4	emulator	matrix
+LN	LN(1)	0	0	emulator	catalog
+LN	LN({0.1,1})	{−2.30258509299,0}	6	emulator	catalog
+LNP1	LNP1(0.5)	0.405465108108	0	emulator	arithmetic
+LOCAL	LOCAL z := 7; RETURN z;	7	0	emulator	variable
+LOCAL	LOCAL z; RETURN z;	0	0	emulator	variable
+LOCAL	LOCAL za := 2, zb := 3; RETURN za + zb;	5	0	emulator	variable
+LOCAL	LOCAL za, zb; za := 2; zb := 3; RETURN za * zb;	6	0	emulator	variable
+locus	EXPR("locus(point(0,0),point(1,1))")	"locus(point(0,0),point(1,1)) \n Error: valor de argumento incorrecto"	2	emulator	geometry
+LOG	LOG(8)	0.903089986992	0	emulator	catalog
+LOG	LOG(8,2)	3	0	emulator	catalog
+LOG	LOG({100,10})	{2,1}	6	emulator	catalog
+LOG	LOG({8,27,10000},{2,3,10})	{3,3,4}	6	emulator	catalog
+LOWER	LOWER("ABC")	"abc"	2	emulator	strings
+LQ	LQ([[1,2],[3,4]])	{[[−2.2360679775,−2.22044604925ᴇ−16],[−4.9193495505,0.894427191]],[[−0.4472135955,−0.894427191],[0.894427191,−0.4472135955]],[[1,0],[0,1]]}	6	emulator	matrix
+LSolution	EXPR("LSolution")	*error*		emulator	linear-solver
+LSolution	EXPR("Linear_Solver.LSolution")	*error*		emulator	linear-solver
+LSolution	EXPR("Linear_Solver.LSystem:=[[2,1,5],[1,-1,1]]"); RETURN EXPR("Linear_Solver.LSolution");	{2,1}	6	emulator	linear-solver
+LSolution	LOCAL o, r; EXPR("Linear_Solver.LSystem:=[[2,1,5],[1,-1,1]]"); o := EXPR("Linear_Solver.LSolution"); IFERR EXPR("Linear_Solver.LSolution:={5,6}"); r := EXPR("Linear_Solver.LSolution"); THEN r := "refused"; END; IFERR EXPR("Linear_Solver.LSolution:=" + STRING(o)); THEN r := r; END; RETURN r;	"refused"	2	emulator	linear-solver
+LSQ	LSQ([[1,2],[3,4]],[[1],[2]])	[[0],[0.5]]	4	emulator	matrix
+LSystem	EXPR("LSystem")	*error*		emulator	linear-solver
+LSystem	EXPR("Linear_Solver.LSystem")	[[0,0,0,0],[0,0,0,0],[0,0,0,0]]	4	emulator	linear-solver
+LSystem	EXPR("Linear_Solver.LSystem:=[[2,1,5],[1,-1,1]]")	[[2,1,5],[1,−1,1]]	4	emulator	linear-solver
+LSystem	LOCAL o, r; o := EXPR("Linear_Solver.LSystem"); IFERR EXPR("Linear_Solver.LSystem:=[[1,1,3],[1,-1,1]]"); r := EXPR("Linear_Solver.LSystem"); THEN r := "refused"; END; IFERR EXPR("Linear_Solver.LSystem:=" + STRING(o)); THEN r := r; END; RETURN r;	[[1,1,3],[1,−1,1]]	4	emulator	linear-solver
+LU	LU([[1,2],[3,4]])	{[[1,0],[0.333333333333,1]],[[3,4],[0,0.666666666667]],[[0,1],[1,0]]}	6	emulator	matrix
+Macaulay	EXPR("Macaulay")	0	0	emulator	finance
+MAKELIST	MAKELIST(X^2,X,1,5)	{1,4,9,16,25}	6	emulator	list
+MAKEMAT	MAKEMAT(1,2,3)	[[1,1,1],[1,1,1]]	4	emulator	matrix
+MANT	MANT(123.45)	1.2345	0	emulator	numbers
+Margin	EXPR("Margin")	0	0	emulator	finance
+Markup	EXPR("Markup")	0	0	emulator	finance
+MatDate	EXPR("MatDate")	2017.0101	0	emulator	finance
+MAX	MAX(210,25)	210	0	emulator	arithmetic
+MAX	MAX(8/3,11/4)	2.75	0	emulator	arithmetic
+MAX	MAX({1,8,2})	8	0	emulator	arithmetic
+MAX	MAX({1,8,2},{2,4,6})	{2,8,6}	6	emulator	arithmetic
+maxnorm	maxnorm([1,2,3])	3	0	emulator	matrix
+MAXREAL	MAXREAL	9.99999999999ᴇ499	0	emulator	catalog
+MaxVal	EXPR("MaxVal")	*error*		emulator	statistics-1var
+MaxVal	EXPR("Statistics_1Var.D1:={1,2,2,3,7}"); EXPR("Statistics_1Var.Do1VStats(Statistics_1Var.H1)"); RETURN EXPR("Statistics_1Var.MaxVal");	7	0	emulator	statistics-1var
+MaxVal	EXPR("Statistics_1Var.MaxVal")	0	0	emulator	statistics-1var
+MaxVal	LOCAL o, r; EXPR("Statistics_1Var.D1:={1,2,2,3,7}"); EXPR("Statistics_1Var.Do1VStats(Statistics_1Var.H1)"); o := EXPR("Statistics_1Var.MaxVal"); IFERR EXPR("Statistics_1Var.MaxVal:=99"); r := EXPR("Statistics_1Var.MaxVal"); THEN r := "refused"; END; IFERR EXPR("Statistics_1Var.MaxVal:=" + STRING(o)); THEN r := r; END; RETURN r;	"refused"	2	emulator	statistics-1var
+MeanX	EXPR("  MeanX")	*error*		emulator	statistics-1var
+MeanX	EXPR(" MeanX")	*error*		emulator	statistics-1var
+MeanX	EXPR("MeanX")	*error*		emulator	statistics-1var
+MeanX	EXPR("Statistics_1Var.D1:={1,2,2,3,7}"); EXPR("Statistics_1Var.Do1VStats(Statistics_1Var.H1)"); RETURN EXPR("Statistics_1Var.MeanX");	3	0	emulator	statistics-1var
+MeanX	EXPR("Statistics_1Var.MeanX")	0	0	emulator	statistics-1var
+MeanX	EXPR("Statistics_2Var.C1:={1,2,3,4}"); EXPR("Statistics_2Var.C2:={2,3,5,9}"); EXPR("Statistics_2Var.Do2VStats(Statistics_2Var.S1)"); RETURN EXPR("Statistics_2Var.MeanX");	2.5	0	emulator	statistics-1var
+MeanX	EXPR("ZQSTAT()")	3	0	emulator	statistics-1var
+MeanX	LOCAL o, r; EXPR("Statistics_1Var.D1:={1,2,2,3,7}"); EXPR("Statistics_1Var.Do1VStats(Statistics_1Var.H1)"); o := EXPR("Statistics_1Var.MeanX"); IFERR EXPR("Statistics_1Var.MeanX:=99"); r := EXPR("Statistics_1Var.MeanX"); THEN r := "refused"; END; IFERR EXPR("Statistics_1Var.MeanX:=" + STRING(o)); THEN r := r; END; RETURN r;	"refused"	2	emulator	statistics-1var
+MeanY	EXPR("MeanY")	*error*		emulator	statistics-2var
+MeanY	EXPR("Statistics_2Var.C1:={1,2,3,4}"); EXPR("Statistics_2Var.C2:={2,3,5,9}"); EXPR("Statistics_2Var.Do2VStats(Statistics_2Var.S1)"); RETURN EXPR("Statistics_2Var.MeanY");	4.75	0	emulator	statistics-2var
+MeanY	EXPR("Statistics_2Var.MeanY")	*error*		emulator	statistics-2var
+MeanY	LOCAL o, r; EXPR("Statistics_2Var.C1:={1,2,3,4}"); EXPR("Statistics_2Var.C2:={2,3,5,9}"); EXPR("Statistics_2Var.Do2VStats(Statistics_2Var.S1)"); o := EXPR("Statistics_2Var.MeanY"); IFERR EXPR("Statistics_2Var.MeanY:=99"); r := EXPR("Statistics_2Var.MeanY"); THEN r := "refused"; END; IFERR EXPR("Statistics_2Var.MeanY:=" + STRING(o)); THEN r := r; END; RETURN r;	"refused"	2	emulator	statistics-2var
+Mean₁	EXPR("Mean₁")	0.461368	0	emulator	inference
+Mean₂	EXPR("Mean₂")	0.522851	0	emulator	inference
+median_line	EXPR("median_line(point(0,0),point(4,0),point(0,3))")	line(y=3/4*x)	8	emulator	geometry
+MedVal	EXPR("MedVal")	*error*		emulator	statistics-1var
+MedVal	EXPR("Statistics_1Var.D1:={1,2,2,3,7}"); EXPR("Statistics_1Var.Do1VStats(Statistics_1Var.H1)"); RETURN EXPR("Statistics_1Var.MedVal");	2	0	emulator	statistics-1var
+MedVal	EXPR("Statistics_1Var.MedVal")	0	0	emulator	statistics-1var
+MedVal	LOCAL o, r; EXPR("Statistics_1Var.D1:={1,2,2,3,7}"); EXPR("Statistics_1Var.Do1VStats(Statistics_1Var.H1)"); o := EXPR("Statistics_1Var.MedVal"); IFERR EXPR("Statistics_1Var.MedVal:=99"); r := EXPR("Statistics_1Var.MedVal"); THEN r := "refused"; END; IFERR EXPR("Statistics_1Var.MedVal:=" + STRING(o)); THEN r := r; END; RETURN r;	"refused"	2	emulator	statistics-1var
+MEMORY	EXPR("MEMORY")	{#356B000:64h,#86B6D58000:64h}	6	emulator	catalog
+Method	EXPR("Method")	0	0	emulator	inference
+MID	MID("MOMOGUMBO", 3, 5)	"MOGUM"	2	emulator	strings
+MID	MID("PUDGE", 4)	"GE"	2	emulator	strings
+MID	MID("abcdef", 0, 2)	*error*		emulator	strings
+MID	MID("abcdef", 2)	"bcdef"	2	emulator	strings
+MID	MID("abcdef", 2, 0)	""	2	emulator	strings
+MID	MID("abcdef", 2, 3)	"bcd"	2	emulator	strings
+MID	MID("abcdef", 4, 99)	"def"	2	emulator	strings
+MID	MID("abcdef", 7, 2)	""	2	emulator	strings
+midpoint	EXPR("midpoint(segment(point(0,0),point(2,2)))")	point(1,1)	8	emulator	geometry
+MIN	MIN(210,25)	25	0	emulator	arithmetic
+MIN	MIN(8/3,11/4)	2.66666666667	0	emulator	arithmetic
+MIN	MIN({1,8,2})	1	0	emulator	arithmetic
+MIN	MIN({1,8,2},{2,4,6})	{1,4,2}	6	emulator	arithmetic
+MINREAL	MINREAL	1ᴇ−499	0	emulator	catalog
+MinVal	EXPR("MinVal")	*error*		emulator	statistics-1var
+MinVal	EXPR("Statistics_1Var.D1:={1,2,2,3,7}"); EXPR("Statistics_1Var.Do1VStats(Statistics_1Var.H1)"); RETURN EXPR("Statistics_1Var.MinVal");	1	0	emulator	statistics-1var
+MinVal	EXPR("Statistics_1Var.MinVal")	0	0	emulator	statistics-1var
+MinVal	LOCAL o, r; EXPR("Statistics_1Var.D1:={1,2,2,3,7}"); EXPR("Statistics_1Var.Do1VStats(Statistics_1Var.H1)"); o := EXPR("Statistics_1Var.MinVal"); IFERR EXPR("Statistics_1Var.MinVal:=99"); r := EXPR("Statistics_1Var.MinVal"); THEN r := "refused"; END; IFERR EXPR("Statistics_1Var.MinVal:=" + STRING(o)); THEN r := r; END; RETURN r;	"refused"	2	emulator	statistics-1var
+MIRR	EXPR(" MIRR")	*error*		emulator	finance
+MIRR	EXPR("MIRR")	*error*		emulator	finance
+mkisom	mkisom([1,2],1)	[[0.540302305868,−0.841470984808],[0.841470984808,0.540302305868]]	4	emulator	matrix
+MKSA	MKSA(2_m)	2_m	9	emulator	units
+MKSA	TYPE(2_m)	9	0	emulator	units
+MOD	9 MOD 4	1	0	emulator	arithmetic
+MOD	EXPR("(-9) MOD 4")	3	0	emulator	arithmetic
+MOD	EXPR("-9 MOD 4")	3	0	emulator	arithmetic
+MOD	EXPR("100 + 9 MOD 4")	101	0	emulator	arithmetic
+MOD	EXPR("2 * 7 MOD 4")	2	0	emulator	arithmetic
+MOD	EXPR("2^3 MOD 5")	3	0	emulator	arithmetic
+MOD	EXPR("8 / 2 MOD 3")	1	0	emulator	arithmetic
+MOD	EXPR("9 MOD (-4)")	−3	0	emulator	arithmetic
+MOD	EXPR("9 MOD 4 * 2")	2	0	emulator	arithmetic
+MOD	EXPR("9 MOD 4 + 100")	101	0	emulator	arithmetic
+MOD	EXPR("9 MOD 4 / 2")	0.5	0	emulator	arithmetic
+MOD	EXPR("9 MOD 4 == 1")	1	0	emulator	arithmetic
+Modified	EXPR("Modified")	0	0	emulator	finance
+MOUSE	MOUSE	{{},{}}	6	emulator	io
+MS	EXPR("MS")	0	0	emulator	inference
+MSerr	EXPR("MSerr")	0	0	emulator	inference
+NbItem	EXPR("NbItem")	*error*		emulator	statistics-1var
+NbItem	EXPR("Statistics_1Var.D1:={1,2,2,3,7}"); EXPR("Statistics_1Var.Do1VStats(Statistics_1Var.H1)"); RETURN EXPR("Statistics_1Var.NbItem");	5	0	emulator	statistics-1var
+NbItem	EXPR("Statistics_1Var.NbItem")	0	0	emulator	statistics-1var
+NbItem	LOCAL o, r; EXPR("Statistics_1Var.D1:={1,2,2,3,7}"); EXPR("Statistics_1Var.Do1VStats(Statistics_1Var.H1)"); o := EXPR("Statistics_1Var.NbItem"); IFERR EXPR("Statistics_1Var.NbItem:=99"); r := EXPR("Statistics_1Var.NbItem"); THEN r := "refused"; END; IFERR EXPR("Statistics_1Var.NbItem:=" + STRING(o)); THEN r := r; END; RETURN r;	"refused"	2	emulator	statistics-1var
+NbPmt	EXPR(" NbPmt")	0.00	0	emulator	finance
+NbPmt	EXPR("NbPmt")	*error*		emulator	finance
+NEG	EXPR("NEG 5")	*error*		emulator	catalog
+NEG	EXPR("NEG(5)")	*error*		emulator	catalog
+NewValue	EXPR("NewValue")	0	0	emulator	finance
+NFV	EXPR(" NFV")	*error*		emulator	finance
+NFV	EXPR("NFV")	*error*		emulator	finance
+Nmax	EXPR("Nmax")	*error*		emulator	common-plot-view
+Nmax	LOCAL o, r; o := EXPR("Nmax"); IFERR EXPR("Nmax:=20"); r := EXPR("Nmax"); THEN r := "refused"; END; EXPR("Nmax:=" + STRING(o)); RETURN r;	*error*		emulator	common-plot-view
+Nmin	EXPR("Nmin")	*error*		emulator	common-plot-view
+Nmin	LOCAL o, r; o := EXPR("Nmin"); IFERR EXPR("Nmin:=2"); r := EXPR("Nmin"); THEN r := "refused"; END; EXPR("Nmin:=" + STRING(o)); RETURN r;	*error*		emulator	common-plot-view
+NomInt	EXPR("NomInt")	0	0	emulator	finance
+NORMALD	NORMALD(0)	0.398942280401	0	emulator	probability
+NORMALD	NORMALD(1,2,3)	0.12098536226	0	emulator	probability
+NORMALD_CDF	NORMALD_CDF(0)	0.5	0	emulator	probability
+NORMALD_ICDF	NORMALD_ICDF(0.5)	0	0	emulator	probability
+Notes	EXPR("Notes")	{}	6	emulator	system
+NPV	EXPR(" NPV")	*error*		emulator	finance
+NPV	EXPR("NPV")	*error*		emulator	finance
+NTHROOT	EXPR("-3 NTHROOT 8")	−2	0	emulator	catalog
+NTHROOT	EXPR("2 * 3 NTHROOT 8")	4	0	emulator	catalog
+NTHROOT	EXPR("2 NTHROOT (-4)")	*error*		emulator	catalog
+NTHROOT	EXPR("2 NTHROOT 3 NTHROOT 64")	11.0356646359	0	emulator	catalog
+NTHROOT	EXPR("2 ^ 3 NTHROOT 8")	4	0	emulator	catalog
+NTHROOT	EXPR("3 NTHROOT (-8)")	−2	0	emulator	catalog
+NTHROOT	EXPR("3 NTHROOT 8 + 19")	21	0	emulator	catalog
+NTHROOT	EXPR("3 NTHROOT 8")	2	0	emulator	catalog
+NTHROOT	EXPR("NTHROOT(3,8)")	*error*		emulator	catalog
+NumIndep	EXPR("NumIndep")	{}	6	emulator	common-numeric-view
+NumIndep	LOCAL o; o := EXPR("NumIndep"); EXPR("NumIndep:=" + STRING(o)); RETURN EXPR("NumIndep");	{}	6	emulator	common-numeric-view
+NumStart	EXPR("NumStart")	0	0	emulator	common-numeric-view
+NumStart	LOCAL o, r; o := EXPR("NumStart"); EXPR("NumStart:=5"); r := EXPR("NumStart"); EXPR("NumStart:=" + STRING(o)); RETURN r;	5	0	emulator	common-numeric-view
+NumStep	EXPR("NumStep")	0.1	0	emulator	common-numeric-view
+NumStep	LOCAL o, r; o := EXPR("NumStep"); EXPR("NumStep:=0.5"); r := EXPR("NumStep"); EXPR("NumStep:=" + STRING(o)); RETURN r;	0.5	0	emulator	common-numeric-view
+NumType	EXPR("NumType")	0	0	emulator	common-numeric-view
+NumType	LOCAL o, r; o := EXPR("NumType"); EXPR("NumType:=1"); r := EXPR("NumType"); EXPR("NumType:=" + STRING(o)); RETURN r;	1	0	emulator	common-numeric-view
+NumXStart	EXPR("Advanced_Graphing.NumXStart")	0	0	emulator	advanced-graphing
+NumXStart	EXPR("NumXStart")	*error*		emulator	advanced-graphing
+NumXStart	LOCAL o, r; o := EXPR("Advanced_Graphing.NumXStart"); IFERR EXPR("Advanced_Graphing.NumXStart:=1"); r := EXPR("Advanced_Graphing.NumXStart"); THEN r := "refused"; END; IFERR EXPR("Advanced_Graphing.NumXStart:=" + STRING(o)); THEN r := r; END; RETURN r;	1	0	emulator	advanced-graphing
+NumXStep	EXPR("Advanced_Graphing.NumXStep")	0.1	0	emulator	advanced-graphing
+NumXStep	EXPR("NumXStep")	*error*		emulator	advanced-graphing
+NumXStep	LOCAL o, r; o := EXPR("Advanced_Graphing.NumXStep"); IFERR EXPR("Advanced_Graphing.NumXStep:=0.5"); r := EXPR("Advanced_Graphing.NumXStep"); THEN r := "refused"; END; IFERR EXPR("Advanced_Graphing.NumXStep:=" + STRING(o)); THEN r := r; END; RETURN r;	0.5	0	emulator	advanced-graphing
+NumXZoom	EXPR("Advanced_Graphing.NumXZoom")	2	0	emulator	advanced-graphing
+NumXZoom	EXPR("NumXZoom")	*error*		emulator	advanced-graphing
+NumXZoom	LOCAL o, r; o := EXPR("Advanced_Graphing.NumXZoom"); IFERR EXPR("Advanced_Graphing.NumXZoom:=4"); r := EXPR("Advanced_Graphing.NumXZoom"); THEN r := "refused"; END; IFERR EXPR("Advanced_Graphing.NumXZoom:=" + STRING(o)); THEN r := r; END; RETURN r;	4	0	emulator	advanced-graphing
+NumYStart	EXPR("Advanced_Graphing.NumYStart")	0	0	emulator	advanced-graphing
+NumYStart	EXPR("NumYStart")	*error*		emulator	advanced-graphing
+NumYStart	LOCAL o, r; o := EXPR("Advanced_Graphing.NumYStart"); IFERR EXPR("Advanced_Graphing.NumYStart:=1"); r := EXPR("Advanced_Graphing.NumYStart"); THEN r := "refused"; END; IFERR EXPR("Advanced_Graphing.NumYStart:=" + STRING(o)); THEN r := r; END; RETURN r;	1	0	emulator	advanced-graphing
+NumYStep	EXPR("Advanced_Graphing.NumYStep")	0.1	0	emulator	advanced-graphing
+NumYStep	EXPR("NumYStep")	*error*		emulator	advanced-graphing
+NumYStep	LOCAL o, r; o := EXPR("Advanced_Graphing.NumYStep"); IFERR EXPR("Advanced_Graphing.NumYStep:=0.5"); r := EXPR("Advanced_Graphing.NumYStep"); THEN r := "refused"; END; IFERR EXPR("Advanced_Graphing.NumYStep:=" + STRING(o)); THEN r := r; END; RETURN r;	0.5	0	emulator	advanced-graphing
+NumYZoom	EXPR("Advanced_Graphing.NumYZoom")	2	0	emulator	advanced-graphing
+NumYZoom	EXPR("NumYZoom")	*error*		emulator	advanced-graphing
+NumYZoom	LOCAL o, r; o := EXPR("Advanced_Graphing.NumYZoom"); IFERR EXPR("Advanced_Graphing.NumYZoom:=4"); r := EXPR("Advanced_Graphing.NumYZoom"); THEN r := "refused"; END; IFERR EXPR("Advanced_Graphing.NumYZoom:=" + STRING(o)); THEN r := r; END; RETURN r;	4	0	emulator	advanced-graphing
+NumZoom	EXPR("NumZoom")	2	0	emulator	common-numeric-view
+NumZoom	LOCAL o, r; o := EXPR("NumZoom"); EXPR("NumZoom:=2"); r := EXPR("NumZoom"); EXPR("NumZoom:=" + STRING(o)); RETURN r;	2	0	emulator	common-numeric-view
+NumZoom	LOCAL o, r; o := EXPR("NumZoom"); IFERR EXPR("NumZoom:=4"); r := EXPR("NumZoom"); THEN r := "refused"; END; EXPR("NumZoom:=" + STRING(o)); RETURN r;	4	0	emulator	common-numeric-view
+NUS	EXPR(" NUS")	*error*		emulator	finance
+NUS	EXPR("NUS")	*error*		emulator	finance
+n₁	EXPR("n₁")	50	0	emulator	inference
+n₂	EXPR("n₂")	50	0	emulator	inference
+ObsList	EXPR(" ObsList")	{}	6	emulator	inference
+ObsList	EXPR("ObsList")	{}	6	emulator	inference
+ObsMat	EXPR("ObsMat")	[[0]]	4	emulator	inference
+OldValue	EXPR("OldValue")	0	0	emulator	finance
+ordinate	EXPR("ordinate(point(3,4))")	4	0	emulator	geometry
+parabola	EXPR("parabola(point(0,1),segment(point(0,0),point(4,0)))")	plotparam(t+*(1/2+t*2*t/4),t,−12,12)	8	emulator	geometry
+parallel	EXPR("parallel(point(0,1),line(point(0,0),point(1,0)))")	line(y="Error: entrada no válida")	8	emulator	geometry
+parallel	EXPR("parallel(point(0,1),segment(point(0,0),point(4,0)))")	line(y=1)	8	emulator	geometry
+parallelogram	EXPR("parallelogram(point(0,0),point(2,0),point(3,1))")	polygon(point(0,0),point(2,0),point(3,1),point(1,1),point(0,0))	8	emulator	geometry
+parameq	EXPR("parameq(line(point(0,0),point(1,1)))")	"Error: entrada no válida"	2	emulator	geometry
+Payback	EXPR(" Payback")	*error*		emulator	finance
+Payback	EXPR("Payback")	*error*		emulator	finance
+PercentChange	EXPR("PercentChange(100,110)")	10	0	emulator	finance
+PercentMargin	EXPR("PercentMargin(60,100)")	66.6666666667	0	emulator	finance
+PercentMarkup	EXPR("PercentMarkup(60,100)")	40	0	emulator	finance
+PercentTotal	EXPR("PercentTotal(100,110)")	110	0	emulator	finance
+perimeter	EXPR("perimeter(triangle(point(0,0),point(3,0),point(0,4)))")	"Error: entrada no válida"	2	emulator	geometry
+PERM	PERM(5,2)	20	0	emulator	probability
+perpen_bisector	EXPR("perpen_bisector(segment(point(0,0),point(4,0)))")	line(x=2)	8	emulator	geometry
+perpendicular	EXPR("perpendicular(point(0,1),line(point(0,0),point(1,0)))")	"se esperan 3 puntos Error: valor de argumento incorrecto"	2	emulator	geometry
+PI	PI	3.14159265359	0	emulator	catalog
+PIECEWISE	EXPR("PIECEWISE(1<2,10,1>2,20)")	10	0	emulator	catalog
+pivot	pivot([[1,2],[3,4]],1,1)	[[1,2],[0,−2]]	4	emulator	matrix
+PIXOFF	DIMGROB(G1,10,5,RGB(255,0,0)); PIXOFF(G1,1,1); RETURN GETPIX(G1,1,1);	#FF000000h	1	emulator	drawing
+PIXOFF_P	DIMGROB_P(G1,10,10,RGB(255,0,0)); PIXOFF_P(G1,1,1); RETURN GETPIX_P(G1,1,1);	#FFFFFFh	1	emulator	drawing
+PIXON	DIMGROB(G1,10,5,0); PIXON(G1,1,1,RGB(255,0,0)); RETURN GETPIX(G1,1,1);	#FF000000h	1	emulator	drawing
+PIXON_P	DIMGROB_P(G1,10,10,0); PIXON_P(G1,1,1,RGB(255,0,0)); RETURN GETPIX_P(G1,1,1);	#FF0000h	1	emulator	drawing
+plotfield	EXPR("plotfield(X,X)")	"plotfield(X,X) \n Error: valor de argumento incorrecto"	2	emulator	geometry
+plotfunc	EXPR("plotfunc(X^2)")	plotparam(X+*X^2,X,−15.9,15.9)	8	emulator	geometry
+plotimplicit	EXPR("plotimplicit(X^2+Y^2-1)")	{}	6	emulator	geometry
+plotlist	EXPR("plotlist([[1,2],[3,4]])")	segment(point(1,2),point(3,4))	8	emulator	geometry
+PlotMethod	EXPR("PlotMethod")	0	0	emulator	common-plot-view
+PlotMethod	LOCAL o; o := EXPR("PlotMethod"); EXPR("PlotMethod:=" + STRING(o)); RETURN EXPR("PlotMethod");	0	0	emulator	common-plot-view
+plotode	EXPR("plotode(X,X,0)")	"plotode(X,X,0) \n Error: valor de argumento incorrecto"	2	emulator	geometry
+plotparam	EXPR("plotparam(t,t,0,1)")	*error*		emulator	geometry
+plotpolar	EXPR("plotpolar(X,X,0,1)")	plotparam(X*COS(X)+*X*SIN(X),X,0,1)	8	emulator	geometry
+plotseq	EXPR("plotseq(X/2,X,3)")	{segment(point(−15.9,0),point(15.9,0)),line(y=x),polygon(point(0,−15.9),point(0,0),point(0,0),point(0,0),point(0,0),point(0,0),point(0,0)),polygon(point(0,0),po (cut at 160 characters)	6	emulator	geometry
+PMT	EXPR("  PMT")	0.00	0	emulator	finance
+PMT	EXPR(" PMT")	*error*		emulator	finance
+PMT	EXPR("PMT")	*error*		emulator	finance
+point	EXPR("point(3,4)")	point(3,4)	8	emulator	geometry
+POISSON	POISSON(2,3)	0.180447044315	0	emulator	probability
+POISSON_CDF	POISSON_CDF(2,3)	0.857123460499	0	emulator	probability
+POISSON_ICDF	POISSON_ICDF(2,0.5)	2	0	emulator	probability
+polar_coordinates	EXPR("polar_coordinates(point(3,4))")	[5,0.927295218002]	4	emulator	geometry
+POLYCOEF	POLYCOEF([1,2])	[1,−3,2]	4	emulator	catalog
+POLYEVAL	POLYEVAL([1,2,3],2)	11	0	emulator	catalog
+polygon	EXPR("polygon(point(0,0),point(1,0),point(0,1))")	polygon(point(0,0),point(1,0),point(0,1),point(0,0))	8	emulator	geometry
+POLYROOT	POLYROOT([1,0,-4])	{−2.82353141256,−0.552220307199-1.1052954935*,−0.552220307199+1.1052954935*,0.927972026959}	6	emulator	catalog
+Pooled	EXPR("Pooled")	0	0	emulator	inference
+POS	POS({3,5,7},5)	2	0	emulator	list
+ppl.check-last-error	EXPORT ZQTWO()\nBEGIN\n  LOCAL za;\n  za := za + ;\n  za := 1;\n  za := za + 1;\n  za := za + 1;\n  za := za + 1;\n  za := za + 1;\n  za := za + 1;\n  za := za + 1;\n  za := za + ;\n  RETURN za;\nEND;\n	*does not compile*		emulator	topics
+ppl.end-semicolon	EXPORT ZQFE()\nBEGIN\n  RETURN 5;\nEND\n	*does not compile*		emulator	topics
+ppl.end-semicolon	EXPR("ZQFE")	*error*		emulator	topics
+ppl.end-semicolon	EXPR("ZQFE2")	*error*		emulator	topics
+ppl.end-semicolon	ZQG()\nBEGIN\n  RETURN 6;\nEND\nEXPORT ZQFE2()\nBEGIN\n  RETURN ZQG();\nEND;\n	*does not compile*		emulator	topics
+ppl.equality-operators	EXPORT ZQEQ()\nBEGIN\n  LOCAL za;\n  za := 1;\n  za = 2;\n  RETURN za;\nEND;\n	*compiles*		emulator	topics
+ppl.equality-operators	EXPR("ZQEQ")	1	0	emulator	topics
+ppl.export-initialised	EXPORT ZQX2A:=1, ZQX2B:=2;\nEXPORT ZQX2()\nBEGIN\n  RETURN ZQX2A + ZQX2B;\nEND;\n	*compiles*		emulator	topics
+ppl.export-initialised	EXPORT ZQX3A:=1, ZQX3B:=2, ZQX3C:=3;\nEXPORT ZQX3()\nBEGIN\n  RETURN ZQX3A + ZQX3C;\nEND;\n	*compiles*		emulator	topics
+ppl.export-initialised	EXPORT ZQX4A:=1, ZQX4B:=2, ZQX4C:=3, ZQX4D:=4;\nEXPORT ZQX4()\nBEGIN\n  RETURN ZQX4A + ZQX4D;\nEND;\n	*compiles*		emulator	topics
+ppl.export-initialised	EXPORT ZQX5A:=1, ZQX5B:=2, ZQX5C:=3, ZQX5D:=4, ZQX5E:=5;\nEXPORT ZQX5()\nBEGIN\n  RETURN ZQX5A + ZQX5E;\nEND;\n	*compiles*		emulator	topics
+ppl.export-initialised	EXPORT ZQX6A:=1, ZQX6B:=2, ZQX6C:=3, ZQX6D:=4, ZQX6E:=5, ZQX6F:=6;\nEXPORT ZQX6()\nBEGIN\n  RETURN ZQX6A + ZQX6F;\nEND;\n	*compiles*		emulator	topics
+ppl.export-initialised	EXPR("ZQX3()")	4	0	emulator	topics
+ppl.export-initialised	EXPR("ZQX5()")	6	0	emulator	topics
+ppl.export-initialised	EXPR("ZQX6")	7	0	emulator	topics
+ppl.getkey-no-parentheses	EXPORT ZQGK0()\nBEGIN\n  LOCAL zk;\n  zk := GETKEY;\n  RETURN zk;\nEND;\n	*compiles*		emulator	topics
+ppl.getkey-no-parentheses	EXPORT ZQGK1()\nBEGIN\n  LOCAL zk;\n  zk := GETKEY();\n  RETURN zk;\nEND;\n	*compiles*		emulator	topics
+ppl.getkey-no-parentheses	EXPR("ZQGK0()")	−1	0	emulator	topics
+ppl.getkey-no-parentheses	EXPR("ZQGK1()")	−1	0	emulator	topics
+ppl.global-namespace	EXPORT AREA(zr)\nBEGIN\n  RETURN 3.14159265359 * zr * zr;\nEND;\n	*compiles*		emulator	topics
+ppl.global-namespace	EXPR("AREA(2)")	12.5663706144	0	emulator	topics
+ppl.i-e-as-locals	EXPORT ZQLE()\nBEGIN\n  LOCAL e;\n  e := 2;\n  RETURN e + 1;\nEND;\n	*compiles*		emulator	topics
+ppl.i-e-as-locals	EXPORT ZQLI()\nBEGIN\n  LOCAL i;\n  i := 2;\n  RETURN i * 3;\nEND;\n	*compiles*		emulator	topics
+ppl.i-e-as-locals	EXPR("ZQLE")	3	0	emulator	topics
+ppl.i-e-as-locals	EXPR("ZQLI")	6	0	emulator	topics
+ppl.index-call	EXPORT ZQIX1()\nBEGIN\n  RETURN ZQLST()(2);\nEND;\n	*does not compile*		emulator	topics
+ppl.index-call	EXPORT ZQLST()\nBEGIN\n  RETURN {10,20,30};\nEND;\n	*compiles*		emulator	topics
+ppl.index-call	EXPR("ZQIX1")	*error*		emulator	topics
+ppl.index-call	EXPR("ZQIX2")	*error*		emulator	topics
+ppl.index-call	ZQF()\nBEGIN\n  RETURN {10,20,30};\nEND;\n\nEXPORT ZQIX2()\nBEGIN\n  RETURN ZQF()(2);\nEND;\n	*does not compile*		emulator	topics
+ppl.local-limit	EXPORT ZQL09()\nBEGIN\n  LOCAL za,zb,zc,zd,zf,zg,zh,zj,zk;\n  RETURN 9;\nEND;\n	*does not compile*		emulator	topics
+ppl.local-limit	EXPORT ZQL10()\nBEGIN\n  LOCAL za,zb,zc,zd,zf,zg,zh,zj,zk,zl;\n  RETURN 10;\nEND;\n	*does not compile*		emulator	topics
+ppl.local-limit	EXPORT ZQL11()\nBEGIN\n  LOCAL za,zb,zc,zd,zf,zg,zh,zj,zk,zl,zm;\n  RETURN 11;\nEND;\n	*does not compile*		emulator	topics
+ppl.local-limit	EXPORT ZQL12()\nBEGIN\n  LOCAL za,zb,zc,zd,zf,zg,zh,zj,zk,zl,zm,zn;\n  RETURN 12;\nEND;\n	*does not compile*		emulator	topics
+ppl.local-limit	EXPR("ZQL12")	*error*		emulator	topics
+ppl.locals-at-top	EXPORT ZQNB()\nBEGIN\n  LOCAL za;\n  za := 1;\n  IF za == 1 THEN\n    LOCAL zb;\n    zb := 2;\n    za := za + zb;\n  END;\n  RETURN za;\nEND;\n	*compiles*		emulator	topics
+ppl.locals-at-top	EXPR("ZQNB")	3	0	emulator	topics
+ppl.locals-initialised-one-line	EXPORT ZQI3()\nBEGIN\n  LOCAL za := 1, zb := 2, zc := 3;\n  RETURN za + zb + zc;\nEND;\n	*compiles*		emulator	topics
+ppl.locals-initialised-one-line	EXPR("ZQI3")	6	0	emulator	topics
+ppl.mu-zero-spelling	EXPORT ZQMU1()\nBEGIN\n  RETURN Inference.μ₀;\nEND;\n	*does not compile*		emulator	topics
+ppl.mu-zero-spelling	EXPORT ZQMU2()\nBEGIN\n  RETURN Inference.µ₀;\nEND;\n	*compiles*		emulator	topics
+ppl.mu-zero-spelling	EXPR("ZQMU1()")	*error*		emulator	topics
+ppl.mu-zero-spelling	EXPR("ZQMU2()")	0.5	0	emulator	topics
+ppl.no-end-keywords	EXPORT ZQEC()\nBEGIN\n  LOCAL za;\n  za := 1;\n  CASE\n    IF za == 1 THEN RETURN 7; END;\n  ENDCASE;\n  RETURN 0;\nEND;\n	*does not compile*		emulator	topics
+ppl.no-end-keywords	EXPORT ZQEF()\nBEGIN\n  RETURN 8;\nENDFUNC;\n	*does not compile*		emulator	topics
+ppl.no-end-keywords	EXPORT ZQEP()\nBEGIN\n  RETURN 9;\nENDPROC;\n	*does not compile*		emulator	topics
+ppl.no-end-keywords	EXPR("ZQEP()")	*error*		emulator	topics
+ppl.one-based	EXPORT ZQL0()\nBEGIN\n  LOCAL zl;\n  zl := {10,20,30};\n  RETURN zl(0);\nEND;\n	*compiles*		emulator	topics
+ppl.one-based	EXPR("ZQL0")	30	0	emulator	topics
+ppl.one-based	LOCAL zl, zi; zl := {10,20,30}; zi := 0; RETURN zl(zi);	30	0	emulator	topics
+ppl.one-based	LOCAL zl, zi; zl := {10,20,30}; zi := 0; zl(zi) := 40; RETURN zl;	{10,20,30,40}	6	emulator	topics
+ppl.one-based	LOCAL zl, zi; zl := {}; zi := 0; RETURN zl(zi);	*error*		emulator	topics
+ppl.one-based	LOCAL zm, zi; zm := [[1,2],[3,4]]; zi := 0; RETURN zm(zi);	*error*		emulator	topics
+ppl.one-based	LOCAL zm, zi; zm := [[1,2],[3,4]]; zi := 0; RETURN zm(zi, 1);	*error*		emulator	topics
+ppl.one-based	LOCAL zs, zi; zs := "abc"; zi := 0; RETURN zs(zi);	*error*		emulator	topics
+ppl.one-based	LOCAL zs, zi; zs := "abc"; zi := 2; RETURN zs(zi);	98	0	emulator	topics
+PPYR	EXPR(" PPYR")	12.00	0	emulator	finance
+PPYR	EXPR("PPYR")	*error*		emulator	finance
+PredX	EXPR("PredX(1,2,3)")	*error*		emulator	spreadsheet
+PredX	EXPR("PredX(1,2,4)")	*error*		emulator	spreadsheet
+PredY	EXPR("PredY(1,2,3)")	*error*		emulator	spreadsheet
+PredY	EXPR("PredY(1,2,4)")	*error*		emulator	spreadsheet
+Price	EXPR("Price")	0	0	emulator	finance
+PriceBond	EXPR("PriceBond")	0	0	emulator	finance
+Prob	EXPR(" Prob")	0.172021922639	0	emulator	inference
+Prob	EXPR("Prob")	0	0	emulator	inference
+ProbList	EXPR(" ProbList")	{}	6	emulator	inference
+ProbList	EXPR("ProbList")	{}	6	emulator	inference
+Profit	EXPR("Profit")	0	0	emulator	finance
+Programs	EXPR("Programs")	{"HPKDOC"}	6	emulator	system
+projection	EXPR("projection(segment(point(0,0),point(4,0)),point(2,3))")	point(2,0)	8	emulator	geometry
+Psi	Psi(1,1)	π^2/6	8	emulator	special
+PV	EXPR(" PV")	0.00	0	emulator	finance
+PV	EXPR("(PV)")	1000.00	0	emulator	finance
+PV	EXPR("Finance.PV")	0	0	emulator	finance
+PV	EXPR("PV")	*error*		emulator	finance
+PV	EXPR("PV:=1000")	1000.00	0	emulator	finance
+PX→C	PX→C(0,0)	{−16,10.9}	6	emulator	drawing
+PX→C	PX→C(10)	{−16,10.9}	6	emulator	drawing
+PX→C	PX→C(100)	{−16,10.9}	6	emulator	drawing
+PX→C	PX→C(100,50)	{−6,5.9}	6	emulator	drawing
+QPI	QPI(0.5)	1/2	8	emulator	catalog
+QR	QR([[1,2],[3,4]])	{[[−0.316227766017,0.948683298051],[−0.948683298051,−0.316227766017]],[[−3.16227766017,−4.42718872424],[−8.881784197ᴇ−16,0.632455532034]],[[1,0],[0,1]]}	6	emulator	matrix
+QuadDelta	EXPR("QuadDelta(1,-3,2)")	1	0	emulator	explorer
+quadrilateral	EXPR("quadrilateral(point(0,0),point(2,0),point(2,2),point(0,2))")	polygon(point(0,0),point(2,0),point(2,2),point(0,2),point(0,0))	8	emulator	geometry
+QuadSolve	EXPR("QuadSolve(1,-3,2)")	{1,2}	6	emulator	explorer
+Quantity	EXPR("Quantity")	0	0	emulator	finance
+QUOTE	EXPR("QUOTE(1+2)")	1+2	8	emulator	catalog
+Q₁	EXPR("Q₁")	*error*		emulator	statistics-1var
+Q₁	EXPR("Statistics_1Var.D1:={1,2,2,3,7}"); EXPR("Statistics_1Var.Do1VStats(Statistics_1Var.H1)"); RETURN EXPR("Statistics_1Var.Q₁");	1.5	0	emulator	statistics-1var
+Q₁	EXPR("Statistics_1Var.Q₁")	0	0	emulator	statistics-1var
+Q₁	LOCAL o, r; EXPR("Statistics_1Var.D1:={1,2,2,3,7}"); EXPR("Statistics_1Var.Do1VStats(Statistics_1Var.H1)"); o := EXPR("Statistics_1Var.Q₁"); IFERR EXPR("Statistics_1Var.Q₁:=99"); r := EXPR("Statistics_1Var.Q₁"); THEN r := "refused"; END; IFERR EXPR("Statistics_1Var.Q₁:=" + STRING(o)); THEN r := r; END; RETURN r;	"refused"	2	emulator	statistics-1var
+Q₃	EXPR("Q₃")	*error*		emulator	statistics-1var
+Q₃	EXPR("Statistics_1Var.D1:={1,2,2,3,7}"); EXPR("Statistics_1Var.Do1VStats(Statistics_1Var.H1)"); RETURN EXPR("Statistics_1Var.Q₃");	5	0	emulator	statistics-1var
+Q₃	EXPR("Statistics_1Var.Q₃")	0	0	emulator	statistics-1var
+Q₃	LOCAL o, r; EXPR("Statistics_1Var.D1:={1,2,2,3,7}"); EXPR("Statistics_1Var.Do1VStats(Statistics_1Var.H1)"); o := EXPR("Statistics_1Var.Q₃"); IFERR EXPR("Statistics_1Var.Q₃:=99"); r := EXPR("Statistics_1Var.Q₃"); THEN r := "refused"; END; IFERR EXPR("Statistics_1Var.Q₃:=" + STRING(o)); THEN r := r; END; RETURN r;	"refused"	2	emulator	statistics-1var
+radius	EXPR("radius(circle(point(0,0),point(1,0)))")	1/2	8	emulator	geometry
+RANDINT	TYPE(RANDINT(1,6))	0	0	emulator	probability
+RANDMAT	SIZE(RANDMAT(2,3))	{2,3}	6	emulator	matrix
+RANDNORM	TYPE(RANDNORM(0,1))	0	0	emulator	probability
+RANDOM	TYPE(RANDOM())	0	0	emulator	probability
+RANDSEED	RANDSEED(1); A := RANDOM(); RANDSEED(1); RETURN A - RANDOM();	0	0	emulator	probability
+RANK	RANK([[1,2],[3,4]])	2	0	emulator	matrix
+RE	RE((3,4))	3	0	emulator	arithmetic
+RE	RE(3+4*i)	3	0	emulator	arithmetic
+Recenter	EXPR("Recenter")	0	0	emulator	common-plot-view
+Recenter	LOCAL o; o := EXPR("Recenter"); EXPR("Recenter:=" + STRING(o)); RETURN EXPR("Recenter");	0	0	emulator	common-plot-view
+reciprocation	EXPR("reciprocation(circle(point(0,0),point(2,0)),point(3,0))")	line(x=3/2)	8	emulator	geometry
+RECT	DIMGROB(G1,10,5,0); RETURN RECT(G1,0,0,4,4,RGB(0,255,0));	1	0	emulator	drawing
+RECT	RECT()	1	0	emulator	drawing
+RECT_P	DIMGROB_P(G1,10,10,0); RETURN RECT_P(G1,0,0,4,4,RGB(0,255,0));	1	0	emulator	drawing
+RECT_P	RECT_P(G1,0,0,1,1,0)	1	0	emulator	drawing
+rectangle	EXPR("rectangle(point(0,0),point(2,0),1)")	polygon(point(0,0),point(2,0),point(2,2),point(0,2),point(0,0))	8	emulator	geometry
+REDIM	REDIM([[1,2],[3,4]],{1,2})	[[1,2]]	4	emulator	matrix
+reflection	EXPR("reflection(segment(point(0,0),point(4,0)),point(1,2))")	point(1,−2)	8	emulator	geometry
+REGRS	EXPR("REGRS(A1:A5)")	*error*		emulator	spreadsheet
+REGRS	EXPR("REGRS({2,4,6,8,10})")	*error*		emulator	spreadsheet
+REPEAT	LOCAL z; z := 0; REPEAT z := z + 1; UNTIL 1 == 1; RETURN z;	1	0	emulator	loop
+REPEAT	LOCAL z; z := 0; REPEAT z := z + 1; UNTIL z >= 4; RETURN z;	4	0	emulator	loop
+REPLACE	REPLACE([[1,2],[3,4]],{1,1},[[9]])	[[9,2],[3,4]]	4	emulator	matrix
+Resid	EXPR("Resid(S1)")	*error*		emulator	statistics-2var
+residue	EXPR("residue(1/X,X,0)")	"residue(1/X,X,0) \n Error: valor de argumento incorrecto"	2	emulator	statistics-2var
+Result	EXPR(" Result")	1	0	emulator	inference
+Result	EXPR("Result")	0	0	emulator	inference
+RETURN	LOCAL z; z := 2; RETURN z;	2	0	emulator	block
+RETURN	LOCAL zi, zs; zs := 0; FOR zi FROM 1 TO 10 DO IF zi == 3 THEN RETURN zi; END; END; RETURN zs;	3	0	emulator	block
+REVERSE	REVERSE({1,2,3})	{3,2,1}	6	emulator	list
+RGB	RGB(0,0,255)	#FFh	1	emulator	drawing
+RGB	RGB(255,0,0)	#FF0000h	1	emulator	drawing
+rhombus	EXPR("rhombus(point(0,0),point(2,0),1)")	polygon(point(0,0),point(2,0),point(2*(COS(1)+*SIN(1))+2),point(2*(COS(1)+*SIN(1))),point(0,0))	8	emulator	geometry
+RIGHT	RIGHT("MOMOGUMBO", 5)	"GUMBO"	2	emulator	strings
+RIGHT	RIGHT("abcdef", -1)	*error*		emulator	strings
+RIGHT	RIGHT("abcdef", 0)	"abcdef"	2	emulator	strings
+RIGHT	RIGHT("abcdef", 3)	"def"	2	emulator	strings
+RIGHT	RIGHT("abcdef", 99)	"abcdef"	2	emulator	strings
+right_triangle	EXPR("right_triangle(point(0,0),point(3,0),1)")	polygon(point(0,0),point(3,0),point(0,3),point(0,0))	8	emulator	geometry
+RiskFree	EXPR("RiskFree")	0	0	emulator	finance
+ROOT	EXPR(" ROOT(F1,1)")	2	0	emulator	function
+ROOT	EXPR("F1")	−4	0	emulator	function
+ROOT	EXPR("F1:=X^2-4")	−4	0	emulator	function
+ROOT	EXPR("F1:=X^2-4"); RETURN EXPR("ROOT(F1,1)");	*error*		emulator	function
+ROOT	EXPR("ROOT(F1)")	*error*		emulator	function
+ROOT	EXPR("ROOT(F1,-1)")	−2	0	emulator	function
+ROOT	EXPR("ROOT(F1,1)")	*error*		emulator	function
+Root	EXPR("   Root")	*error*		emulator	?
+Root	EXPR("  Root")	0	0	emulator	?
+Root	EXPR(" Root")	*error*		emulator	?
+Root	EXPR("Root")	0	0	emulator	?
+ROTATE	ROTATE("abcdef", 2)	"cdefab"	2	emulator	strings
+ROTATE	ROTATE({1,2,3,4}, 1)	*error*		emulator	strings
+rotation	EXPR("rotation(point(0,0),1,point(1,0))")	point(e^())	8	emulator	geometry
+ROUND	ROUND(7.8676,-2)	7.9	0	emulator	numbers
+ROUND	ROUND(7.8676,2)	7.87	0	emulator	numbers
+ROUND	ROUND({22/6,7/6,13/6},{-3,3,4})	{3.67,1.167,2.1667}	6	emulator	numbers
+Row	EXPR("Row")	*error*		emulator	spreadsheet
+Row	EXPR("Spreadsheet.Row")	0	0	emulator	spreadsheet
+Row	LOCAL o, r; o := EXPR("Spreadsheet.Row"); IFERR EXPR("Spreadsheet.Row:=3"); r := EXPR("Spreadsheet.Row"); THEN r := "refused"; END; IFERR EXPR("Spreadsheet.Row:=" + STRING(o)); THEN r := r; END; RETURN r;	"refused"	2	emulator	spreadsheet
+RowHeight	EXPR("RowHeight")	*error*		emulator	spreadsheet
+RowHeight	EXPR("Spreadsheet.RowHeight")	−1	0	emulator	spreadsheet
+RowHeight	LOCAL o, r; o := EXPR("Spreadsheet.RowHeight"); IFERR EXPR("Spreadsheet.RowHeight:=30"); r := EXPR("Spreadsheet.RowHeight"); THEN r := "refused"; END; IFERR EXPR("Spreadsheet.RowHeight:=" + STRING(o)); THEN r := r; END; RETURN r;	30	0	emulator	spreadsheet
+ROWNORM	ROWNORM([[1,2],[3,4]])	7	0	emulator	matrix
+RREF	RREF([[1,-2,1],[3,4,-1]])	[[1,0,0.2],[0,1,−0.4]]	4	emulator	matrix
+RREF	RREF({[[-2,2,1],[1,4,0]],[[1,3,1],[3,6,9]]})	{[[1,0,−0.4],[0,1,0.1]],[[1,0,7],[0,1,−2]]}	6	emulator	matrix
+R→B	R→B(12)	#Ch	1	emulator	integer
+SafeInt	EXPR("SafeInt")	0	0	emulator	finance
+SalePrice	EXPR("SalePrice")	0	0	emulator	finance
+SalvageAsset	EXPR("SalvageAsset")	0	0	emulator	finance
+SAS	EXPR("SAS(3,50,4)")	{3.09404223751,82.0328713989,47.9671286011}	6	emulator	triangle-solver
+SAS	EXPR("SAS(3,60,4)")	*error*		emulator	triangle-solver
+SCALE	SCALE([[1,2],[3,4]],2,1)	[[2,4],[3,4]]	4	emulator	matrix
+SCALEADD	SCALEADD([[1,2],[3,4]],2,1,2)	[[1,2],[5,8]]	4	emulator	matrix
+SCHUR	SCHUR([[1,2],[3,4]])	{[[0.415973557919,0.909376709132],[0.909376709132,−0.415973557919]],[[5.37228132327,1],[5.55111512313ᴇ−17,−0.372281323269]]}	6	emulator	matrix
+sCov	EXPR("Statistics_2Var.C1:={1,2,3,4}"); EXPR("Statistics_2Var.C2:={2,3,5,9}"); EXPR("Statistics_2Var.Do2VStats(Statistics_2Var.S1)"); RETURN EXPR("Statistics_2Var.sCov");	3.83333333333	0	emulator	statistics-2var
+sCov	EXPR("Statistics_2Var.sCov")	*error*		emulator	statistics-2var
+sCov	EXPR("sCov")	*error*		emulator	statistics-2var
+sCov	LOCAL o, r; EXPR("Statistics_2Var.C1:={1,2,3,4}"); EXPR("Statistics_2Var.C2:={2,3,5,9}"); EXPR("Statistics_2Var.Do2VStats(Statistics_2Var.S1)"); o := EXPR("Statistics_2Var.sCov"); IFERR EXPR("Statistics_2Var.sCov:=99"); r := EXPR("Statistics_2Var.sCov"); THEN r := "refused"; END; IFERR EXPR("Statistics_2Var.sCov:=" + STRING(o)); THEN r := r; END; RETURN r;	"refused"	2	emulator	statistics-2var
+SEC	SEC(1)	1.85081571768	0	emulator	trigonometry
+segment	EXPR("segment(point(0,0),point(3,4))")	segment(point(0,0),point(3,4))	8	emulator	geometry
+SemiAnnual	EXPR("SemiAnnual")	0	0	emulator	finance
+SeqPlot	EXPR("SeqPlot")	*error*		emulator	sequence
+SeqPlot	EXPR("Sequence.SeqPlot")	0	0	emulator	sequence
+SeqPlot	LOCAL o, r; o := EXPR("Sequence.SeqPlot"); IFERR EXPR("Sequence.SeqPlot:=1"); r := EXPR("Sequence.SeqPlot"); THEN r := "refused"; END; IFERR EXPR("Sequence.SeqPlot:=" + STRING(o)); THEN r := r; END; RETURN r;	0	0	emulator	sequence
+SERIAL	EXPR("SERIAL")	"(not stored)"	2	emulator	catalog
+serrInter	EXPR("serrInter")	0	0	emulator	inference
+serrLine	EXPR("serrLine")	0	0	emulator	inference
+serrSlope	EXPR("serrSlope")	0	0	emulator	inference
+serrX	EXPR("Statistics_1Var.D1:={1,2,2,3,7}"); EXPR("Statistics_1Var.Do1VStats(Statistics_1Var.H1)"); RETURN EXPR("Statistics_1Var.serrX");	1.04880884817	0	emulator	statistics-1var
+serrX	EXPR("Statistics_1Var.serrX")	0	0	emulator	statistics-1var
+serrX	EXPR("serrX")	*error*		emulator	statistics-1var
+serrX	LOCAL o, r; EXPR("Statistics_1Var.D1:={1,2,2,3,7}"); EXPR("Statistics_1Var.Do1VStats(Statistics_1Var.H1)"); o := EXPR("Statistics_1Var.serrX"); IFERR EXPR("Statistics_1Var.serrX:=99"); r := EXPR("Statistics_1Var.serrX"); THEN r := "refused"; END; IFERR EXPR("Statistics_1Var.serrX:=" + STRING(o)); THEN r := r; END; RETURN r;	"refused"	2	emulator	statistics-1var
+serrY	EXPR("Statistics_2Var.C1:={1,2,3,4}"); EXPR("Statistics_2Var.C2:={2,3,5,9}"); EXPR("Statistics_2Var.Do2VStats(Statistics_2Var.S1)"); RETURN EXPR("Statistics_2Var.serrY");	1.54784796842	0	emulator	statistics-2var
+serrY	EXPR("Statistics_2Var.serrY")	*error*		emulator	statistics-2var
+serrY	EXPR("serrY")	*error*		emulator	statistics-2var
+serrY	LOCAL o, r; EXPR("Statistics_2Var.C1:={1,2,3,4}"); EXPR("Statistics_2Var.C2:={2,3,5,9}"); EXPR("Statistics_2Var.Do2VStats(Statistics_2Var.S1)"); o := EXPR("Statistics_2Var.serrY"); IFERR EXPR("Statistics_2Var.serrY:=99"); r := EXPR("Statistics_2Var.serrY"); THEN r := "refused"; END; IFERR EXPR("Statistics_2Var.serrY:=" + STRING(o)); THEN r := r; END; RETURN r;	"refused"	2	emulator	statistics-2var
+SETBASE	SETBASE(12, 2)	#14o	1	emulator	integer
+SETBITS	SETBITS(12)	#Ch	1	emulator	integer
+SetDate	EXPR("SetDate")	2017.0101	0	emulator	finance
+SetDepend	EXPR("SetDepend(S1,C1)")	*error*		emulator	statistics-2var
+SetFreq	EXPR("SetFreq(H1,D1)")	*error*		emulator	statistics-1var
+SetIndep	EXPR("SetIndep(S1,C1)")	*error*		emulator	statistics-2var
+SetSample	EXPR("SetSample(H1,D1)")	*error*		emulator	statistics-1var
+Si	Si(1)	Si(1)	8	emulator	special
+SideA	EXPR("  SideA")	3	0	emulator	triangle-solver
+SideA	EXPR(" SideA")	−1	0	emulator	triangle-solver
+SideA	EXPR("SideA:=3")	3	0	emulator	triangle-solver
+SideB	EXPR(" SideB")	−1	0	emulator	triangle-solver
+SideB	EXPR("SideB:=4")	4	0	emulator	triangle-solver
+SideC	EXPR(" SideC")	−1	0	emulator	triangle-solver
+SideC	EXPR("SideC:=5")	5	0	emulator	triangle-solver
+SIGN	SIGN(2)	1	0	emulator	arithmetic
+Signed	EXPR("Signed")	0	0	emulator	home-settings
+Signed	LOCAL o, r; o := EXPR("Signed"); EXPR("Signed:=1"); r := EXPR("Signed"); EXPR("Signed:=" + STRING(o)); RETURN r;	1	0	emulator	home-settings
+SignedArea	EXPR("  SignedArea")	0	0	emulator	function
+SignedArea	EXPR("SignedArea")	0	0	emulator	function
+similarity	EXPR("similarity(point(0,0),2,0,point(1,1))")	point(2,2)	8	emulator	geometry
+SIN	SIN(1)	0.841470984808	0	emulator	catalog
+single_inter	EXPR("single_inter(line(point(0,0),point(4,0)),line(point(2,-1),point(2,1)))")	"Error: entrada no válida"	2	emulator	geometry
+SINH	SINH(1)	1.17520119364	0	emulator	hyperbolic
+SIZE	M1 := [1,2,3]; RETURN SIZE(M1);	{3}	6	emulator	list
+SIZE	M1 := [[1,2],[3,4]]; RETURN M1;	[[1,2],[3,4]]	4	emulator	list
+SIZE	SIZE([[1,2,3],[4,5,6]])	{2,3}	6	emulator	list
+SIZE	SIZE({0,1,2,3})	4	0	emulator	list
+SIZE	SIZE({1,2,3,4,5})	5	0	emulator	list
+SIZE	TYPE(SIZE([[1,2,3],[4,5,6]]))	6	0	emulator	list
+SIZE	TYPE([[1,2],[3,4]])	4	0	emulator	list
+SLOPE	EXPR(" SLOPE(F1,2)")	4	0	emulator	function
+SLOPE	EXPR("SLOPE(F1,1)")	0	0	emulator	function
+SLOPE	EXPR("SLOPE(F1,2)")	4	0	emulator	function
+Slope	EXPR("  Slope")	0	0	emulator	?
+Slope	EXPR("Slope")	0	0	emulator	?
+slope	EXPR("slope(point(0,0),point(2,1))")	1/2	8	emulator	geometry
+SOLVE	EXPR("SOLVE")	*error*		emulator	?
+SOLVE	EXPR("SOLVE( )")	*error*		emulator	?
+SOLVE	EXPR("SOLVE(E1,X)")	*error*		emulator	?
+SOLVE	EXPR("SOLVE(X^2-4=0,X)")	*error*		emulator	?
+SOLVE	EXPR("SOLVE(X^2-4=0,X,1)")	*error*		emulator	?
+SOLVE	EXPR("Solve.SOLVE")	*error*		emulator	?
+SOLVE	EXPR("Solve.SOLVE(X^2-4=0,X,1)")	2	0	emulator	?
+SOLVE	LOCAL r; IFERR EXPR("Solve.SOLVE:=2"); r := EXPR("Solve.SOLVE"); THEN r := "refused"; END; RETURN r;	"refused"	2	emulator	?
+Solve	EXPR("Solve")	*error*		emulator	solve
+Solve	EXPR("Solve( )")	*error*		emulator	solve
+Solve	EXPR("Solve(2*X+1=7,X)")	*error*		emulator	solve
+Solve	EXPR("Solve(X^2-4=0)")	*error*		emulator	solve
+Solve	EXPR("Solve(X^2-4=0,X)")	*error*		emulator	solve
+Solve	EXPR("Solve.Solve(X^2-4=0,X,1)")	*error*		emulator	solve
+Solve2×2	EXPR("Solve2×2")	*error*		emulator	linear-solver
+Solve2×2	EXPR("Solve2×2( )")	*error*		emulator	linear-solver
+Solve3×3	EXPR("Solve3×3")	*error*		emulator	linear-solver
+Solve3×3	EXPR("Solve3×3( )")	*error*		emulator	linear-solver
+SORT	SORT({"foo","bar","bra"})	{"bar","bra","foo"}	6	emulator	list
+SORT	SORT({"foo","bar","bra"},2)	{"bar","foo","bra"}	6	emulator	list
+SORT	SORT({2,9,5,3})	{2,3,5,9}	6	emulator	list
+SPECNORM	SPECNORM([[1,2],[3,4]])	5.46498570422	0	emulator	matrix
+SPECRAD	SPECRAD([[1,2],[3,4]])	5.37228132327	0	emulator	matrix
+square	EXPR("square(point(0,0),point(2,0))")	polygon(point(0,0),point(2,0),point(2,2),point(0,2),point(0,0))	8	emulator	geometry
+SS	EXPR("SS")	0	0	emulator	inference
+SSA	EXPR("SSA(3,4,30)")	*error*		emulator	triangle-solver
+SSA	EXPR("SSA(3,5,30)")	{5.9884394141,56.4426902381,93.5573097619}	6	emulator	triangle-solver
+SSerr	EXPR("SSerr")	0	0	emulator	inference
+SSS	EXPR("SSS(3,4,5)")	*error*		emulator	triangle-solver
+SSS	EXPR("SSS(6,8,10)")	{36.8698976458,53.1301023542,90}	6	emulator	triangle-solver
+SSS	EXPR("Triangle_Solver.SSS(3,4,5)")	{0.643501108793,0.927295218002,1.57079632679}	6	emulator	triangle-solver
+ssX	EXPR("Statistics_1Var.D1:={1,2,2,3,7}"); EXPR("Statistics_1Var.Do1VStats(Statistics_1Var.H1)"); RETURN EXPR("Statistics_1Var.ssX");	22	0	emulator	statistics-1var
+ssX	EXPR("Statistics_1Var.ssX")	0	0	emulator	statistics-1var
+ssX	EXPR("ssX")	*error*		emulator	statistics-1var
+ssX	LOCAL o, r; EXPR("Statistics_1Var.D1:={1,2,2,3,7}"); EXPR("Statistics_1Var.Do1VStats(Statistics_1Var.H1)"); o := EXPR("Statistics_1Var.ssX"); IFERR EXPR("Statistics_1Var.ssX:=99"); r := EXPR("Statistics_1Var.ssX"); THEN r := "refused"; END; IFERR EXPR("Statistics_1Var.ssX:=" + STRING(o)); THEN r := r; END; RETURN r;	"refused"	2	emulator	statistics-1var
+ssY	EXPR("Statistics_2Var.C1:={1,2,3,4}"); EXPR("Statistics_2Var.C2:={2,3,5,9}"); EXPR("Statistics_2Var.Do2VStats(Statistics_2Var.S1)"); RETURN EXPR("Statistics_2Var.ssY");	28.75	0	emulator	statistics-2var
+ssY	EXPR("Statistics_2Var.ssY")	*error*		emulator	statistics-2var
+ssY	EXPR("ssY")	*error*		emulator	statistics-2var
+ssY	LOCAL o, r; EXPR("Statistics_2Var.C1:={1,2,3,4}"); EXPR("Statistics_2Var.C2:={2,3,5,9}"); EXPR("Statistics_2Var.Do2VStats(Statistics_2Var.S1)"); o := EXPR("Statistics_2Var.ssY"); IFERR EXPR("Statistics_2Var.ssY:=99"); r := EXPR("Statistics_2Var.ssY"); THEN r := "refused"; END; IFERR EXPR("Statistics_2Var.ssY:=" + STRING(o)); THEN r := r; END; RETURN r;	"refused"	2	emulator	statistics-2var
+STAT1	EXPR("STAT1(A1:A5)")	*error*		emulator	spreadsheet
+STAT1	EXPR("STAT1({2,4,6,8,10})")	*error*		emulator	spreadsheet
+STAT2	EXPR("STAT2(A1:A5)")	*error*		emulator	spreadsheet
+STAT2	EXPR("STAT2({2,4,6,8,10})")	*error*		emulator	spreadsheet
+StockPrice	EXPR("StockPrice")	0	0	emulator	finance
+StrikePrice	EXPR("StrikePrice")	0	0	emulator	finance
+STRING	DIM(STRING("abc"))	5	0	emulator	strings
+STRING	STRING("abc")	"\"abc\""	2	emulator	strings
+STRING	STRING(1/3)	"0.333333333333"	2	emulator	strings
+STRING	STRING(2+3)	"5"	2	emulator	strings
+STRING	STRING({1,2})	"{1,2}"	2	emulator	strings
+STRINGFROMID	STRINGFROMID(1)	"La contraseña no es válida"	2	emulator	strings
+STUDENT	STUDENT(3,1)	0.206748335783	0	emulator	probability
+STUDENT_CDF	STUDENT_CDF(3,1)	0.804498890522	0	emulator	probability
+STUDENT_ICDF	STUDENT_ICDF(3,0.5)	0	0	emulator	probability
+SUB	SUB([[1,2,3],[4,5,6]],{1,1},{2,2})	[[1,2],[4,5]]	4	emulator	matrix
+SUBGROB	DIMGROB(G1,10,5,0); SUBGROB(G1,0,0,4,4,G3); RETURN GROBW_P(G3);	*error*		emulator	drawing
+SUBGROB_P	DIMGROB_P(G1,10,10,0); SUBGROB_P(G1,0,0,4,4,G3); RETURN GROBW_P(G3);	4	0	emulator	drawing
+SUM	EXPR("SUM({1,2,3})")	*error*		emulator	spreadsheet
+SUM	EXPR("Spreadsheet.SUM({1,2,3})")	6	0	emulator	spreadsheet
+SUPPRESS	EXPR("SUPPRESS({1,2,3},2)")	{1,3}	6	emulator	catalog
+suppress	suppress({1,2,3},2)	{1,3}	6	emulator	list
+SVD	SIZE(SVD([[1,2],[3,4]]))	3	0	emulator	matrix
+SVD	SVD([[1,2],[3,4]])	{[[0.914514295677,0.404553584834],[−0.404553584834,0.914514295677]],[0.365966190626,5.46498570422],[[−0.81741556047,0.576048436766],[0.576048436766,0.8174155604 (cut at 160 characters)	6	emulator	matrix
+SVL	SVL([[1,2],[3,4]])	[0.365966190626,5.46498570422]	4	emulator	matrix
+SWAPCOL	SWAPCOL([[1,2],[3,4]],1,2)	[[2,1],[4,3]]	4	emulator	matrix
+SWAPROW	SWAPROW([[1,2],[3,4]],1,2)	[[3,4],[1,2]]	4	emulator	matrix
+sX	EXPR("Statistics_1Var.D1:={1,2,2,3,7}"); EXPR("Statistics_1Var.Do1VStats(Statistics_1Var.H1)"); RETURN EXPR("Statistics_1Var.sX");	2.34520787991	0	emulator	statistics-1var
+sX	EXPR("Statistics_1Var.sX")	0	0	emulator	statistics-1var
+sX	EXPR("sX")	*error*		emulator	statistics-1var
+sX	LOCAL o, r; EXPR("Statistics_1Var.D1:={1,2,2,3,7}"); EXPR("Statistics_1Var.Do1VStats(Statistics_1Var.H1)"); o := EXPR("Statistics_1Var.sX"); IFERR EXPR("Statistics_1Var.sX:=99"); r := EXPR("Statistics_1Var.sX"); THEN r := "refused"; END; IFERR EXPR("Statistics_1Var.sX:=" + STRING(o)); THEN r := r; END; RETURN r;	"refused"	2	emulator	statistics-1var
+sY	EXPR("Statistics_2Var.C1:={1,2,3,4}"); EXPR("Statistics_2Var.C2:={2,3,5,9}"); EXPR("Statistics_2Var.Do2VStats(Statistics_2Var.S1)"); RETURN EXPR("Statistics_2Var.sY");	3.09569593683	0	emulator	statistics-2var
+sY	EXPR("Statistics_2Var.sY")	*error*		emulator	statistics-2var
+sY	EXPR("sY")	*error*		emulator	statistics-2var
+sY	LOCAL o, r; EXPR("Statistics_2Var.C1:={1,2,3,4}"); EXPR("Statistics_2Var.C2:={2,3,5,9}"); EXPR("Statistics_2Var.Do2VStats(Statistics_2Var.S1)"); o := EXPR("Statistics_2Var.sY"); IFERR EXPR("Statistics_2Var.sY:=99"); r := EXPR("Statistics_2Var.sY"); THEN r := "refused"; END; IFERR EXPR("Statistics_2Var.sY:=" + STRING(o)); THEN r := r; END; RETURN r;	"refused"	2	emulator	statistics-2var
+s₁	EXPR("s₁")	0.2776	0	emulator	inference
+s₂	EXPR("s₂")	0.2943	0	emulator	inference
+TAN	TAN(1)	1.55740772465	0	emulator	catalog
+tangent	EXPR("tangent(circle(point(0,0),point(2,0)),point(1,0))")	{}	6	emulator	geometry
+TANH	TANH(1)	0.761594155956	0	emulator	hyperbolic
+TestScore	EXPR(" TestScore")	−0.946205374811	0	emulator	inference
+TestScore	EXPR("TestScore")	0	0	emulator	inference
+TestValue	EXPR("TestValue")	0	0	emulator	inference
+TEVAL	TEVAL(1+1)	0_s	9	emulator	more
+TEXTOUT	DIMGROB_P(G9,512,22,0); RETURN TEXTOUT("abc",G9,0,0,2);	182	0	emulator	drawing
+TEXTOUT_P	DIMGROB_P(G9,512,22,0); RETURN TEXTOUT_P("abc",G9,0,0,2);	19	0	emulator	drawing
+Theme	EXPR("Theme")	{#1:64h,#5:64h}	6	emulator	system
+Theme	LOCAL o; o := EXPR("Theme"); EXPR("Theme:=" + STRING(o)); RETURN EXPR("Theme");	{#1:64h,#5:64h}	6	emulator	system
+TICKS	TICKS	120274	0	emulator	more
+Time	EXPR("TYPE(Time)")	0	0	emulator	system
+Time	EXPR("Time")	14°35′00″	0	emulator	system
+Time	LOCAL o; o := EXPR("Time"); EXPR("Time:=" + STRING(o)); RETURN EXPR("Time");	14°35′00″	0	emulator	system
+TimeMarket	EXPR("TimeMarket")	0	0	emulator	finance
+Tmax	EXPR("Tmax")	*error*		emulator	common-plot-view
+Tmax	LOCAL o, r; o := EXPR("Tmax"); IFERR EXPR("Tmax:=5"); r := EXPR("Tmax"); THEN r := "refused"; END; EXPR("Tmax:=" + STRING(o)); RETURN r;	*error*		emulator	common-plot-view
+Tmin	EXPR("Tmin")	*error*		emulator	common-plot-view
+Tmin	LOCAL o, r; o := EXPR("Tmin"); IFERR EXPR("Tmin:=1"); r := EXPR("Tmin"); THEN r := "refused"; END; EXPR("Tmin:=" + STRING(o)); RETURN r;	*error*		emulator	common-plot-view
+TOff	EXPR("TOff")	#493E0:30h	1	emulator	system
+TOff	LOCAL o, r; o := EXPR("TOff"); EXPR("TOff:=300"); r := EXPR("TOff"); EXPR("TOff:=" + STRING(o)); RETURN r;	*error*		emulator	system
+Total	EXPR("Total")	0	0	emulator	finance
+TotalCF	EXPR(" TotalCF")	0.00	0	emulator	finance
+TotalCF	EXPR("TotalCF")	0	0	emulator	finance
+TRACE	TRACE([[1,2],[3,4]])	5	0	emulator	matrix
+translation	EXPR("translation(point(1,1),point(2,2))")	"El primer arg. de la traducción no debe ser un punto Error: valor de argumento incorrecto"	2	emulator	geometry
+TRIANGLE	DIMGROB(G1,20,20,0); RETURN TRIANGLE(G1,0,0,9,0,0,9,RGB(255,0,0));	1	0	emulator	drawing
+triangle	EXPR("triangle(point(0,0),point(3,0),point(0,4))")	*error*		emulator	geometry
+TRIANGLE_P	DIMGROB_P(G1,20,20,0); RETURN TRIANGLE_P(G1,0,0,9,0,0,9,RGB(255,0,0));	1	0	emulator	drawing
+TriType	EXPR("  TriType")	0	0	emulator	triangle-solver
+TriType	EXPR(" TriType")	0	0	emulator	triangle-solver
+TRN	TRN([[1+2*i,3],[4,5]])	[[1+2*,4],[3,5]]	4	emulator	matrix
+TRN	TRN([[1,2],[3,4]])	[[1,3],[2,4]]	4	emulator	matrix
+TRN	TRN({[[5,2],[1,3]],[[2,9],[7,8]]})	{[[5,1],[2,3]],[[2,7],[9,8]]}	6	emulator	matrix
+TRUNCATE	TRUNCATE(7.8676,2)	7.86	0	emulator	numbers
+Tstep	EXPR("Tstep")	*error*		emulator	common-plot-view
+Tstep	LOCAL o, r; o := EXPR("Tstep"); IFERR EXPR("Tstep:=0.5"); r := EXPR("Tstep"); THEN r := "refused"; END; EXPR("Tstep:=" + STRING(o)); RETURN r;	*error*		emulator	common-plot-view
+TvmFV	EXPR("TvmFV(12,5,-1000,0)")	1051.16189788	0	emulator	finance
+TvmIPYR	EXPR("TvmIPYR(12,-1000,0,1051.16)")	4.9998186967	0	emulator	finance
+TvmNbPmt	EXPR("TvmNbPmt(5,-1000,0,1051.16)")	11.9995657754	0	emulator	finance
+TvmPMT	EXPR("TvmPMT(12,5,-1000,0)")	85.6074817885	0	emulator	finance
+TvmPV	EXPR("TvmPV(12,5,0,1051.16)")	−999.998194492	0	emulator	finance
+TvmPV	EXPR("TvmPV(12,5,0,TvmFV(12,5,-1000,0))")	−999.999999998	0	emulator	finance
+TYPE	TYPE("a")	2	0	emulator	more
+TYPE	TYPE(3)	0	0	emulator	more
+TYPE	TYPE([[1,2],[3,4]])	4	0	emulator	more
+TYPE	TYPE({1,2})	6	0	emulator	more
+UFACTOR	UFACTOR(2_m, 1_ft)	6.56167979003_ft	9	emulator	units
+UNCHECK	EXPR("UNCHECK(1)")	1	0	emulator	statistics-1var
+UNION	UNION({1,2},{2,3})	{1,2,3}	6	emulator	list
+UPART	UPART(2_m)	1_m	9	emulator	units
+UPPER	UPPER("abc")	"ABC"	2	emulator	strings
+USIMPLIFY	USIMPLIFY(2_m)	2_m	9	emulator	units
+UTPC	EXPR("UTPC(3,2)")	*error*		emulator	catalog
+UTPF	EXPR("UTPF(2,3,1)")	*error*		emulator	catalog
+UTPN	EXPR("UTPN(0,1,1.96)")	*error*		emulator	catalog
+UTPT	EXPR("UTPT(5,2)")	*error*		emulator	catalog
+UVAL	UVAL(2_m)	2	0	emulator	units
+valuation	STRING(valuation(X^2+X))	"-Inf"	2	emulator	matrix
+valuation	TYPE(valuation(X^2+X))	0	0	emulator	matrix
+VariableCost	EXPR("VariableCost")	0	0	emulator	finance
+VERSION	EXPR("VERSION")	"(not stored)"	2	emulator	catalog
+Volatility	EXPR("Volatility")	0	0	emulator	finance
+WAIT	LOCAL t, r, zk; REPEAT zk := GETKEY; UNTIL zk < 0; t := TICKS; r := WAIT(-1); RETURN {r, TICKS - t};	{42,13951}	6	emulator	io
+WAIT	LOCAL t, r; t := TICKS; r := WAIT(-1); RETURN {r, TICKS - t};	{42,17619}	6	emulator	io
+WHILE	LOCAL z; z := 0; WHILE z < 4 DO z := z + 1; END; RETURN z;	4	0	emulator	loop
+WHILE	LOCAL z; z := 9; WHILE z < 4 DO z := z + 1; END; RETURN z;	9	0	emulator	loop
+Xlist	EXPR("  Xlist")	{}	6	emulator	inference
+Xlist	EXPR(" Xlist")	{}	6	emulator	inference
+Xlist	EXPR("Xlist")	{}	6	emulator	inference
+Xmax	EXPR("Xmax")	15.9	0	emulator	common-plot-view
+Xmax	LOCAL o, r; o := EXPR("Xmax"); IFERR EXPR("Xmax:=5"); r := EXPR("Xmax"); THEN r := "refused"; END; EXPR("Xmax:=" + STRING(o)); RETURN r;	5	0	emulator	common-plot-view
+Xmin	EXPR("C→PX(0,0)")	{160,109}	6	emulator	common-plot-view
+Xmin	EXPR("Function.Xmin")	−15.9	0	emulator	common-plot-view
+Xmin	EXPR("Xmin")	−15.9	0	emulator	common-plot-view
+Xmin	LOCAL o, r; o := EXPR("Xmin"); EXPR("Xmin:=0"); IFERR r := {EXPR("Xmin"), C→PX(0,0)}; THEN r := "refused"; END; EXPR("Xmin:=" + STRING(o)); RETURN r;	{0,{1,109}}	6	emulator	common-plot-view
+Xmin	LOCAL o, r; o := EXPR("Xmin"); IFERR EXPR("Xmin:=-5"); r := EXPR("Xmin"); THEN r := "refused"; END; EXPR("Xmin:=" + STRING(o)); RETURN r;	−5	0	emulator	common-plot-view
+XPON	EXPR("xpon(1000)")	3	0	emulator	numbers
+XPON	XPON(123.45)	2	0	emulator	numbers
+Xtick	EXPR("Xtick")	1	0	emulator	common-plot-view
+Xtick	LOCAL o, r; o := EXPR("Xtick"); IFERR EXPR("Xtick:=2"); r := EXPR("Xtick"); THEN r := "refused"; END; EXPR("Xtick:=" + STRING(o)); RETURN r;	2	0	emulator	common-plot-view
+Xval	EXPR("Xval")	0	0	emulator	inference
+Xzoom	EXPR("Xzoom")	2	0	emulator	common-plot-view
+Xzoom	LOCAL o, r; o := EXPR("Xzoom"); IFERR EXPR("Xzoom:=3"); r := EXPR("Xzoom"); THEN r := "refused"; END; EXPR("Xzoom:=" + STRING(o)); RETURN r;	3	0	emulator	common-plot-view
+x₁	EXPR("x₁")	21	0	emulator	inference
+x₂	EXPR("x₂")	26	0	emulator	inference
+YieldBond	EXPR("YieldBond")	0	0	emulator	finance
+Ylist	EXPR(" Ylist")	{}	6	emulator	inference
+Ylist	EXPR("(Ylist)")	{1,2,3}	6	emulator	inference
+Ylist	EXPR("Ylist")	{}	6	emulator	inference
+Ylist	EXPR("Ylist:={1,2,3}")	{1,2,3}	6	emulator	inference
+Ymax	EXPR("Ymax")	10.9	0	emulator	common-plot-view
+Ymax	LOCAL o, r; o := EXPR("Ymax"); EXPR("Ymax:=0"); IFERR r := {EXPR("Ymax"), C→PX(0,0)}; THEN r := "refused"; END; EXPR("Ymax:=" + STRING(o)); RETURN r;	{0,{160,0}}	6	emulator	common-plot-view
+Ymax	LOCAL o, r; o := EXPR("Ymax"); IFERR EXPR("Ymax:=3"); r := EXPR("Ymax"); THEN r := "refused"; END; EXPR("Ymax:=" + STRING(o)); RETURN r;	3	0	emulator	common-plot-view
+Ymin	EXPR("Ymin")	−10.9	0	emulator	common-plot-view
+Ymin	LOCAL o, r; o := EXPR("Ymin"); IFERR EXPR("Ymin:=-3"); r := EXPR("Ymin"); THEN r := "refused"; END; EXPR("Ymin:=" + STRING(o)); RETURN r;	−3	0	emulator	common-plot-view
+Ytick	EXPR("Ytick")	1	0	emulator	common-plot-view
+Ytick	LOCAL o, r; o := EXPR("Ytick"); IFERR EXPR("Ytick:=2"); r := EXPR("Ytick"); THEN r := "refused"; END; EXPR("Ytick:=" + STRING(o)); RETURN r;	2	0	emulator	common-plot-view
+Yval	EXPR("Yval")	0	0	emulator	inference
+Yzoom	EXPR("Yzoom")	2	0	emulator	common-plot-view
+Yzoom	LOCAL o, r; o := EXPR("Yzoom"); IFERR EXPR("Yzoom:=3"); r := EXPR("Yzoom"); THEN r := "refused"; END; EXPR("Yzoom:=" + STRING(o)); RETURN r;	3	0	emulator	common-plot-view
+Zeta	Zeta(2)	π^2/6	8	emulator	special
+zoomauto	EXPR("zoomauto")	*error*		emulator	geometry
+zoombox	EXPR("zoombox")	*error*		emulator	geometry
+zoomdecimal	EXPR("zoomdecimal")	*error*		emulator	geometry
+zoomdundo	EXPR("zoomdundo")	*error*		emulator	geometry
+zoomin	EXPR("zoomin")	*error*		emulator	geometry
+zoominteger	EXPR("zoominteger")	*error*		emulator	geometry
+zoomout	EXPR("zoomout")	*error*		emulator	geometry
+µ₀	EXPR("µ₀")	0.5	0	emulator	?
+ΔLIST	ΔLIST({1,4,9})	{3,5}	6	emulator	catalog
+θmax	EXPR("θmax")	*error*		emulator	common-plot-view
+θmax	LOCAL o, r; o := EXPR("θmax"); IFERR EXPR("θmax:=5"); r := EXPR("θmax"); THEN r := "refused"; END; EXPR("θmax:=" + STRING(o)); RETURN r;	*error*		emulator	common-plot-view
+θmin	EXPR("θmin")	*error*		emulator	common-plot-view
+θmin	LOCAL o, r; o := EXPR("θmin"); IFERR EXPR("θmin:=1"); r := EXPR("θmin"); THEN r := "refused"; END; EXPR("θmin:=" + STRING(o)); RETURN r;	*error*		emulator	common-plot-view
+θstep	EXPR("θstep")	*error*		emulator	common-plot-view
+θstep	LOCAL o, r; o := EXPR("θstep"); IFERR EXPR("θstep:=0.5"); r := EXPR("θstep"); THEN r := "refused"; END; EXPR("θstep:=" + STRING(o)); RETURN r;	*error*		emulator	common-plot-view
+μ₀	EXPR(" μ₀")	*error*		emulator	inference
+μ₀	EXPR("μ₀")	*error*		emulator	inference
+ΠLIST	ΠLIST({1,2,3,4})	24	0	emulator	list
+π₀	EXPR("π₀")	0.5	0	emulator	inference
+Σ	EXPR("Σ(X,X,1,4)")	10	0	emulator	catalog
+σCov	EXPR("Statistics_2Var.C1:={1,2,3,4}"); EXPR("Statistics_2Var.C2:={2,3,5,9}"); EXPR("Statistics_2Var.Do2VStats(Statistics_2Var.S1)"); RETURN EXPR("Statistics_2Var.σCov");	2.875	0	emulator	statistics-2var
+σCov	EXPR("Statistics_2Var.σCov")	*error*		emulator	statistics-2var
+σCov	EXPR("σCov")	*error*		emulator	statistics-2var
+σCov	LOCAL o, r; EXPR("Statistics_2Var.C1:={1,2,3,4}"); EXPR("Statistics_2Var.C2:={2,3,5,9}"); EXPR("Statistics_2Var.Do2VStats(Statistics_2Var.S1)"); o := EXPR("Statistics_2Var.σCov"); IFERR EXPR("Statistics_2Var.σCov:=99"); r := EXPR("Statistics_2Var.σCov"); THEN r := "refused"; END; IFERR EXPR("Statistics_2Var.σCov:=" + STRING(o)); THEN r := r; END; RETURN r;	"refused"	2	emulator	statistics-2var
+ΣLIST	ΣLIST({1,2,3,4})	10	0	emulator	catalog
+ΣX	EXPR("Statistics_1Var.D1:={1,2,2,3,7}"); EXPR("Statistics_1Var.Do1VStats(Statistics_1Var.H1)"); RETURN EXPR("Statistics_1Var.ΣX");	15	0	emulator	statistics-1var
+ΣX	EXPR("Statistics_1Var.ΣX")	0	0	emulator	statistics-1var
+ΣX	EXPR("Statistics_2Var.C1:={1,2,3,4}"); EXPR("Statistics_2Var.C2:={2,3,5,9}"); EXPR("Statistics_2Var.Do2VStats(Statistics_2Var.S1)"); RETURN EXPR("Statistics_2Var.ΣX");	10	0	emulator	statistics-1var
+ΣX	EXPR("ΣX")	*error*		emulator	statistics-1var
+ΣX	LOCAL o, r; EXPR("Statistics_1Var.D1:={1,2,2,3,7}"); EXPR("Statistics_1Var.Do1VStats(Statistics_1Var.H1)"); o := EXPR("Statistics_1Var.ΣX"); IFERR EXPR("Statistics_1Var.ΣX:=99"); r := EXPR("Statistics_1Var.ΣX"); THEN r := "refused"; END; IFERR EXPR("Statistics_1Var.ΣX:=" + STRING(o)); THEN r := r; END; RETURN r;	"refused"	2	emulator	statistics-1var
+σX	EXPR("Statistics_1Var.D1:={1,2,2,3,7}"); EXPR("Statistics_1Var.Do1VStats(Statistics_1Var.H1)"); RETURN EXPR("Statistics_1Var.σX");	2.09761769634	0	emulator	?
+σX	EXPR("Statistics_1Var.σX")	0	0	emulator	?
+σX	EXPR("σX")	*error*		emulator	?
+σX	LOCAL o, r; EXPR("Statistics_1Var.D1:={1,2,2,3,7}"); EXPR("Statistics_1Var.Do1VStats(Statistics_1Var.H1)"); o := EXPR("Statistics_1Var.σX"); IFERR EXPR("Statistics_1Var.σX:=99"); r := EXPR("Statistics_1Var.σX"); THEN r := "refused"; END; IFERR EXPR("Statistics_1Var.σX:=" + STRING(o)); THEN r := r; END; RETURN r;	"refused"	2	emulator	?
+ΣX2	EXPR("Statistics_1Var.D1:={1,2,2,3,7}"); EXPR("Statistics_1Var.Do1VStats(Statistics_1Var.H1)"); RETURN EXPR("Statistics_1Var.ΣX2");	67	0	emulator	statistics-1var
+ΣX2	EXPR("Statistics_1Var.ΣX2")	0	0	emulator	statistics-1var
+ΣX2	EXPR("ΣX2")	*error*		emulator	statistics-1var
+ΣX2	LOCAL o, r; EXPR("Statistics_1Var.D1:={1,2,2,3,7}"); EXPR("Statistics_1Var.Do1VStats(Statistics_1Var.H1)"); o := EXPR("Statistics_1Var.ΣX2"); IFERR EXPR("Statistics_1Var.ΣX2:=99"); r := EXPR("Statistics_1Var.ΣX2"); THEN r := "refused"; END; IFERR EXPR("Statistics_1Var.ΣX2:=" + STRING(o)); THEN r := r; END; RETURN r;	"refused"	2	emulator	statistics-1var
+ΣXY	EXPR("Statistics_2Var.C1:={1,2,3,4}"); EXPR("Statistics_2Var.C2:={2,3,5,9}"); EXPR("Statistics_2Var.Do2VStats(Statistics_2Var.S1)"); RETURN EXPR("Statistics_2Var.ΣXY");	59	0	emulator	statistics-2var
+ΣXY	EXPR("Statistics_2Var.ΣXY")	*error*		emulator	statistics-2var
+ΣXY	EXPR("ΣXY")	*error*		emulator	statistics-2var
+ΣXY	LOCAL o, r; EXPR("Statistics_2Var.C1:={1,2,3,4}"); EXPR("Statistics_2Var.C2:={2,3,5,9}"); EXPR("Statistics_2Var.Do2VStats(Statistics_2Var.S1)"); o := EXPR("Statistics_2Var.ΣXY"); IFERR EXPR("Statistics_2Var.ΣXY:=99"); r := EXPR("Statistics_2Var.ΣXY"); THEN r := "refused"; END; IFERR EXPR("Statistics_2Var.ΣXY:=" + STRING(o)); THEN r := r; END; RETURN r;	"refused"	2	emulator	statistics-2var
+ΣY	EXPR("Statistics_2Var.C1:={1,2,3,4}"); EXPR("Statistics_2Var.C2:={2,3,5,9}"); EXPR("Statistics_2Var.Do2VStats(Statistics_2Var.S1)"); RETURN EXPR("Statistics_2Var.ΣY");	19	0	emulator	statistics-2var
+ΣY	EXPR("Statistics_2Var.ΣY")	*error*		emulator	statistics-2var
+ΣY	EXPR("ΣY")	*error*		emulator	statistics-2var
+ΣY	LOCAL o, r; EXPR("Statistics_2Var.C1:={1,2,3,4}"); EXPR("Statistics_2Var.C2:={2,3,5,9}"); EXPR("Statistics_2Var.Do2VStats(Statistics_2Var.S1)"); o := EXPR("Statistics_2Var.ΣY"); IFERR EXPR("Statistics_2Var.ΣY:=99"); r := EXPR("Statistics_2Var.ΣY"); THEN r := "refused"; END; IFERR EXPR("Statistics_2Var.ΣY:=" + STRING(o)); THEN r := r; END; RETURN r;	"refused"	2	emulator	statistics-2var
+σY	EXPR("Statistics_2Var.C1:={1,2,3,4}"); EXPR("Statistics_2Var.C2:={2,3,5,9}"); EXPR("Statistics_2Var.Do2VStats(Statistics_2Var.S1)"); RETURN EXPR("Statistics_2Var.σY");	2.68095132369	0	emulator	?
+σY	EXPR("Statistics_2Var.σY")	*error*		emulator	?
+σY	EXPR("σY")	*error*		emulator	?
+σY	LOCAL o, r; EXPR("Statistics_2Var.C1:={1,2,3,4}"); EXPR("Statistics_2Var.C2:={2,3,5,9}"); EXPR("Statistics_2Var.Do2VStats(Statistics_2Var.S1)"); o := EXPR("Statistics_2Var.σY"); IFERR EXPR("Statistics_2Var.σY:=99"); r := EXPR("Statistics_2Var.σY"); THEN r := "refused"; END; IFERR EXPR("Statistics_2Var.σY:=" + STRING(o)); THEN r := r; END; RETURN r;	"refused"	2	emulator	?
+ΣY2	EXPR("Statistics_2Var.C1:={1,2,3,4}"); EXPR("Statistics_2Var.C2:={2,3,5,9}"); EXPR("Statistics_2Var.Do2VStats(Statistics_2Var.S1)"); RETURN EXPR("Statistics_2Var.ΣY2");	119	0	emulator	statistics-2var
+ΣY2	EXPR("Statistics_2Var.ΣY2")	*error*		emulator	statistics-2var
+ΣY2	EXPR("ΣY2")	*error*		emulator	statistics-2var
+ΣY2	LOCAL o, r; EXPR("Statistics_2Var.C1:={1,2,3,4}"); EXPR("Statistics_2Var.C2:={2,3,5,9}"); EXPR("Statistics_2Var.Do2VStats(Statistics_2Var.S1)"); o := EXPR("Statistics_2Var.ΣY2"); IFERR EXPR("Statistics_2Var.ΣY2:=99"); r := EXPR("Statistics_2Var.ΣY2"); THEN r := "refused"; END; IFERR EXPR("Statistics_2Var.ΣY2:=" + STRING(o)); THEN r := r; END; RETURN r;	"refused"	2	emulator	statistics-2var
+σ₁	EXPR("σ₁")	0.2887	0	emulator	inference
+σ₂	EXPR("σ₂")	0.2887	0	emulator	inference
+→HMS	→HMS(1.5)	1°30′00″	0	emulator	more
+ROOT	ROOT(F1,1)	2		G2	function
+SSS	SSS(3,4,5)	{36.8698976458,53.1301023542,90}		G2	triangle-solver
+SUM	SUM({1,2,3})	6		G2	spreadsheet
+Solve2×2	Solve2×2	*error*		G2	linear-solver

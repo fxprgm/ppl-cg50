@@ -290,6 +290,23 @@ int dec_log10(real *r, const real *a)
     return finish(r, &y);
 }
 
+/* log of x to base b, both with guard digits: LOG(8,2) is exactly 3 */
+int dec_logb(real *r, const real *a, const real *b)
+{
+    xn x, y, t;
+    int st;
+    if (a->k || b->k) return nan_result(r);
+    if (dec_is_zero(a) || a->s || dec_is_zero(b) || b->s) return DEC_EDOMAIN;
+    xn_from_real(&x, a); xn_from_real(&y, b);
+    st = x_ln(&t, &x, WP + 2);
+    if (st) return st;
+    st = x_ln(&y, &y, WP + 2);
+    if (st) return st;
+    if (!y.n) return DEC_EDIVZERO;
+    xn_div(&t, &t, &y, WP);
+    return finish(r, &t);
+}
+
 int dec_alog(real *r, const real *a)
 {
     xn x, y;

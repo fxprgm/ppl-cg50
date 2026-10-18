@@ -96,6 +96,7 @@ int dec_ln(real *r, const real *x);
 int dec_lnp1(real *r, const real *x);
 int dec_log10(real *r, const real *x);
 int dec_alog(real *r, const real *x);     /* 10^x */
+int dec_logb(real *r, const real *x, const real *b);
 int dec_pow(real *r, const real *x, const real *y);
 int dec_nthroot(real *r, const real *n, const real *x);  /* real n-th root */
 int dec_sin(real *r, const real *x, int ang);
