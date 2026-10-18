@@ -148,3 +148,164 @@ const builtin bi_cas_table[] = {
     { "powmod", b_powmod, 3, 3, 0 },
     { NULL, NULL, 0, 0, 0 }
 };
+
+/* ---- CAS-side names that programs call directly ---- */
+
+static BI(b_sqrtf)
+{
+    value two;
+    (void)argc;
+    v_int32(&two, 2);
+    if (a[0].t == T_REAL && a[0].u.r.s && !dec_is_zero(&a[0].u.r) && !V->set.complex_ok) return E_NONREAL;
+    return ar_binary(V, OP_NTHROOT, &two, &a[0], out);
+}
+
+static BI(b_true) { (void)V; (void)argc; (void)a; v_int32(out, 1); return 0; }
+static BI(b_false) { (void)V; (void)argc; (void)a; v_int32(out, 0); return 0; }
+
+static BI(b_member)
+{
+    uint32_t i;
+    (void)V; (void)argc;
+    if (a[1].t != T_LIST) return E_BADTYPE;
+    for (i = 0; i < a[1].u.l->n; i++) if (v_equal(&a[1].u.l->v[i], &a[0])) { v_int32(out, (int32_t)i + 1); return 0; }
+    v_int32(out, 0);
+    return 0;
+}
+
+static BI(b_approx) { (void)V; (void)argc; v_copy(out, &a[0]); return 0; }
+
+static BI(b_cat)
+{
+    int i, st;
+    value acc;
+    v_str_utf8(&acc, "", 0);
+    for (i = 0; i < argc; i++) {
+        value t;
+        st = ar_binary(V, OP_ADD, &acc, &a[i], &t);
+        v_decref(&acc);
+        if (st) return st;
+        acc = t;
+    }
+    *out = acc;
+    return 0;
+}
+
+static BI(b_rowcol)
+{
+    (void)argc;
+    return vm_index(V, &a[0], 1, &a[1], out);
+}
+
+static BI(b_col)
+{
+    int32_t j;
+    int i, st;
+    const pmat *m;
+    (void)V; (void)argc;
+    if (a[0].t != T_MAT || a[0].u.m->vec) return E_BADTYPE;
+    if (bi_int(&a[1], &j)) return E_BADVAL;
+    m = a[0].u.m;
+    if (j < 1 || j > m->cols) return E_INDEX;
+    if ((st = v_mat(out, 1, m->rows, 1))) return st;
+    for (i = 0; i < m->rows; i++) out->u.m->v[i] = m->v[i * m->cols + j - 1];
+    return 0;
+}
+
+static BI(b_idivis)
+{
+    int32_t n, d;
+    int st;
+    (void)V; (void)argc;
+    if (bi_int(&a[0], &n) || n < 1) return E_BADVAL;
+    if ((st = v_list(out, 0))) return st;
+    for (d = 1; d <= n / d; d++) {
+        if (n % d) continue;
+        { value v; v_int32(&v, d); list_push(out->u.l, &v); }
+    }
+    for (d = (int32_t)out->u.l->n - 1; d >= 0; d--) {
+        int32_t q;
+        value v;
+        to_int(&out->u.l->v[d], &q);
+        if (q * q == n) continue;
+        v_int32(&v, n / q);
+        list_push(out->u.l, &v);
+    }
+    return 0;
+}
+
+static BI(b_euler)
+{
+    int32_t n, r, p;
+    (void)V; (void)argc;
+    if (bi_int(&a[0], &n) || n < 1) return E_BADVAL;
+    r = n;
+    for (p = 2; p <= n / p; p++)
+        if (!(n % p)) { while (!(n % p)) n /= p; r -= r / p; }
+    if (n > 1) r -= r / n;
+    v_int32(out, r);
+    return 0;
+}
+
+/* ∫(expr, var, a, b): Gauss-Legendre (10 points) on 16 panels; the
+ * expression is a thunk */
+static BI(b_integral)
+{
+    static const char *xs[5] = { "0.1488743389816312108848260", "0.4333953941292471907992659",
+                                 "0.6794095682990244062343274", "0.8650633666889845107320967",
+                                 "0.9739065285171717200779640" };
+    static const char *ws[5] = { "0.2955242247147528701738930", "0.2692667193099963550912269",
+                                 "0.2190863625159820439955349", "0.1494513491505805931457763",
+                                 "0.0666713443086881375935688" };
+    real lo, hi, h, sum, half, two;
+    value saved;
+    int st = 0, k, i, sg;
+    (void)argc;
+    if (bi_real(&a[2], &lo) || bi_real(&a[3], &hi)) return E_BADTYPE;
+    vm_load_ref(V, &a[1], &saved);
+    dec_zero(&sum);
+    dec_from_int(&two, 2);
+    {
+        real n16; dec_from_int(&n16, 16);
+        dec_sub(&h, &hi, &lo); dec_div(&h, &h, &n16);
+    }
+    dec_div(&half, &h, &two);
+    for (k = 0; k < 16 && !st; k++) {
+        real mid, kk;
+        dec_from_int(&kk, k);
+        dec_mul(&mid, &kk, &h); dec_add(&mid, &mid, &lo); dec_add(&mid, &mid, &half);
+        for (i = 0; i < 5 && !st; i++)
+            for (sg = -1; sg <= 1 && !st; sg += 2) {
+                real x, w, t;
+                value xv, fv;
+                dec_from_str(&x, xs[i], NULL); dec_from_str(&w, ws[i], NULL);
+                if (sg < 0) dec_neg(&x, &x);
+                dec_mul(&x, &x, &half); dec_add(&x, &x, &mid);
+                v_real(&xv, &x);
+                if ((st = vm_store_ref(V, &a[1], &xv))) break;
+                if ((st = vm_run_thunk(V, &a[0], &fv))) break;
+                if ((st = bi_real(&fv, &t))) { v_decref(&fv); break; }
+                dec_mul(&t, &t, &w); dec_mul(&t, &t, &half);
+                dec_add(&sum, &sum, &t);
+            }
+    }
+    vm_store_ref(V, &a[1], &saved);
+    v_decref(&saved);
+    if (st) return st;
+    v_real(out, &sum);
+    return 0;
+}
+
+extern int bi_fnroot_impl(ppl_vm *V, int argc, value *a, value *out);
+
+const builtin bi_cas2_table[] = {
+    { "sqrt", b_sqrtf, 1, 1, 0 }, { "SQRT", b_sqrtf, 1, 1, 0 },
+    { "TRUE", b_true, 0, 0, BF_NOPAREN }, { "true", b_true, 0, 0, BF_NOPAREN },
+    { "FALSE", b_false, 0, 0, BF_NOPAREN }, { "false", b_false, 0, 0, BF_NOPAREN },
+    { "member", b_member, 2, 2, 0 }, { "approx", b_approx, 1, 1, 0 }, { "evalf", b_approx, 1, 2, 0 },
+    { "cat", b_cat, 1, -1, 0 }, { "row", b_rowcol, 2, 2, 0 }, { "col", b_col, 2, 2, 0 },
+    { "idivis", b_idivis, 1, 1, 0 }, { "euler", b_euler, 1, 1, 0 },
+    { "\xE2\x88\xAB", b_integral, 4, 4, BF_QUOTE1 | BF_QUOTE2 },     /* ∫ */
+    { "fsolve", bi_fnroot_impl, 3, 3, BF_QUOTE1 | BF_QUOTE2 },
+    { NULL, NULL, 0, 0, 0 }
+};

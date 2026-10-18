@@ -38,8 +38,12 @@ static void effective(ppl_vm *V)
     if (V->appset[3]) { V->set.format = V->appset[3] - 1; V->set.digits = V->appset[2]; }
 }
 
+static const char *PLOTVARS[] = { "Xmin", "Xmax", "Ymin", "Ymax", NULL };
+
 static int sysinfo_get(ppl_vm *V, const char *name, value *out)
 {
+    int i;
+    for (i = 0; PLOTVARS[i]; i++) if (!strcmp(PLOTVARS[i], name)) { v_real(out, &V->plot[i]); return 0; }
     int t[6] = { 2026, 1, 1, 0, 0, 0 };
     if (!strcmp(name, "Date") || !strcmp(name, "Time")) {
         real r, h;
@@ -87,6 +91,8 @@ int vm_setting_set(ppl_vm *V, const char *name, const value *v)
 {
     int i;
     int32_t n;
+    for (i = 0; PLOTVARS[i]; i++)
+        if (!strcmp(PLOTVARS[i], name)) { if (to_real(v, &V->plot[i])) return E_BADTYPE; return 0; }
     for (i = 0; SETS[i].name; i++)
         if (!strcmp(SETS[i].name, name)) {
             if (to_index(v, &n)) return E_BADTYPE;
@@ -125,6 +131,8 @@ void ppl_init(ppl_vm *V)
     V->set.language = 1;
     V->hset = V->set;
     V->appset[2] = 4;
+    dec_from_str(&V->plot[0], "-15.9", NULL); dec_from_str(&V->plot[1], "15.9", NULL);
+    dec_from_str(&V->plot[2], "-10.9", NULL); dec_from_str(&V->plot[3], "10.9", NULL);
     for (i = 0; i < SV_COUNT; i++) {
         if (i >= SV_L0 && i < SV_L0 + 10) v_list(&V->sysvars[i], 0);
         else if (i >= SV_M0 && i < SV_M0 + 10) v_mat(&V->sysvars[i], 1, 1, 0);
@@ -258,9 +266,10 @@ int ppl_load(ppl_vm *V, const char *name, const char *src, size_t n, char *msg, 
                     value r;
                     int e = 0;
                     extern int vm_run_func(ppl_vm *, pfunc *, int, const value *, value *);
+                    /* an error in an initialiser leaves the variable at 0 (the
+                     * program still loads; the error shows when it is used) */
                     e = vm_run_func(V, init, 0, NULL, &r);
                     if (!e) v_decref(&r);
-                    else { st = e; errline = V->errline; snprintf(m, sizeof m, "%s", ppl_errmsg(e)); }
                 }
                 V->progs = saved;
                 prog->next = NULL;

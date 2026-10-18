@@ -384,7 +384,8 @@ static BI(b_randint)
 {
     int32_t lo = 0, hi;
     uint32_t span;
-    if (argc == 1) { if (bi_int(&a[0], &hi)) return E_BADVAL; }
+    if (argc == 0) hi = 1;
+    else if (argc == 1) { if (bi_int(&a[0], &hi)) return E_BADVAL; }
     else if (bi_int(&a[0], &lo) || bi_int(&a[1], &hi)) return E_BADVAL;
     if (hi < lo) { int32_t t = hi; hi = lo; lo = t; }
     span = (uint32_t)(hi - lo) + 1u;
@@ -462,7 +463,7 @@ const builtin bi_math_table[] = {
     { "%", b_percent, 2, 2, 0 }, { "%CHANGE", b_pctchange, 2, 2, 0 }, { "%TOTAL", b_pcttotal, 2, 2, 0 },
     { "COMB", b_comb, 2, 2, 0 }, { "PERM", b_perm, 2, 2, 0 },
     { "Gamma", b_gamma, 1, 1, 0 },
-    { "RANDOM", b_random, 0, 2, BF_NOPAREN }, { "RANDINT", b_randint, 1, 2, 0 },
+    { "RANDOM", b_random, 0, 2, BF_NOPAREN }, { "RANDINT", b_randint, 0, 2, BF_NOPAREN },
     { "RANDSEED", b_randseed, 0, 1, 0 }, { "RANDNORM", b_randnorm, 0, 2, 0 },
     { "PI", b_pi, 0, 0, BF_NOPAREN }, { "MAXREAL", b_maxreal, 0, 0, BF_NOPAREN },
     { "MINREAL", b_minreal, 0, 0, BF_NOPAREN },

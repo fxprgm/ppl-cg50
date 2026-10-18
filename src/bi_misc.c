@@ -120,7 +120,8 @@ static BI(b_setbase)
 {
     int32_t b;
     (void)argc;
-    if (bi_int(&a[1], &b) || b < 0 || b > 4) return E_BADVAL;
+    if (argc < 2) b = 0;
+    else if (bi_int(&a[1], &b) || b < 0 || b > 4) return E_BADVAL;
     if (a[0].t == T_INT) { *out = a[0]; out->ib = (uint8_t)b; return 0; }
     {
         int st = b_rtob(V, 1, a, out);
@@ -247,7 +248,8 @@ static BI(b_version)
 static BI(b_cas) { (void)V; (void)argc; (void)a; (void)out; return E_UNSUPPORTED; }
 
 /* FNROOT(expr, var, guess): secant method on the expression */
-static BI(b_fnroot)
+int bi_fnroot_impl(ppl_vm *V, int argc, value *a, value *out);
+int bi_fnroot_impl(ppl_vm *V, int argc, value *a, value *out)
 {
     value x0v, x1v, f0v, f1v, saved;
     real x0, x1, f0, f1, t, d;
@@ -378,6 +380,18 @@ static BI(b_dayofweek)
  * computing programs run unchanged. */
 static BI(b_draw1) { (void)V; (void)argc; (void)a; v_int32(out, 1); return 0; }
 
+static BI(b_draw0) { (void)V; (void)argc; (void)a; v_int32(out, 0); return 0; }
+static BI(b_getpix) { (void)V; (void)argc; (void)a; set_int(out, 0, B_DEFAULT, 0); return 0; }
+static BI(b_lengthf)
+{
+    (void)V; (void)argc;
+    if (a[0].t == T_LIST) { v_int32(out, (int32_t)a[0].u.l->n); return 0; }
+    if (a[0].t == T_STR) { v_int32(out, (int32_t)a[0].u.s->len); return 0; }
+    if (a[0].t == T_MAT) { v_int32(out, a[0].u.m->vec ? a[0].u.m->cols : a[0].u.m->rows); return 0; }
+    v_int32(out, 1);
+    return 0;
+}
+
 static BI(b_rgb)
 {
     int32_t r, g, b, al = 0;
@@ -448,6 +462,25 @@ static BI(b_dirac)
     return 0;
 }
 
+/* units (2_m, 1_(ft/s)) are parsed but not supported yet */
+static BI(b_deg)
+{
+    real x, r = {{0, 0, 0}, 0, 0, 0};
+    (void)argc;
+    if (bi_real(&a[0], &x)) return E_BADTYPE;
+    if (V->set.angle == ANG_DEG) { v_real(out, &x); return 0; }
+    if (V->set.angle == ANG_RAD) return bi_fin(out, &r, dec_angle_to_rad(&r, &x, ANG_DEG));
+    {   /* gradians: x * 10 / 9 */
+        real k;
+        dec_from_int(&k, 10); dec_mul(&x, &x, &k);
+        dec_from_int(&k, 9);
+        dec_zero(&r);
+        return bi_fin(out, &r, dec_div(&r, &x, &k));
+    }
+}
+
+static BI(b_unit) { (void)V; (void)argc; (void)a; (void)out; return E_UNSUPPORTED; }
+
 static BI(b_mouse)
 {
     value l;
@@ -463,7 +496,7 @@ const builtin bi_misc_table[] = {
     { "BITAND", b_bitand, 2, -1, 0 }, { "BITOR", b_bitor, 2, -1, 0 }, { "BITXOR", b_bitxor, 2, -1, 0 },
     { "BITNOT", b_bitnot, 1, 1, 0 }, { "BITSL", b_bitsl, 1, 2, 0 }, { "BITSR", b_bitsr, 1, 2, 0 },
     { "R\xE2\x86\x92" "B", b_rtob, 1, 1, 0 }, { "B\xE2\x86\x92R", b_btor, 1, 1, 0 },
-    { "SETBASE", b_setbase, 2, 2, 0 }, { "GETBASE", b_getbase, 1, 1, 0 },
+    { "SETBASE", b_setbase, 1, 2, 0 }, { "GETBASE", b_getbase, 1, 1, 0 },
     { "SETBITS", b_setbits, 1, 2, 0 }, { "GETBITS", b_getbits, 1, 1, 0 },
     { "TYPE", b_type, 1, 1, 0 }, { "TICKS", b_ticks, 0, 0, BF_NOPAREN },
     { "WAIT", b_wait, 0, 1, 0 }, { "GETKEY", b_getkey, 0, 0, BF_NOPAREN },
@@ -475,11 +508,11 @@ const builtin bi_misc_table[] = {
     { "IFTE", b_ifte, 3, 3, 0 }, { "PIECEWISE", b_piecewise, 1, -1, 0 },
     { "EVAL", b_eval, 1, 1, 0 }, { "VERSION", b_version, 0, 0, BF_NOPAREN },
     { "CAS", b_cas, 1, -1, 0 },
-    { "FNROOT", b_fnroot, 3, 3, BF_QUOTE1 | BF_QUOTE2 },
+    { "FNROOT", bi_fnroot_impl, 3, 3, BF_QUOTE1 | BF_QUOTE2 },
     { "DDAYS", b_ddays, 2, 2, 0 }, { "DATEADD", b_dateadd, 2, 2, 0 }, { "DAYOFWEEK", b_dayofweek, 1, 1, 0 },
     { "RGB", b_rgb, 3, 4, 0 },
     { "C\xE2\x86\x92PX", b_ctopx, 0, 2, 0 }, { "PX\xE2\x86\x92" "C", b_pxtoc, 0, 2, 0 },
-    { "Heaviside", b_heaviside, 1, 1, 0 }, { "Dirac", b_dirac, 1, 1, 0 }, { "MOUSE", b_mouse, 0, 1, BF_NOPAREN },
+    { "_UNIT", b_unit, 2, 2, 0 }, { "_DEG", b_deg, 1, 1, 0 }, { "Heaviside", b_heaviside, 1, 1, 0 }, { "Dirac", b_dirac, 1, 1, 0 }, { "MOUSE", b_mouse, 0, 1, BF_NOPAREN },
     { "FREEZE", b_draw1, 0, 0, BF_NOPAREN }, { "DRAWMENU", b_draw1, 0, -1, 0 },
     { "RECT", b_draw1, 0, -1, 0 }, { "RECT_P", b_draw1, 0, -1, 0 },
     { "LINE", b_draw1, 0, -1, 0 }, { "LINE_P", b_draw1, 0, -1, 0 },
@@ -492,5 +525,11 @@ const builtin bi_misc_table[] = {
     { "FILLPOLY", b_draw1, 0, -1, 0 }, { "FILLPOLY_P", b_draw1, 0, -1, 0 },
     { "TRIANGLE", b_draw1, 0, -1, 0 }, { "TRIANGLE_P", b_draw1, 0, -1, 0 },
     { "INVERT", b_draw1, 0, -1, 0 }, { "INVERT_P", b_draw1, 0, -1, 0 },
+    { "GETPIX", b_getpix, 0, -1, 0 }, { "GETPIX_P", b_getpix, 0, -1, 0 },
+    { "GROBW", b_draw0, 0, -1, 0 }, { "GROBW_P", b_draw0, 0, -1, 0 },
+    { "GROBH", b_draw0, 0, -1, 0 }, { "GROBH_P", b_draw0, 0, -1, 0 },
+    { "SUBGROB", b_draw1, 0, -1, 0 }, { "SUBGROB_P", b_draw1, 0, -1, 0 },
+    { "CHECK", b_draw0, 0, -1, 0 }, { "UNCHECK", b_draw0, 0, -1, 0 },
+    { "when", b_ifte, 3, 3, 0 }, { "length", b_lengthf, 1, 1, 0 },
     { NULL, NULL, 0, 0, 0 }
 };

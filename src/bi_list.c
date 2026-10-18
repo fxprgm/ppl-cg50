@@ -261,7 +261,22 @@ static int setop(const value *x, const value *y, value *out, int kind)
 
 BI(b_union) { (void)V; (void)argc; return setop(&a[0], &a[1], out, 0); }
 BI(b_intersect) { (void)V; (void)argc; return setop(&a[0], &a[1], out, 1); }
-BI(b_difference) { (void)V; (void)argc; return setop(&a[0], &a[1], out, 2); }
+BI(b_difference)
+{
+    int i, st;
+    value acc;
+    (void)V;
+    if ((st = setop(&a[0], &a[1], &acc, 2))) return st;
+    for (i = 2; i < argc; i++) {   /* more lists: fold */
+        value t;
+        st = setop(&acc, &a[i], &t, 2);
+        v_decref(&acc);
+        if (st) return st;
+        acc = t;
+    }
+    *out = acc;
+    return 0;
+}
 
 BI(b_eq) { (void)V; (void)argc; v_int32(out, v_equal(&a[0], &a[1])); return 0; }
 

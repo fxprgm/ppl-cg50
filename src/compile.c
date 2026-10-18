@@ -328,6 +328,17 @@ static void cexpr(comp *C, node *n)
         break;
     }
     case N_NAME: cname(C, n); break;
+    case N_SYM: {
+        value v, t;
+        psym *y = (psym *)malloc(sizeof(psym));
+        v_str_utf8(&t, n->name ? n->name : "", n->nlen);
+        if (!y) { cerr(C, n->line, "out of memory"); break; }
+        y->h.rc = 1; y->text = t.u.s;
+        v_none(&v); v.t = T_SYM; v.u.y = y;
+        emit(C, BC_CONST); emit16(C, add_const(C, &v));
+        v_decref(&v);
+        break;
+    }
     case N_CALL: ccall(C, n); break;
     case N_LIST:
         for (i = 0; i < n->nkids; i++) cexpr(C, n->kids[i]);
@@ -537,12 +548,14 @@ static void cstmt(comp *C, node *n)
         break;
     }
     case N_BREAK: case N_CONTINUE: {
-        int levels = n->type == N_BREAK ? n->op : 1, k;
+        int levels = n->op ? n->op : 1, k;
         loopctx *L;
-        if (levels > C->nloops) {
-            if (!C->nloops) { cerr(C, n->line, "BREAK outside a loop"); break; }
-            levels = C->nloops;
+        if (!C->nloops) {
+            /* outside any loop: leaves the function (programs use it to quit) */
+            emit(C, BC_RETLAST);
+            break;
         }
+        if (levels > C->nloops) levels = C->nloops;
         L = &C->loops[C->nloops - levels];
         for (k = C->try_depth; k > L->try_depth; k--) emit(C, BC_ENDTRY);
         if (n->type == N_BREAK) { if (L->nbrk < 64) L->brk[L->nbrk++] = emit_jump(C, BC_JMP); }

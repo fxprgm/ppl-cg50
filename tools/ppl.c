@@ -157,6 +157,32 @@ static int cmd_run(int argc, char **argv)
     return rc;
 }
 
+/* ppl names FILE...: the names each program leaves to run-time lookup
+ * (not local, not its own, not a system variable, not a built-in) */
+static int cmd_names(int argc, char **argv)
+{
+    int i, j, k;
+    for (i = 0; i < argc; i++) {
+        ppl_vm *V = (ppl_vm *)malloc(sizeof(ppl_vm));
+        size_t n;
+        char *src = read_file(argv[i], &n), name[64], msg[160];
+        if (!src) continue;
+        setup(V);
+        if (!ppl_load(V, base_name(argv[i], name, sizeof name), src, n, msg, sizeof msg)) {
+            pprog *p = V->progs;
+            for (j = 0; j < p->nf; j++)
+                for (k = 0; k < p->f[j]->nnames; k++) {
+                    const char *nm = p->f[j]->names[k];
+                    if (!vm_find_func(V, nm, 0)) printf("%s\t%s\n", name, nm);
+                }
+        }
+        free(src);
+        ppl_free(V);
+        free(V);
+    }
+    return 0;
+}
+
 static int cmd_eval(int argc, char **argv)
 {
     ppl_vm *V = (ppl_vm *)malloc(sizeof(ppl_vm));
@@ -351,6 +377,7 @@ int main(int argc, char **argv)
     if (!strcmp(args[0], "run")) return cmd_run(k - 1, args + 1);
     if (!strcmp(args[0], "eval")) return cmd_eval(k - 1, args + 1);
     if (!strcmp(args[0], "conform")) return cmd_conform(k - 1, args + 1);
+    if (!strcmp(args[0], "names")) return cmd_names(k - 1, args + 1);
     fprintf(stderr, "unknown command %s\n", args[0]);
     return 2;
 }

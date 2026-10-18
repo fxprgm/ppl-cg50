@@ -98,7 +98,7 @@ static int is_opglyph(uint32_t c)
     switch (c) {
     case 0x2212: case 0x2260: case 0x2264: case 0x2265: case 0x25B6: case 0x25BA:
     case 0x221A: case 0x00B2: case 0x00B3: case 0x00D7: case 0x00F7: case 0x22C5:
-    case 0x207B: case 0x00B9: case 0x00A0: case 0x2192: case 0x1D07: case 0x2148:
+    case 0x207B: case 0x00B9: case 0x00A0: case 0x2192: case 0x1D07: case 0x2148: case 0x00B0:
     case 0xE003: case 0x00B7: case 0x2009: case 0x200A: case 0x202F:
         return 1;
     default: return 0;
@@ -124,8 +124,7 @@ static const struct { const char *s; int kw; } KWS[] = {
     {"CONTINUE", KW_CONTINUE}, {"RETURN", KW_RETURN}, {"IFERR", KW_IFERR},
     {"AND", KW_AND}, {"OR", KW_OR}, {"NOT", KW_NOT}, {"XOR", KW_XOR},
     {"MOD", KW_MOD}, {"NTHROOT", KW_NTHROOT}, {"KILL", KW_KILL},
-    {"and", KW_AND}, {"or", KW_OR}, {"not", KW_NOT}, {"xor", KW_XOR}, {"mod", KW_MOD},
-    {"VIEW", KW_VIEW}, {"KEY", KW_KEY},
+    {"VIEW", KW_VIEW}, {"KEY", KW_KEY}, {"CONST", KW_CONST}, {"ICON", KW_ICON},
     {NULL, 0}
 };
 
@@ -248,6 +247,16 @@ again:
         P->p = q;
         t->kind = TK_NUM;
         dec_from_str(&t->num, buf, NULL);
+        if (q + 1 < P->end && *q == '_' && (q[1] == '(' || is_idstart((unsigned char)q[1]))) {
+            /* a unit: 1_inch, 1_(ft/s) */
+            const char *u = q + 1;
+            if (*u == '(') { int depth = 0; do { if (*u == '(') depth++; else if (*u == ')') depth--; u++; } while (u < P->end && depth > 0); }
+            else while (u < P->end && (is_idchar((unsigned char)*u) || (unsigned char)*u >= 0x80)) u++;
+            t->kind = TK_UNIT;
+            t->str = pa_strdup(P, q + 1, (size_t)(u - q - 1));
+            t->slen = (size_t)(u - q - 1);
+            P->p = u;
+        }
         t->len = (int)(P->p - t->s);
         return;
     }
@@ -262,6 +271,17 @@ again:
         if (!strcmp(w, "python")) { skip_line_until(P, "#END"); goto again; }
         P->p++;
         if (lex_int(P, t)) { t->kind = TK_OP; t->op = 0; perr(P, "bad integer literal"); }
+        t->len = (int)(P->p - t->s);
+        return;
+    }
+    if (c == '\'') {
+        /* a quoted expression: 'X^2-4' (a symbolic value) */
+        const char *q = P->p + 1;
+        while (q < P->end && *q != '\'') { if (*q == '\n') P->line++; q++; }
+        t->kind = TK_SYM;
+        t->str = pa_strdup(P, P->p + 1, (size_t)(q - P->p - 1));
+        t->slen = (size_t)(q - P->p - 1);
+        P->p = q < P->end ? q + 1 : q;
         t->len = (int)(P->p - t->s);
         return;
     }
@@ -317,7 +337,18 @@ again:
         t->str = pa_strdup(P, P->p, (size_t)(q - P->p));
         t->slen = (size_t)(q - P->p);
         P->p = q;
-        for (i = 0; KWS[i].s; i++) if (!strcmp(KWS[i].s, t->str)) { t->kind = TK_KW; t->op = KWS[i].kw; break; }
+        /* keywords are case-insensitive (programs write local, begin...) */
+        if (t->slen <= 8) {
+            char up[9];
+            size_t k;
+            for (k = 0; k < t->slen; k++) { char c = t->str[k]; up[k] = (c >= 'a' && c <= 'z') ? (char)(c - 32) : c; }
+            up[t->slen] = 0;
+            for (i = 0; KWS[i].s; i++) if (!strcmp(KWS[i].s, up)) { t->kind = TK_KW; t->op = KWS[i].kw; break; }
+            /* the declaration words KEY and ICON only in capitals:
+             * programs use `key` as a variable */
+            if (t->kind == TK_KW && (t->op == KW_KEY || t->op == KW_ICON) && strcmp(up, t->str))
+                t->kind = TK_ID;
+        }
         t->len = (int)(P->p - t->s);
         return;
     }
@@ -354,6 +385,7 @@ operators:
         case 0x25B6: case 0x25BA: case 0x2192: t->op = P_STORE; P->p += len; break;
         case 0x221A: t->op = P_SQRT; P->p += len; break;
         case 0x00B2: t->op = P_SQ; P->p += len; break;
+        case 0x00B0: t->op = P_DEG; P->p += len; break;
         case 0x00B3: t->op = P_CUBE; P->p += len; break;
         case 0x00D7: case 0x22C5: case 0x00B7: t->op = P_MUL; P->p += len; break;
         case 0x00F7: t->op = P_DIV; P->p += len; break;
@@ -457,6 +489,19 @@ static node *primary(parser *P)
         n = mk(P, N_NUM); v_real(&n->lit, &t.num); next(P); return n;
     case TK_INT:
         n = mk(P, N_NUM); n->lit = t.iv; next(P); return n;
+    case TK_UNIT: {
+        node *num = mk(P, N_NUM), *u = mk(P, N_STR);
+        v_real(&num->lit, &t.num);
+        u->name = t.str; u->nlen = t.slen;
+        n = mk(P, N_CALL);
+        n->name = (char *)"_UNIT";
+        n->kids = (node **)pa_alloc(P, 2 * sizeof(node *));
+        n->kids[0] = num; n->kids[1] = u; n->nkids = 2;
+        next(P);
+        return n;
+    }
+    case TK_SYM:
+        n = mk(P, N_SYM); n->name = t.str; n->nlen = t.slen; next(P); return n;
     case TK_STR:
         n = mk(P, N_STR); n->name = t.str; n->nlen = t.slen; next(P); return n;
     case TK_ID:
@@ -467,6 +512,19 @@ static node *primary(parser *P)
             next(P);
             args(P, n);
             if (is_op(P, P_LPAR)) perr(P, "a call's result cannot be indexed");
+            return n;
+        }
+        if (is_op(P, P_LBRACK)) {
+            /* L[i], M[i,j], M[i][j]: indexing with brackets */
+            nvec v = {0, 0, 0};
+            n = mk(P, N_CALL);
+            n->name = t.str; n->line = t.line;
+            while (is_op(P, P_LBRACK) && !P->err) {
+                next(P);
+                do nv_push(P, &v, expr(P)); while (accept_op(P, P_COMMA) && !P->err);
+                expect_op(P, P_RBRACK, "']'");
+            }
+            n->kids = v.v; n->nkids = v.n;
             return n;
         }
         n = mk(P, N_NAME); n->name = t.str; n->line = t.line;
@@ -548,6 +606,16 @@ static node *level2(parser *P)
         n = s;
     } else n = primary(P);
     for (;;) {
+        if (is_op(P, P_DEG)) {
+            /* 180°: an angle in degrees, converted to the current measure */
+            node *c = mk(P, N_CALL);
+            c->name = (char *)"_DEG";
+            c->kids = (node **)pa_alloc(P, sizeof(node *));
+            c->kids[0] = n; c->nkids = 1;
+            next(P);
+            n = c;
+            continue;
+        }
         if (is_op(P, P_BANG) || is_op(P, P_SQ) || is_op(P, P_CUBE) || is_op(P, P_INV)) {
             node *p = mk(P, N_POST);
             p->op = (uint8_t)P->tok.op;
@@ -753,7 +821,7 @@ static node *local_decl(parser *P)
         d = mk(P, N_NAME);
         d->name = P->tok.str;
         next(P);
-        if (accept_op(P, P_ASSIGN)) d->a = expr(P);
+        if (accept_op(P, P_ASSIGN) || accept_op(P, P_EQ1)) d->a = expr(P);
         nv_push(P, &v, d);
     } while (accept_op(P, P_COMMA) && !P->err);
     n->kids = v.v; n->nkids = v.n;
@@ -866,6 +934,12 @@ static node *statement(parser *P)
         case KW_CONTINUE:
             n = mk(P, N_CONTINUE);
             next(P);
+            n->op = 1;
+            if (P->tok.kind == TK_NUM) {
+                int32_t k;
+                if (!dec_to_int32(&P->tok.num, &k) && k >= 1 && k < 100) n->op = (uint8_t)k;
+                next(P);
+            }
             return n;
         case KW_RETURN:
             n = mk(P, N_RETURN);
@@ -924,19 +998,21 @@ static topdecl *new_decl(parser *P)
 
 static void top_function(parser *P, char *name, int exported, int line)
 {
-    /* after the name, at '(' */
+    /* after the name, at '(' or (a heading without parentheses) BEGIN */
     char *params[64];
     int np = 0, i;
     topdecl *d;
-    next(P);   /* ( */
-    if (!is_op(P, P_RPAR)) {
-        do {
-            if (P->tok.kind != TK_ID) { perr(P, "expected a parameter name"); return; }
-            if (np < 64) params[np++] = P->tok.str;
-            next(P);
-        } while (accept_op(P, P_COMMA));
+    if (is_op(P, P_LPAR)) {
+        next(P);
+        if (!is_op(P, P_RPAR)) {
+            do {
+                if (P->tok.kind != TK_ID) { perr(P, "expected a parameter name"); return; }
+                if (np < 64) params[np++] = P->tok.str;
+                next(P);
+            } while (accept_op(P, P_COMMA));
+        }
+        expect_op(P, P_RPAR, "')'");
     }
-    expect_op(P, P_RPAR, "')'");
     if (P->err) return;
     d = new_decl(P);
     if (!d) return;
@@ -959,7 +1035,7 @@ static void top_vars(parser *P, char *first, int exported, int line)
         topdecl *d = new_decl(P);
         if (!d) return;
         d->kind = 2; d->name = name; d->exported = exported; d->line = line;
-        if (accept_op(P, P_ASSIGN)) d->body = expr(P);
+        if (accept_op(P, P_ASSIGN) || accept_op(P, P_EQ1)) d->body = expr(P);
         if (!accept_op(P, P_COMMA)) break;
         if (P->tok.kind != TK_ID) { perr(P, "expected a name"); return; }
         name = P->tok.str;
@@ -975,18 +1051,26 @@ int parse_program(parser *P)
         int exported = 0, line = P->tok.line;
         char *name;
         if (accept_op(P, P_SEMI)) continue;
+        if (accept_kw(P, KW_END)) continue;          /* a stray END; is accepted */
+        if (accept_kw(P, KW_ICON)) {
+            /* ICON name data: an app icon, skipped to the end of the line */
+            while (P->p < P->end && *P->p != '\n') P->p++;
+            P->has_peek = 0;
+            next(P);
+            continue;
+        }
         if (accept_kw(P, KW_VIEW)) {
-            /* VIEW "title", function heading: the menu entry is ignored */
+            /* VIEW "title"[,] function heading: the menu entry is ignored */
             if (P->tok.kind == TK_STR) next(P);
             accept_op(P, P_COMMA);
         }
         if (accept_kw(P, KW_EXPORT)) exported = 1;
-        else if (accept_kw(P, KW_LOCAL)) exported = 0;
+        else if (accept_kw(P, KW_LOCAL) || accept_kw(P, KW_CONST)) exported = 0;
         else if (accept_kw(P, KW_KEY)) exported = 0;
         if (P->tok.kind != TK_ID) { perr(P, "expected a declaration"); break; }
         name = P->tok.str;
         next(P);
-        if (is_op(P, P_LPAR)) top_function(P, name, exported, line);
+        if (is_op(P, P_LPAR) || is_kw(P, KW_BEGIN)) top_function(P, name, exported, line);
         else top_vars(P, name, exported, line);
     }
     return P->err;

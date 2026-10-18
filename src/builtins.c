@@ -8,6 +8,7 @@
 extern const builtin bi_math_table[];
 extern const builtin bi_misc_table[];
 extern const builtin bi_cas_table[];
+extern const builtin bi_cas2_table[];
 
 static const builtin bi_core_table[] = {
     /* lists */
@@ -21,7 +22,7 @@ static const builtin bi_core_table[] = {
     { "\xCE\xA0LIST", b_pilist, 1, 1, 0 },         /* ΠLIST */
     { "\xCF\x80LIST", b_pilist, 1, 1, 0 },         /* πLIST */
     { "\xCE\x94LIST", b_deltalist, 1, 1, 0 },      /* ΔLIST */
-    { "DIFFERENCE", b_difference, 2, 2, 0 }, { "INTERSECT", b_intersect, 2, 2, 0 },
+    { "DIFFERENCE", b_difference, 2, -1, 0 }, { "INTERSECT", b_intersect, 2, 2, 0 },
     { "UNION", b_union, 2, 2, 0 }, { "EQ", b_eq, 2, 2, 0 },
     { "MAKELIST", b_makelist, 2, 5, BF_QUOTE1 | BF_QUOTE2 },
     { "\xCE\xA3", b_sigma, 4, 4, BF_QUOTE1 | BF_QUOTE2 },          /* Σ */
@@ -97,6 +98,7 @@ static void init_table(void)
     add_table(bi_misc_table);
     add_table(bi_core_table);
     add_table(bi_cas_table);
+    add_table(bi_cas2_table);
 }
 
 const builtin *bi_lookup(const char *name)

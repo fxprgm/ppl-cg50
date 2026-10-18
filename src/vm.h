@@ -136,6 +136,7 @@ typedef struct ppl_vm {
     ppl_settings set;                  /* effective settings (read these) */
     ppl_settings hset;                 /* Home settings, as HAngle... set them */
     int appset[4];                     /* current app's AAngle AComplex ADigits AFormat */
+    real plot[4];                      /* Function app window: Xmin Xmax Ymin Ymax */
     value sysvars[80];                 /* A-Z, L0-L9, M0-M9, Z0-Z9, Ans... */
     pprog *progs;
     hvar *hvars;

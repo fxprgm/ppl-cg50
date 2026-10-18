@@ -6,7 +6,7 @@
 
 /* ---- tokens ---- */
 enum {
-    TK_EOF = 0, TK_NUM, TK_INT, TK_STR, TK_ID, TK_KW, TK_OP
+    TK_EOF = 0, TK_NUM, TK_INT, TK_STR, TK_ID, TK_KW, TK_OP, TK_UNIT, TK_SYM
 };
 
 /* keywords */
@@ -15,7 +15,7 @@ enum {
     KW_CASE, KW_DEFAULT, KW_FOR, KW_FROM, KW_TO, KW_DOWNTO, KW_STEP, KW_DO,
     KW_WHILE, KW_REPEAT, KW_UNTIL, KW_BREAK, KW_CONTINUE, KW_RETURN,
     KW_IFERR, KW_AND, KW_OR, KW_NOT, KW_XOR, KW_MOD, KW_NTHROOT, KW_KILL,
-    KW_VIEW, KW_KEY
+    KW_VIEW, KW_KEY, KW_CONST, KW_ICON
 };
 
 /* operator tokens (TK_OP, tok.op) */
@@ -23,7 +23,7 @@ enum {
     P_ASSIGN = 1, P_STORE, P_EQ, P_EQ1, P_NE, P_LT, P_LE, P_GT, P_GE,
     P_PLUS, P_MINUS, P_MUL, P_DIV, P_POW, P_LPAR, P_RPAR, P_LBRACE,
     P_RBRACE, P_LBRACK, P_RBRACK, P_COMMA, P_SEMI, P_BANG, P_SQ, P_CUBE,
-    P_SQRT, P_PI, P_COLON, P_INV, P_PIPE, P_AMP
+    P_SQRT, P_PI, P_COLON, P_INV, P_PIPE, P_AMP, P_DEG
 };
 
 typedef struct token {
@@ -39,7 +39,7 @@ enum {
     N_NUM, N_LIT, N_STR, N_NAME, N_CALL, N_LIST, N_VEC, N_MAT, N_CPLX,
     N_NEG, N_NOT, N_BIN, N_CHAIN, N_POST, N_SQRT, N_ASSIGN,
     N_BLOCK, N_IF, N_CASE, N_FOR, N_WHILE, N_REPEAT, N_IFERR, N_BREAK,
-    N_CONTINUE, N_RETURN, N_LOCAL, N_KILL, N_EXPR, N_NOP
+    N_CONTINUE, N_RETURN, N_LOCAL, N_KILL, N_EXPR, N_NOP, N_SYM
 };
 
 typedef struct node {
