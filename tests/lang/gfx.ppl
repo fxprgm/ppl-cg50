@@ -79,3 +79,12 @@ END;
 // commands answer 1
 //> DIMGROB_P(G1,20,20,0);RECT_P(G1,0,0,4,4,RGB(0,255,0)) => 1
 //> FREEZE => 1
+// RGB truncates reals and refuses values outside 0..255
+//> RGB(127.5,0.7,255.9) => #7F00FFh
+//> RGB(300,-5,256) => *error*
+// a colour may be {colour, alpha}
+//> DIMGROB_P(G2,3,3,#FFFFFFh);RECT_P(G2,0,0,2,2,0,{#0h,80});{GETPIX_P(G2,0,0),GETPIX_P(G2,1,1)} => {#0h,#4F4F4Fh}
+//> DIMGROB_P(G2,3,3,#FFFFFFh);PIXON_P(G2,1,1,{#FF0000h,128});GETPIX_P(G2,1,1) => #FE7F7Fh
+// DIMGROB_P from pixel data: 4 x A1R5G5B5 per integer, lowest first
+//> DIMGROB_P(G2,4,1,{#7C00001F03E07FFF:64h});{GETPIX_P(G2,0,0),GETPIX_P(G2,1,0),GETPIX_P(G2,2,0),GETPIX_P(G2,3,0)} => {#FFFFFFh,#FF00h,#FFh,#FF0000h}
+//> DIMGROB_P(G2,3,1,{#C2104210:64h});{GETPIX_P(G2,0,0),GETPIX_P(G2,1,0),GETPIX_P(G2,2,0)} => {#848484h,#FFFFFFh,#0h}

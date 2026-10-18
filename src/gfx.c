@@ -318,6 +318,70 @@ void gfx_arc(grob *g, int cx, int cy, int r, const int32_t *s, const int32_t *e,
     }
 }
 
+/* An ellipse (ARC_P with a radius list {rx, ry}).  The Prime draws these as
+ * polygons; this approximates them row by row: half-width
+ * round(rx * sqrt(1 - ((|dy| + 0.6) / ry)^2)), the outline covering on each
+ * row the widths up to the next row out.  s/e (y up, 2^14) limit it to a
+ * sector, drawn with its two radii; fill: the inside too. */
+static int ell_w(int rx, int ry, int dy)
+{
+    /* largest k with (2k-1)^2 * 100 ry^2 <= 4 rx^2 (100 ry^2 - (10|dy|+6)^2) */
+    int64_t D, N, t = 10 * (int64_t)(dy < 0 ? -dy : dy) + 6;
+    int k;
+    if ((dy < 0 ? -dy : dy) >= ry) return 0;
+    D = 100 * (int64_t)ry * ry;
+    N = 4 * (int64_t)rx * rx * (D - t * t);
+    if (N <= 0) return 0;
+    k = rx;
+    while (k > 0 && (int64_t)(2 * k - 1) * (2 * k - 1) * D > N) k--;
+    return k;
+}
+
+void gfx_ellipse(grob *g, int cx, int cy, int rx, int ry, const int32_t *s, const int32_t *e,
+                 const int *p1, const int *p2, uint32_t edge, int filled, uint32_t fill)
+{
+    arcf f;
+    int dy, x;
+    if (rx < 0) rx = -rx;
+    if (ry < 0) ry = -ry;
+    if (rx > 16384) rx = 16384;
+    if (ry > 16384) ry = 16384;
+    f.full = s == NULL;
+    if (s) { f.sx = s[0]; f.sy = s[1]; f.ex = e[0]; f.ey = e[1]; f.big = s[2]; }
+    for (dy = -ry; dy <= ry; dy++) {
+        int w = ell_w(rx, ry, dy), wo, ady = dy < 0 ? -dy : dy;
+        if (cy + dy < 0 || cy + dy >= g->h) continue;
+        wo = ady < ry ? ell_w(rx, ry, ady + 1) + 1 : 0;
+        if (wo > w) wo = w;
+        if (filled)
+            for (x = -w + 1; x < w; x++) if (in_arc(&f, x, -dy)) put(g, cx + x, cy + dy, fill);
+        for (x = wo; x <= w; x++) {
+            if (in_arc(&f, x, -dy)) put(g, cx + x, cy + dy, edge);
+            if (x && in_arc(&f, -x, -dy)) put(g, cx - x, cy + dy, edge);
+        }
+    }
+    if (s) {
+        gfx_line(g, cx, cy, p1[0], p1[1], edge);
+        gfx_line(g, cx, cy, p2[0], p2[1], edge);
+    }
+}
+
+/* the inside of the circle of radius r (rows between its pixels) */
+void gfx_disc(grob *g, int cx, int cy, int r, uint32_t c)
+{
+    int x, y;
+    if (r < 0) r = -r;
+    if (r > 16384) r = 16384;
+    for (y = -r + 1; y < r; y++) {
+        int32_t ay = y < 0 ? -y : y;
+        /* the circle's x on this row, then the pixels strictly inside it */
+        x = 0;
+        while ((int32_t)(x + 1) * (x + 1) + ay * ay < (int32_t)r * r) x++;
+        if (x > 0) hspan(g, cx - x + 1, cx + x - 1, cy + y, c);
+        else if (ay < r) put(g, cx, cy + y, c);
+    }
+}
+
 /* a filled sector (ARC_P with {edge, fill} colours).  Unlike the outline,
  * the Prime measures these angles clockwise on the screen (y down): from a1
  * to a2 is the math sector from -a2 to -a1.  s, e: the directions of -a2 and

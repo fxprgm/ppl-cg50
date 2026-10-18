@@ -53,7 +53,9 @@ static int num_i(const value *v, int *out)
     return 0;
 }
 
-/* a colour: the low 32 bits of an integer value (#FF0000h, 16711680, RGB()) */
+/* a colour: the low 32 bits of an integer value (#FF0000h, 16711680, RGB()),
+ * or {colour, alpha}: the colour with that alpha byte (PIXON_P of
+ * {#FF0000h,128} on white is #FE7F7Fh, a RECT_P fill {#0h,80} #4F4F4Fh) */
 static int colour(const value *v, uint32_t *c)
 {
     if (v->t == T_INT) { *c = v->u.i.lo; return 0; }
@@ -63,6 +65,14 @@ static int colour(const value *v, uint32_t *c)
         dec_abs(&t, &v->u.r);
         if (dec_to_u64(&t, &hi, &lo)) { *c = 0xFFFFFFFFu; return 0; }
         *c = v->u.r.s ? (uint32_t)0 - lo : lo;
+        return 0;
+    }
+    if (v->t == T_LIST && v->u.l->n == 2) {
+        int st, al;
+        if ((st = colour(&v->u.l->v[0], c)) || (st = num_i(&v->u.l->v[1], &al))) return st;
+        if (al < 0) al = 0;
+        if (al > 255) al = 255;
+        *c = (*c & 0xFFFFFFu) | ((uint32_t)al << 24);
         return 0;
     }
     return E_BADTYPE;
@@ -292,13 +302,18 @@ static int direction(ppl_vm *V, const real *t, int32_t *d)
 static int arc(ppl_vm *V, int argc, value *a, value *out, int cart)
 {
     grob *g;
-    int st, x, y, r, partial = 0, pie = 0;
+    int st, x, y, r, ry = 0, partial = 0, pie = 0, ell = 0;
     uint32_t c = GFX_BLACK, fill = GFX_BLACK;
     int32_t s[3], e[2];
     real a1, a2;
     if ((st = opt_grob(V, &a, &argc, &g))) return st;
     if (argc < 3) return E_ARGC;
-    if ((st = xy(V, cart, a, &x, &y)) || (st = num_i(&a[2], &r))) return st;
+    if ((st = xy(V, cart, a, &x, &y))) return st;
+    if (a[2].t == T_LIST && a[2].u.l->n == 2) {
+        /* {rx, ry}: an ellipse */
+        if ((st = num_i(&a[2].u.l->v[0], &r)) || (st = num_i(&a[2].u.l->v[1], &ry))) return st;
+        ell = 1;
+    } else if ((st = num_i(&a[2], &r))) return st;
     if (argc == 4 || argc >= 6) {
         const value *cv = &a[argc == 4 ? 3 : 5];
         if (cv->t == T_LIST && cv->u.l->n >= 2) {
@@ -323,6 +338,23 @@ static int arc(ppl_vm *V, int argc, value *a, value *out, int cart)
             s[2] = dec_cmp(&sweep, &pi) > 0;
         }
     }
+    if (ell) {
+        int p1[2], p2[2];
+        if (partial) {
+            /* like the filled sectors: clockwise on the screen, with radii */
+            real n1, n2;
+            int32_t d1[2], d2[2];
+            dec_neg(&n1, &a1); dec_neg(&n2, &a2);
+            if ((st = direction(V, &n2, s)) || (st = direction(V, &n1, e))) return st;
+            if ((st = direction(V, &a1, d1)) || (st = direction(V, &a2, d2))) return st;
+            p1[0] = x + (int)(((int64_t)r * d1[0] + (d1[0] >= 0 ? 8192 : -8192)) / 16384);
+            p1[1] = y + (int)(((int64_t)ry * d1[1] + (d1[1] >= 0 ? 8192 : -8192)) / 16384);
+            p2[0] = x + (int)(((int64_t)r * d2[0] + (d2[0] >= 0 ? 8192 : -8192)) / 16384);
+            p2[1] = y + (int)(((int64_t)ry * d2[1] + (d2[1] >= 0 ? 8192 : -8192)) / 16384);
+        }
+        gfx_ellipse(g, x, y, r, ry, partial ? s : NULL, e, p1, p2, c, pie, fill);
+        return done(V, g, y - (ry < 0 ? -ry : ry), y + (ry < 0 ? -ry : ry), out);
+    }
     if (pie && partial) {
         real n1, n2;
         int32_t d1[2], d2[2];
@@ -336,6 +368,12 @@ static int arc(ppl_vm *V, int argc, value *a, value *out, int cart)
         p2[0] = x + (int)(((int64_t)r * d2[0] + (d2[0] >= 0 ? 8192 : -8192)) / 16384);
         p2[1] = y + (int)(((int64_t)r * d2[1] + (d2[1] >= 0 ? 8192 : -8192)) / 16384);
         gfx_pie(g, x, y, r, s, e, p1, p2, c, fill);
+        return done(V, g, y - r, y + r, out);
+    }
+    if (pie) {
+        /* a filled disc (the Prime's is a polygon; this fills the circle) */
+        gfx_disc(g, x, y, r, fill);
+        gfx_arc(g, x, y, r, NULL, e, c);
         return done(V, g, y - r, y + r, out);
     }
     if (partial && ((st = direction(V, &a1, s)) || (st = direction(V, &a2, e)))) return st;
@@ -497,16 +535,35 @@ static int dimgrob(ppl_vm *V, int argc, value *a, value *out, int cart)
     if (!gfx_get(V)) return E_MEM;
     if (argc < 2 || a[0].t != T_GROB) return argc < 2 ? E_ARGC : E_BADTYPE;
     n = a[0].ib;
-    if (argc == 2) return E_UNSUPPORTED;          /* DIMGROB_P(G, list) */
+    if (argc == 2) return E_UNSUPPORTED;          /* DIMGROB_P(G, list): size from where? */
     if (cart) {
         if ((st = cart_len(V, &a[1], 0, &w)) || (st = cart_len(V, &a[2], 1, &h))) return st;
     } else if ((st = num_i(&a[1], &w)) || (st = num_i(&a[2], &h))) return st;
-    if (argc > 3) {
-        if (a[3].t == T_LIST) return E_UNSUPPORTED;   /* pixel data */
-        if ((st = colour(&a[3], &c))) return st;
-    }
+    if (argc > 3 && a[3].t != T_LIST && (st = colour(&a[3], &c))) return st;
     if (w < 0 || h < 0) return E_BADVAL;
     if ((st = gfx_dim(V, n, w, h, c))) return st;
+    if (argc > 3 && a[3].t == T_LIST) {
+        /* pixel data: each integer holds 4 pixels of 16 bits, the lowest
+         * first, as A1R5G5B5; 5 bits widen by repetition (16 -> #84), and a
+         * pixel with the top bit set reads back as #FFFFFF (Virtual Calculator:
+         * {#7C00001F03E07FFF:64h} is white, #FF00, #FF, #FF0000) */
+        grob *g = gfx_grob(V, n);
+        const plist *l = a[3].u.l;
+        long np = (long)w * h, i;
+        for (i = 0; i < np; i++) {
+            uint32_t k = (uint32_t)(i / 4), q, r5, g5, b5;
+            const value *e = k < l->n ? &l->v[k] : NULL;
+            uint32_t hi = 0, lo = 0;
+            if (e && e->t == T_INT) { hi = e->u.i.hi; lo = e->u.i.lo; }
+            else if (e && e->t == T_REAL) { real t; dec_abs(&t, &e->u.r); dec_to_u64(&t, &hi, &lo); }
+            q = (i & 2) ? hi : lo;
+            q = (i & 1) ? (q >> 16) : (q & 0xFFFFu);
+            if (q & 0x8000u) { g->px[i] = GFX_WHITE; continue; }
+            r5 = (q >> 10) & 31; g5 = (q >> 5) & 31; b5 = q & 31;
+            g->px[i] = (((r5 << 3) | (r5 >> 2)) << 16) | (((g5 << 3) | (g5 >> 2)) << 8) | ((b5 << 3) | (b5 >> 2));
+        }
+        if (n == 0) gfx_touch(V, g, 0, h - 1);
+    }
     gfx_drawn(V);
     return one(out);
 }
@@ -725,14 +782,26 @@ static BI(b_freeze)
     return one(out);
 }
 
-/* RGB(r, g, b, [a]) = #AARRGGBB: RGB(255,0,0,200) is #C8FF0000h */
+/* RGB(r, g, b, [a]) = #AARRGGBB: RGB(255,0,0,200) is #C8FF0000h; reals are
+ * truncated (RGB(127.5,0.7,255.9) = #7F00FFh); outside 0..255 is an error */
+static int rgb_part(const value *v, uint32_t *c)
+{
+    real r;
+    int32_t n;
+    if (to_real(v, &r)) return E_BADTYPE;
+    if (dec_to_int32_trunc(&r, &n) || n < 0 || n > 255) return E_BADVAL;
+    *c = (uint32_t)n;
+    return 0;
+}
+
 static BI(b_rgb)
 {
-    int32_t r, g, b, al = 0;
+    uint32_t r, g, b, al = 0;
+    int st;
     (void)V;
-    if (bi_int(&a[0], &r) || bi_int(&a[1], &g) || bi_int(&a[2], &b)) return E_BADVAL;
-    if (argc > 3 && bi_int(&a[3], &al)) return E_BADVAL;
-    set_int(out, ((uint32_t)(al & 255) << 24) | ((uint32_t)(r & 255) << 16) | ((uint32_t)(g & 255) << 8) | (uint32_t)(b & 255));
+    if ((st = rgb_part(&a[0], &r)) || (st = rgb_part(&a[1], &g)) || (st = rgb_part(&a[2], &b))) return st;
+    if (argc > 3 && (st = rgb_part(&a[3], &al))) return st;
+    set_int(out, (al << 24) | (r << 16) | (g << 8) | b);
     return 0;
 }
 
