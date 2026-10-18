@@ -540,6 +540,7 @@ BI(b_rotate)
 
 BI(b_replace)
 {
+    (void)V;
     if (a[0].t == T_STR && argc == 3 && a[1].t == T_STR && a[2].t == T_STR) {
         /* replace every occurrence */
         const pstr *s = a[0].u.s, *f = a[1].u.s, *r = a[2].u.s;

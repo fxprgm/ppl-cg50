@@ -43,7 +43,7 @@ int bi_map2(ppl_vm *V, const value *a, const value *b,
 /* ---- unary real functions, element-wise over lists ---- */
 
 #define RF(nm, call) \
-    static int r_##nm(ppl_vm *V, const real *x, value *out) { real r; int st; (void)V; dec_zero(&r); st = call; return bi_fin(out, &r, st); } \
+    static int r_##nm(ppl_vm *V, const real *x, value *out) { real r = {{0, 0, 0}, 0, 0, 0}; int st; (void)V; dec_zero(&r); st = call; return bi_fin(out, &r, st); } \
     static BI(b_##nm) { (void)argc; return ar_map1(V, &a[0], r_##nm, NULL, out); }
 
 RF(asinh, dec_asinh(&r, x))
@@ -63,18 +63,18 @@ RF(gamma, dec_gamma(&r, x))
 RF(mant, (dec_mant(&r, x), 0))
 RF(xpon, (dec_from_int(&r, dec_xpon(x)), 0))
 
-static int r_sin(ppl_vm *V, const real *x, value *out) { real r; return bi_fin(out, &r, dec_sin(&r, x, V->set.angle)); }
-static int r_cos(ppl_vm *V, const real *x, value *out) { real r; return bi_fin(out, &r, dec_cos(&r, x, V->set.angle)); }
+static int r_sin(ppl_vm *V, const real *x, value *out) { real r = {{0, 0, 0}, 0, 0, 0}; return bi_fin(out, &r, dec_sin(&r, x, V->set.angle)); }
+static int r_cos(ppl_vm *V, const real *x, value *out) { real r = {{0, 0, 0}, 0, 0, 0}; return bi_fin(out, &r, dec_cos(&r, x, V->set.angle)); }
 static int r_tan(ppl_vm *V, const real *x, value *out)
 {
-    real r;
+    real r = {{0, 0, 0}, 0, 0, 0};
     int st = dec_tan(&r, x, V->set.angle);
     if (st == DEC_EDOMAIN) return E_INFRES;
     return bi_fin(out, &r, st);
 }
-static int r_atan(ppl_vm *V, const real *x, value *out) { real r; return bi_fin(out, &r, dec_atan(&r, x, V->set.angle)); }
-static int r_asin(ppl_vm *V, const real *x, value *out) { real r; int st = dec_asin(&r, x, V->set.angle); return st == DEC_EDOMAIN ? E_NONREAL : bi_fin(out, &r, st); }
-static int r_acos(ppl_vm *V, const real *x, value *out) { real r; int st = dec_acos(&r, x, V->set.angle); return st == DEC_EDOMAIN ? E_NONREAL : bi_fin(out, &r, st); }
+static int r_atan(ppl_vm *V, const real *x, value *out) { real r = {{0, 0, 0}, 0, 0, 0}; return bi_fin(out, &r, dec_atan(&r, x, V->set.angle)); }
+static int r_asin(ppl_vm *V, const real *x, value *out) { real r = {{0, 0, 0}, 0, 0, 0}; int st = dec_asin(&r, x, V->set.angle); return st == DEC_EDOMAIN ? E_NONREAL : bi_fin(out, &r, st); }
+static int r_acos(ppl_vm *V, const real *x, value *out) { real r = {{0, 0, 0}, 0, 0, 0}; int st = dec_acos(&r, x, V->set.angle); return st == DEC_EDOMAIN ? E_NONREAL : bi_fin(out, &r, st); }
 
 /* reciprocal trig: computed as 1/f with f rounded first, like the Prime */
 static int recip(value *out, real *r, int st)
@@ -85,8 +85,8 @@ static int recip(value *out, real *r, int st)
     dec_from_int(&one, 1);
     return bi_fin(out, &q, dec_div(&q, &one, r));
 }
-static int r_csc(ppl_vm *V, const real *x, value *out) { real r; int st = dec_sin(&r, x, V->set.angle); return recip(out, &r, st); }
-static int r_sec(ppl_vm *V, const real *x, value *out) { real r; int st = dec_cos(&r, x, V->set.angle); return recip(out, &r, st); }
+static int r_csc(ppl_vm *V, const real *x, value *out) { real r = {{0, 0, 0}, 0, 0, 0}; int st = dec_sin(&r, x, V->set.angle); return recip(out, &r, st); }
+static int r_sec(ppl_vm *V, const real *x, value *out) { real r = {{0, 0, 0}, 0, 0, 0}; int st = dec_cos(&r, x, V->set.angle); return recip(out, &r, st); }
 static int r_cot(ppl_vm *V, const real *x, value *out)
 {
     real s, c, q = {{0, 0, 0}, 0, 0, 0};
@@ -118,12 +118,12 @@ static int r_acot(ppl_vm *V, const real *x, value *out)
 }
 
 /* complex-capable ones */
-static int r_exp(ppl_vm *V, const real *x, value *out) { real r; (void)V; return bi_fin(out, &r, dec_exp(&r, x)); }
+static int r_exp(ppl_vm *V, const real *x, value *out) { real r = {{0, 0, 0}, 0, 0, 0}; (void)V; return bi_fin(out, &r, dec_exp(&r, x)); }
 static int c_expv(ppl_vm *V, const cplx *x, value *out) { cplx z; int e; (void)V; if ((e = c_exp(&z, x))) return e; return c_make(out, &z.re, &z.im); }
 static int c_lnv(ppl_vm *V, const cplx *x, value *out) { cplx z; int e; (void)V; if ((e = c_ln(&z, x))) return e; return c_make(out, &z.re, &z.im); }
 static int r_ln(ppl_vm *V, const real *x, value *out)
 {
-    real r;
+    real r = {{0, 0, 0}, 0, 0, 0};
     if (dec_is_zero(x)) return E_BADVAL;
     if (x->s) {
         cplx c;
@@ -135,13 +135,13 @@ static int r_ln(ppl_vm *V, const real *x, value *out)
 }
 static int r_log(ppl_vm *V, const real *x, value *out)
 {
-    real r;
+    real r = {{0, 0, 0}, 0, 0, 0};
     if (dec_is_zero(x)) return E_BADVAL;
     if (x->s) return V->set.complex_ok ? E_UNSUPPORTED : E_NONREAL;
     return bi_fin(out, &r, dec_log10(&r, x));
 }
-static int r_abs(ppl_vm *V, const real *x, value *out) { real r; (void)V; dec_abs(&r, x); v_real(out, &r); return 0; }
-static int c_absv(ppl_vm *V, const cplx *x, value *out) { real r; (void)V; c_abs(&r, x); v_real(out, &r); return 0; }
+static int r_abs(ppl_vm *V, const real *x, value *out) { real r = {{0, 0, 0}, 0, 0, 0}; (void)V; dec_abs(&r, x); v_real(out, &r); return 0; }
+static int c_absv(ppl_vm *V, const cplx *x, value *out) { real r = {{0, 0, 0}, 0, 0, 0}; (void)V; c_abs(&r, x); v_real(out, &r); return 0; }
 static int r_sign(ppl_vm *V, const real *x, value *out) { (void)V; v_int32(out, dec_is_zero(x) ? 0 : x->s ? -1 : 1); return 0; }
 static int c_signv(ppl_vm *V, const cplx *x, value *out)
 {
@@ -159,11 +159,11 @@ static int c_imv(ppl_vm *V, const cplx *x, value *out) { (void)V; v_real(out, &x
 static int c_conjv(ppl_vm *V, const cplx *x, value *out) { real im; (void)V; dec_neg(&im, &x->im); return c_make(out, &x->re, &im); }
 static int r_arg(ppl_vm *V, const real *x, value *out)
 {
-    real r, z;
+    real r = {{0, 0, 0}, 0, 0, 0}, z;
     dec_zero(&z);
     return bi_fin(out, &r, dec_atan2(&r, &z, x, V->set.angle));
 }
-static int c_argv(ppl_vm *V, const cplx *x, value *out) { real r; int e = c_arg(V, &r, x); if (e) return e; v_real(out, &r); return 0; }
+static int c_argv(ppl_vm *V, const cplx *x, value *out) { real r = {{0, 0, 0}, 0, 0, 0}; int e = c_arg(V, &r, x); if (e) return e; v_real(out, &r); return 0; }
 
 static BI(b_sin) { (void)argc; return ar_map1(V, &a[0], r_sin, NULL, out); }
 static BI(b_cos) { (void)argc; return ar_map1(V, &a[0], r_cos, NULL, out); }
@@ -206,7 +206,7 @@ static BI(b_abs)
         pmat *m = a[0].u.m;
         xn acc, t, e;
         int i, n = m->rows * m->cols;
-        real r;
+        real r = {{0, 0, 0}, 0, 0, 0};
         xn_zero(&acc);
         for (i = 0; i < n; i++) {
             if (m->v[i].t == T_CPLX) {
@@ -326,7 +326,7 @@ static int combperm(const value *nv, const value *kv, value *out, int comb)
 {
     int32_t n, k, i;
     xn acc, t;
-    real r;
+    real r = {{0, 0, 0}, 0, 0, 0};
     if (bi_int(nv, &n) || bi_int(kv, &k)) return E_BADVAL;
     if (n < 0 || k < 0) return E_BADVAL;
     if (k > n) { v_int32(out, 0); return 0; }
@@ -395,7 +395,7 @@ static BI(b_randseed)
 {
     int32_t s = 0;
     int i;
-    if (argc) { real r; if (bi_real(&a[0], &r)) return E_BADTYPE; dec_to_int32_trunc(&r, &s); }
+    if (argc) { real r = {{0, 0, 0}, 0, 0, 0}; if (bi_real(&a[0], &r)) return E_BADTYPE; dec_to_int32_trunc(&r, &s); }
     V->rng[0] = (uint32_t)s ^ 0x9E3779B9u; V->rng[1] = 0x85EBCA6Bu; V->rng[2] = 0xC2B2AE35u ^ ((uint32_t)s << 7); V->rng[3] = 0x27D4EB2Fu;
     for (i = 0; i < 8; i++) rnd32(V);
     v_int32(out, 0);
@@ -424,9 +424,9 @@ static BI(b_randnorm)
     return 0;
 }
 
-static BI(b_pi) { real r; (void)V; (void)argc; (void)a; dec_pi(&r); v_real(out, &r); return 0; }
-static BI(b_maxreal) { real r; (void)V; (void)argc; (void)a; dec_maxreal(&r, 0); v_real(out, &r); return 0; }
-static BI(b_minreal) { real r; (void)V; (void)argc; (void)a; dec_from_str(&r, "1E-499", NULL); v_real(out, &r); return 0; }
+static BI(b_pi) { real r = {{0, 0, 0}, 0, 0, 0}; (void)V; (void)argc; (void)a; dec_pi(&r); v_real(out, &r); return 0; }
+static BI(b_maxreal) { real r = {{0, 0, 0}, 0, 0, 0}; (void)V; (void)argc; (void)a; dec_maxreal(&r, 0); v_real(out, &r); return 0; }
+static BI(b_minreal) { real r = {{0, 0, 0}, 0, 0, 0}; (void)V; (void)argc; (void)a; dec_from_str(&r, "1E-499", NULL); v_real(out, &r); return 0; }
 
 static BI(b_tohms)
 {
