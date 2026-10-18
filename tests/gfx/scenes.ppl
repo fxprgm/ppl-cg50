@@ -162,3 +162,31 @@ END;
 //# MENU() => CF5FB175 (ours: label anti-aliasing and the gradient's +-1 colours)
 //# ARCS() => 941772F5 (ours: the Prime's arcs differ at the end pixels and its pie is a polygon)
 //# GRADIENT() => 0B44FE8A (ours: same pixels as the Prime, colours within 6)
+
+// a hypotrochoid drawn with LINE_P the way a spirograph program does it
+// (R, r, d in pixels; t from 0 to lcm(R, r) by 0.1)
+EXPORT HYPO(R, r, d, c)
+BEGIN
+  LOCAL t, x0, y0, x1, y1, s := (110-1)/R, f := 1;
+  RECT();
+  FOR t FROM 0 TO CAS.lcm(R,r)+0.1 STEP 0.1 DO
+    x0 := x1; y0 := y1;
+    x1 := (R-r)*COS(t) + d*COS(((R-r)/r)*t);
+    y1 := (R-r)*SIN(t) - d*SIN(((R-r)/r)*t);
+    IF f THEN f := 0; ELSE LINE_P(160+x0*s, 110+y0*s, 160+x1*s, 110+y1*s, c); END;
+  END;
+  DRAWMENU("Clear","Inner","Outer","Maurer","Color","Exit");
+END;
+
+// the same curve as one MAKELIST, as typed on the Virtual Calculator
+EXPORT HYPO2()
+BEGIN
+  RECT();
+  MAKELIST(LINE_P(160+(60*COS(K*0.1)+50*COS(1.66666666667*(K*0.1)))*1.13541666667,
+                  110+(60*SIN(K*0.1)-50*SIN(1.66666666667*(K*0.1)))*1.13541666667,
+                  160+(60*COS((K+1)*0.1)+50*COS(1.66666666667*((K+1)*0.1)))*1.13541666667,
+                  110+(60*SIN((K+1)*0.1)-50*SIN(1.66666666667*((K+1)*0.1)))*1.13541666667,#FFh),K,0,2880);
+END;
+
+//# HYPO2() => 6C2505DA (= Prime: 2881 LINE_P with decimal trigonometry)
+//# HYPO(96,36,50,RGB(0,0,255)) => B4312B6C (ours: HYPO2 plus the DRAWMENU bar)
