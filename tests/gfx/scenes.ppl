@@ -1,0 +1,164 @@
+// Golden images: each scene draws on G0 and the test compares the CRC-32 of
+// G0's RGB bytes (row by row, as `ppl --crc` prints it and Python's
+// zlib.crc32 computes it over a 320x240 RGB image).
+//
+// "= Prime": the same scene typed on one line in HP's Virtual Calculator
+// (macOS, 2026-10-18), captured from the screen at 2x and sampled, has
+// exactly this CRC -- the drawing is pixel for pixel the Prime's.
+// "ours": the Prime's differs in places named next to it (text is drawn
+// with our own font renderer, so its anti-aliasing differs).
+
+EXPORT LINES()
+BEGIN
+  RECT();
+  LINE_P(10,10,14,11,0); LINE_P(20,10,24,13,0); LINE_P(30,10,31,14,0);
+  LINE_P(44,10,40,11,0); LINE_P(54,13,50,10,0); LINE_P(60,14,61,10,0);
+  LINE_P(70,10,90,17,0); LINE_P(90,20,70,27,0); LINE_P(100,10,107,30,0);
+  LINE_P(117,30,110,10,0); LINE_P(130,10,140,20,#FF0000h); LINE_P(150,20,140,10,#FFh);
+  LINE_P(10,40,300,50,0); LINE_P(300,60,10,70,0); LINE_P(10.9,80,20.9,85.9,0);
+  LINE_P(-50,100,400,140,#FF00h); LINE_P(160,200,160,200,0);
+END;
+
+EXPORT STAR()
+BEGIN
+  RECT();
+  MAKELIST(LINE_P(160+(K MOD 2)*ROUND(90*COS(K*0.37),0),120+(K MOD 2)*ROUND(90*SIN(K*0.37),0),
+                  160+((K+1) MOD 2)*ROUND(90*COS(K*0.37),0),120+((K+1) MOD 2)*ROUND(90*SIN(K*0.37),0),
+                  RGB(K*4,0,255-K*4)),K,1,60);
+END;
+
+EXPORT CIRCLES()
+BEGIN
+  RECT();
+  MAKELIST(ARC_P(12+K*K,15,K),K,0,12);
+  ARC_P(60,90,30,#FF0000h); ARC_P(160,100,45,#FFh); ARC_P(300,200,100,#FF00h);
+  ARC_P(60,180,40,0,6.3,0); ARC_P(-5,120,20,0);
+END;
+
+EXPORT POLY()
+BEGIN
+  RECT();
+  FILLPOLY_P({(70,20),(110,20),(80,80)},#FF0000h);
+  TRIANGLE_P(70,100,110,100,80,160,#FF0000h);
+  FILLPOLY_P({(130,20),(170,25),(175,70),(125,60)},#FFh);
+  TRIANGLE_P(130,100,170,105,175,150,#FFh);
+  TRIANGLE_P(130,100,175,150,125,140,#FF00h);
+  FILLPOLY_P({(200,20),(240,80),(180,70)},#FF0000h);
+  TRIANGLE_P(200,100,240,160,180,150,#FF0000h);
+  FILLPOLY_P({(250,20),(300,30),(260,40),(310,60),(250,70)},#FFh);
+  FILLPOLY_P({(10,170),(60,180),(20,230)},#FF00FFh);
+  FILLPOLY_P({(10,20),(50,25),(55,70),(15,60)},#FF00FFh);
+END;
+
+EXPORT SHAPES()
+BEGIN
+  RECT();
+  RECT_P(250,170,#FF00FFh); RECT_P(280,200);
+  RECT_P(10,10,40,30,#FF0000h,#FFh); RECT_P(50,10,80,30,#FF00h);
+  RECT_P(85,5,125,35,0); RECT_P(90,30,120,10);
+  RECT_P(130,10,130,10,#FF0000h,#FFh); RECT_P(140,10,141,11,#FF0000h,#FFh);
+  RECT_P(150,10,152,12,#FF0000h,#FFh);
+  RECT_P(160,10,200,30,#80FF0000h,#800000FFh); RECT_P(210,10,240,30,#FF000000h,#FFh);
+  INVERT_P(10,40,40,60); RECT_P(50,40,80,60,#FF0000h); INVERT_P(60,45,70,55);
+  FILLPOLY_P({(100,40),(140,40),(120,80)},#FF0000h);
+  FILLPOLY_P({(150,40),(190,45),(160,80),(170,50)},#FFh);
+  FILLPOLY_P([(200,40),(240,40),(240,80),(200,80)],#FF00h,128);
+  TRIANGLE_P(10,100,50,100,30,140,#FF0000h);
+  TRIANGLE_P(110,100,150,100,130,140,#0h,100);
+  FILLPOLY_P({(160,100),(200,100),(200,140),(160,140)},#FFh);
+  TRIANGLE_P(210,100,250,100,210,140,#FF0000h);
+END;
+
+EXPORT GRADIENT()
+BEGIN
+  RECT();
+  TRIANGLE_P(60,100,100,110,70,140,#FF0000h,#FF00h,#FFh);
+END;
+
+EXPORT BLITS()
+BEGIN
+  RECT();
+  DIMGROB_P(G1,6,4,#FF0000h); PIXON_P(G1,1,1,#FFh); PIXON_P(G1,4,2,#FF00h);
+  RECT_P(G1,0,3,5,3,#FFFF00h);
+  BLIT_P(G0,10,10,G1); BLIT_P(G0,30,10,54,26,G1); BLIT_P(G0,60,10,G1,1,1,4,3);
+  BLIT_P(G0,70,10,82,18,G1,0,0,6,4,#FF0000h); BLIT_P(G0,90,10,102,18,G1,0,0,6,4,#123456h,128);
+  RECT_P(108,8,116,16,#FFh); DIMGROB_P(G2,4,4,#FF000000h); PIXON_P(G2,1,1,#FF0000h);
+  BLIT_P(G0,110,10,G2);
+  RECT_P(118,8,126,16,#FFh); DIMGROB_P(G3,4,4,#80FF0000h); BLIT_P(G0,120,10,G3);
+  BLIT_P(G0,-2,30,G1); BLIT_P(G0,150,30,130,20,G1);
+  SUBGROB_P(G0,10,10,16,14,G4); BLIT_P(G0,200,10,G4);
+  BLIT_P(G0,220,10,G1,1,1); BLIT_P(G0,240,10,G1,#FF0000h);
+  BLIT_P(G0,260,10,G1,0,0,6,4,#123456h,0); BLIT_P(G0,280,10,G1,0,0,6,4,#123456h,255);
+  BLIT_P(G0,10,50,70,90,G1,0,0,6,4);
+END;
+
+EXPORT PTS1()
+BEGIN
+  RECT();
+  MAKELIST(PIXON(K*0.01,-K*0.1,0),K,0,30);
+  MAKELIST(PIXON(-10+K*0.1,K*0.01,#FF0000h),K,0,30);
+  MAKELIST(PIXON(-12+K*0.1,-K*0.01,#FFh),K,0,30);
+END;
+
+EXPORT PTS2()
+BEGIN
+  RECT();
+  MAKELIST(PIXON(-1.5+K*0.05,-3-K*0.1,0),K,0,60);
+  MAKELIST(PIXON(-14+K*0.1,-1.5+K*0.05,#FF0000h),K,0,60);
+END;
+
+EXPORT WIN()
+BEGIN
+  Xmin:=0; Xmax:=31.8; Ymin:=0; Ymax:=21.8;
+  RECT(); LINE(1,1,20,15,0); RECT(2,20,5,17,#FFh); PIXON(10.05,10.05,#FF0000h);
+  Xmin:=-15.9; Xmax:=15.9; Ymin:=-10.9; Ymax:=10.9;
+END;
+
+EXPORT CART()
+BEGIN
+  RECT(); LINE(-15,10,15,-10,#FF0000h); RECT(-5,5,5,-5,#FFh,#FFFF00h); ARC(0,0,30,#FF00h);
+  PIXON(1.25,1.25,0); TEXTOUT("AB",G0,-10,8,4,0); FILLPOLY({(8,8),(12,8),(10,4)},#FF00FFh);
+  INVERT(-14,-6,-10,-9);
+END;
+
+EXPORT TEXTS()
+BEGIN
+  LOCAL f;
+  RECT();
+  FOR f FROM 1 TO 7 DO TEXTOUT_P("Hxg|É(ab)-=2.5ᴇ−3π√≤→Ωé",G0,2,f*28-26,f); END;
+  TEXTOUT_P("ABC",G0,200,2,3,#FF0000h,100,#C0C0FFh);
+  TEXTOUT_P("ABCDEF",G0,200,22,2,#FFh,20,#FFFF00h);
+  TEXTOUT_P("WWWW",G0,200,42,4,0,15);
+  TEXTOUT("Hi",G0,5,-3,7,#FF0000h);
+  TEXTOUT_P(0.25,G0,250,60,1);
+  TEXTOUT_P("ij",G0,300,200,7,#80000000h);
+END;
+
+EXPORT MENU()
+BEGIN
+  RECT_P(#FFFF00h);
+  DRAWMENU("A","Bbg","Clear","InnerInnerInner","E","F");
+END;
+
+EXPORT ARCS()
+BEGIN
+  RECT();
+  ARC_P(260,60,25,0,1,0); ARC_P(260,60,20,1,3,0); ARC_P(260,60,15,3,6,0);
+  ARC_P(200,170,25,-1,1,#FF0000h); ARC_P(200,170,20,2,1,#FFh); ARC_P(200,170,15,0,7,0);
+  ARC_P(200,170,10,0,0,0); ARC_P(60,180,25,0,2,{#FF0000h,#FFh});
+END;
+
+//# LINES() => 0E8FE41A (= Prime)
+//# STAR() => A9334A0B (= Prime)
+//# POLY() => 8A031C7D (= Prime)
+//# BLITS() => E84190F1 (= Prime)
+//# PTS1() => F6834818 (= Prime)
+//# PTS2() => 888A3603 (= Prime)
+//# WIN() => F737B1A3 (= Prime)
+//# CIRCLES() => A62C3E33 (= Prime)
+//# SHAPES() => EF334F5D (= Prime)
+//# CART() => 8F390D11 (ours: the Prime's "AB" is anti-aliased differently)
+//# TEXTS() => BA1B52E2 (ours: glyph anti-aliasing differs; widths, positions, boxes match)
+//# MENU() => CF5FB175 (ours: label anti-aliasing and the gradient's +-1 colours)
+//# ARCS() => 941772F5 (ours: the Prime's arcs differ at the end pixels and its pie is a polygon)
+//# GRADIENT() => 0B44FE8A (ours: same pixels as the Prime, colours within 6)

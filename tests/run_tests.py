@@ -24,5 +24,18 @@ for path in sorted(glob.glob(os.path.join(here, 'lang', '*.ppl'))):
             fails += 1
             err = p.stderr.strip().splitlines()[-1] if p.stderr.strip() else ''
             print('FAIL %s: %s => %s (want %s) %s' % (os.path.basename(path), expr, got, want, err))
+# golden images: //# EXPR => CRC in tests/gfx/*.ppl
+for path in sorted(glob.glob(os.path.join(here, 'gfx', '*.ppl'))):
+    for line in open(path, encoding='utf-8'):
+        if not line.startswith('//#'):
+            continue
+        expr, want = line[3:].rsplit('=>', 1)
+        expr, want = expr.strip(), want.split()[0]
+        total += 1
+        p = subprocess.run([ppl, '--crc', 'run', path, expr], capture_output=True, text=True)
+        got = p.stdout.strip().splitlines()[-1].split()[-1] if p.returncode == 0 and p.stdout.strip() else '*error*'
+        if got != want:
+            fails += 1
+            print('FAIL %s: %s => crc %s (want %s)' % (os.path.basename(path), expr, got, want))
 print('%d/%d language tests pass' % (total - fails, total))
 sys.exit(1 if fails else 0)

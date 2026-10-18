@@ -478,8 +478,11 @@ void gfx_triangle(grob *g, const int32_t *xy, const uint32_t *c3, int ncol, int 
             int32_t x0 = xy[2 * i], y0 = xy[2 * i + 1], x1 = xy[2 * ((i + 1) % 3)], y1 = xy[2 * ((i + 1) % 3) + 1], xv;
             if (y0 == y1) {
                 if (y != y0) continue;
-                if (!have || x0 < lo) lo = x0; if (!have || x0 > hi) hi = x0; have = 1;
-                if (x1 < lo) lo = x1; if (x1 > hi) hi = x1;
+                if (!have || x0 < lo) lo = x0;
+                if (!have || x0 > hi) hi = x0;
+                have = 1;
+                if (x1 < lo) lo = x1;
+                if (x1 > hi) hi = x1;
                 continue;
             }
             if (y0 > y1) { int32_t t = x0; x0 = x1; x1 = t; t = y0; y0 = y1; y1 = t; }
