@@ -56,7 +56,7 @@ tot = {}
 chunk = 200
 for i in range(0, len(cases), chunk):
     part = cases[i:i + chunk]
-    out = subprocess.run([ppl, '--ascii', 'eval'] + [c[1] for c in part], capture_output=True, text=True).stdout.split('\n')
+    out = subprocess.run([ppl, '--ascii', '--full', 'eval'] + [c[1] for c in part], capture_output=True, text=True).stdout.split('\n')
     for c, got in zip(part, out):
         want = r12(c[2])
         tot[c[0]] = tot.get(c[0], 0) + 1

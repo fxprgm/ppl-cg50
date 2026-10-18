@@ -60,7 +60,7 @@ static const builtin bi_core_table[] = {
     /* probability and statistics */
     { "NORMALD", b_normald, 1, 3, 0 }, { "NORMALD_CDF", b_normald_cdf, 1, 4, 0 },
     { "NORMALD_ICDF", b_normald_icdf, 1, 3, 0 },
-    { "BINOMIAL", b_binomial, 3, 3, 0 }, { "BINOMIAL_CDF", b_binomial_cdf, 3, 4, 0 },
+    { "BINOMIAL", b_binomial, 2, 3, 0 }, { "BINOMIAL_CDF", b_binomial_cdf, 3, 4, 0 },
     { "BINOMIAL_ICDF", b_binomial_icdf, 3, 3, 0 },
     { "POISSON", b_poisson, 2, 2, 0 }, { "POISSON_CDF", b_poisson_cdf, 2, 3, 0 },
     { "POISSON_ICDF", b_poisson_icdf, 2, 2, 0 },

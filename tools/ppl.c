@@ -7,6 +7,7 @@
  *   ppl conform FILE.tsv       run a conformance table (see tests/conformance)
  *
  * Options: --ascii  write '-', 'E' and 'i' instead of the Prime's glyphs
+ *          --full   show every number in scientific format with 12 digits
  *          --even   ties round to even (default: away from zero)
  *          -v       conform: print every row
  */
@@ -16,7 +17,7 @@
 #include <string.h>
 #include <time.h>
 
-static int ascii_out;
+static int ascii_out, full_out;
 
 static uint32_t host_ticks(void) { return (uint32_t)(clock() / (CLOCKS_PER_SEC / 1000)); }
 
@@ -96,6 +97,7 @@ static void setup(ppl_vm *V)
     V->ticks = host_ticks;
     V->print = host_print;
     V->now = host_now;
+    if (full_out) { V->set.format = FMT_SCI; V->set.digits = 11; }   /* all 12 digits */
 }
 
 static const char *base_name(const char *path, char *out, size_t n)
@@ -328,6 +330,7 @@ int main(int argc, char **argv)
     for (i = 1; i < argc; i++) {
         if (!strcmp(argv[i], "--ascii")) ascii_out = 1;
         else if (!strcmp(argv[i], "--even")) dec_round_mode = 1;
+        else if (!strcmp(argv[i], "--full")) full_out = 1;
         else args[k++] = argv[i];
     }
     if (k < 1) {
