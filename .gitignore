@@ -5,3 +5,6 @@ build/
 *.o
 *.a
 /ppl
+# the add-in's build
+cg50/build-cg/
+*.g3a

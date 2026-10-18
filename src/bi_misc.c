@@ -447,7 +447,7 @@ const builtin bi_misc_table[] = {
     { "WAIT", b_wait, 0, 1, 0 }, { "GETKEY", b_getkey, 0, 0, BF_NOPAREN },
     { "ISKEYDOWN", b_iskeydown, 1, 1, 0 }, { "PRINT", b_print, 0, 1, 0 },
     { "MSGBOX", b_msgbox, 1, 3, 0 },
-    { "INPUT", b_unsupported, 1, -1, 0 }, { "CHOOSE", b_unsupported, 2, -1, 0 },
+    { "INPUT", b_unsupported, 1, -1, BF_REF1 }, { "CHOOSE", b_unsupported, 2, -1, BF_REF1 },
     { "EDITLIST", b_unsupported, 1, 1, 0 }, { "EDITMAT", b_unsupported, 1, 3, 0 },
     { "STARTAPP", b_unsupported, 1, 1, 0 }, { "STARTVIEW", b_unsupported, 1, 2, 0 },
     { "IFTE", b_ifte, 3, 3, 0 }, { "PIECEWISE", b_piecewise, 1, -1, 0 },

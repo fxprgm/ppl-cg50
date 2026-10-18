@@ -203,6 +203,7 @@ int ppl_load(ppl_vm *V, const char *name, const char *src, size_t n, char *msg, 
     int i, st = 0, errline = 0;
     char m[100];
     if (msg && msgn) msg[0] = 0;
+    V->errfn = NULL;
     parser_init(&P, src, n);
     if (parse_program(&P)) {
         if (msg) { snprintf(msg, msgn, "line %d: %s", P.errline, P.msg); }
@@ -277,6 +278,7 @@ int ppl_load(ppl_vm *V, const char *name, const char *src, size_t n, char *msg, 
                 V->progs = saved;
                 prog->next = NULL;
             }
+            if (V->errfn == init) V->errfn = NULL;
             free_func(init);
         }
     }
@@ -633,6 +635,9 @@ static int exec(ppl_vm *V, int base)
 #define SAVE() (fr->pc = pc)
 #define FAIL(e) do { err = (e); goto error; } while (0)
 #define NEED(n) do { if (V->sp + (n) >= VM_STACK) FAIL(E_MEM); } while (0)
+    /* the front end's poll (keys, screen, the ON key) every POLL_LINES statements */
+#define POLL() do { if (V->poll && --V->pollcount <= 0) { V->pollcount = POLL_LINES; \
+        SAVE(); if (V->poll(V)) FAIL(E_BREAK); } } while (0)
 
     LOAD();
     for (;;) {
@@ -847,13 +852,21 @@ static int exec(ppl_vm *V, int base)
             *a = r;
             break;
         }
-        case BC_JMP: pc = (uint32_t)((int)pc + 2 + RDS16(code + pc)); break;
+        case BC_JMP: {
+            int off = RDS16(code + pc);
+            pc = (uint32_t)((int)pc + 2 + off);
+            if (off < 0) POLL();
+            break;
+        }
         case BC_JF: {
             int t, e = v_truth(&S[V->sp - 1], &t);
             if (e) { SAVE(); FAIL(e); }
             v_decref(&S[--V->sp]);
-            if (!t) pc = (uint32_t)((int)pc + 2 + RDS16(code + pc));
-            else pc += 2;
+            if (!t) {
+                int off = RDS16(code + pc);
+                pc = (uint32_t)((int)pc + 2 + off);
+                if (off < 0) POLL();
+            } else pc += 2;
             break;
         }
         case BC_SC: {
@@ -969,7 +982,7 @@ static int exec(ppl_vm *V, int base)
             V->sp++;
             pc += 3;
             break;
-        case BC_LINE: fr->line = RD16(code + pc); pc += 2; break;
+        case BC_LINE: fr->line = RD16(code + pc); pc += 2; POLL(); break;
         case BC_KILL: SAVE(); FAIL(E_KILL);
         default: SAVE(); FAIL(E_SYNTAX);
         }
@@ -977,7 +990,8 @@ static int exec(ppl_vm *V, int base)
 
     error:
         V->errline = V->frames[V->nframes - 1].line;
-        if (err != E_KILL && V->nhandlers) {
+        V->errfn = V->frames[V->nframes - 1].fn;
+        if (err != E_KILL && err != E_BREAK && V->nhandlers) {
             handler *h = &V->handlers[V->nhandlers - 1];
             if ((int)h->frame_depth >= base) {
                 handler hh = *h;
@@ -1001,6 +1015,7 @@ static int exec(ppl_vm *V, int base)
 #undef SAVE
 #undef FAIL
 #undef NEED
+#undef POLL
 }
 
 /* ------------------------------------------------------------ entry points */
@@ -1105,6 +1120,7 @@ int vm_eval_string(ppl_vm *V, const char *src, size_t n, value *out)
     parser_free(&P);
     if (e) { free_func(f); return e; }
     e = vm_run_func(V, f, 0, NULL, out);
+    if (V->errfn == f) V->errfn = NULL;     /* Home code: no program to point at */
     free_func(f);
     return e;
 }

@@ -83,9 +83,12 @@ static const builtin bi_core_table[] = {
     { NULL, NULL, 0, 0, 0 }
 };
 
-#define MAXB 600
+#define MAXB 700
 static const builtin *ALL[MAXB];
 static int nall;
+static const builtin *host_table;
+
+void bi_set_host_table(const builtin *t) { host_table = t; nall = 0; }
 
 static void add_table(const builtin *t)
 {
@@ -95,6 +98,7 @@ static void add_table(const builtin *t)
 static void init_table(void)
 {
     if (nall) return;
+    if (host_table) add_table(host_table);
     add_table(bi_math_table);
     add_table(bi_misc_table);
     add_table(bi_gfx_table);

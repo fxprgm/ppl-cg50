@@ -71,6 +71,7 @@ enum {
     E_UNDEFRES,         /* Undefined result */
     E_STATS,            /* Insufficient statistics data */
     E_NOTIMPL,          /* recognised name, not implemented yet */
+    E_BREAK,            /* the user broke the program (ON key); IFERR does not catch it */
     E_COUNT
 };
 const char *ppl_errmsg(int e);
@@ -157,7 +158,14 @@ typedef struct ppl_vm {
     void *user;
     int depth;                         /* re-entrant exec depth */
     uint32_t gen;                      /* bumped when global names change */
+    /* front-end hooks (the CG50 add-in; NULL on the desktop) */
+    int (*poll)(struct ppl_vm *);      /* every POLL_LINES statements and backward
+                                          jumps: non-zero breaks the program (E_BREAK) */
+    int pollcount;
+    struct pfunc *errfn;               /* the function running when the last error happened */
 } ppl_vm;
+
+#define POLL_LINES 32
 
 /* ---- value helpers (value.c) ---- */
 void v_incref(const value *v);
@@ -236,7 +244,12 @@ typedef struct builtin {
 #define BF_LIST    8   /* map over list arguments */
 #define BF_VAR     16  /* a system variable read as name */
 #define BF_INPLACE 32  /* arg 1 named a variable: the result is stored back */
+#define BF_REF1    64  /* arg 1 is a variable reference, or a list of them (INPUT, CHOOSE);
+                          in a list, a sub-list's first element is the reference */
 const builtin *bi_lookup(const char *name);
+/* a front end's own built-ins, looked up before the core's (same names override);
+ * call it before anything is compiled */
+void bi_set_host_table(const builtin *t);
 const builtin *bi_get(int id);
 int bi_id(const builtin *b);
 int bi_count(void);
