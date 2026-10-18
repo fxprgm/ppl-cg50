@@ -8,6 +8,8 @@
  *
  * Options: --ascii  write '-', 'E' and 'i' instead of the Prime's glyphs
  *          --png FILE  run/eval: write the screen G0 as a PNG at the end
+ *          --crc  run/eval: print "crc32 XXXXXXXX" of G0 at the end (its RGB
+ *                 bytes row by row; the golden-image tests compare it)
  *          --full   show every number in scientific format with 12 digits
  *          --away   ties round away from zero (default: to even, as the Prime)
  *          -v       conform: print every row
@@ -21,6 +23,7 @@
 
 static int ascii_out, full_out;
 static const char *png_out;
+static int crc_out;
 
 /* ------------------------------------------------------------ PNG */
 
@@ -100,6 +103,19 @@ static int write_png(const char *path, const grob *g)
 static void maybe_png(ppl_vm *V)
 {
     grob *g;
+    if (crc_out) {
+        uint32_t crc = 0;
+        int x, y;
+        g = gfx_grob(V, 0);
+        for (y = 0; g && y < g->h; y++)
+            for (x = 0; x < g->w; x++) {
+                uint32_t c = g->px[(long)y * g->w + x];
+                unsigned char rgb[3];
+                rgb[0] = (unsigned char)(c >> 16); rgb[1] = (unsigned char)(c >> 8); rgb[2] = (unsigned char)c;
+                crc = crc32_of(crc, rgb, 3);
+            }
+        printf("crc32 %08X\n", (unsigned)crc);
+    }
     if (!png_out) return;
     g = gfx_grob(V, 0);
     if (!g || write_png(png_out, g)) fprintf(stderr, "ppl: cannot write %s\n", png_out);
@@ -457,6 +473,7 @@ int main(int argc, char **argv)
         else if (!strcmp(argv[i], "--away")) dec_round_mode = 0;
         else if (!strcmp(argv[i], "--full")) full_out = 1;
         else if (!strcmp(argv[i], "--png") && i + 1 < argc) png_out = argv[++i];
+        else if (!strcmp(argv[i], "--crc")) crc_out = 1;
         else args[k++] = argv[i];
     }
     if (k < 1) {

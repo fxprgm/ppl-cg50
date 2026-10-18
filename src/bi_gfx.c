@@ -69,13 +69,15 @@ static int colour(const value *v, uint32_t *c)
 }
 
 /* ---- Cartesian coordinates ----
- * Measured with PIXON on the default window (-15.9..15.9, -10.9..10.9):
- *   column = floor((x - Xmin) * 318 / (Xmax - Xmin) + 1/2) + 1
+ * Measured with PIXON on the Virtual Calculator, default window
+ * (-15.9..15.9, -10.9..10.9) and 0..31.8, 0..21.8:
+ *   column = floor(u + 1/2) + 1 with u = (x - Xmin) * 318 / (Xmax - Xmin)
  *            (x = 0.04 -> 160, 0.05 -> 161, -1.45 -> 146, -1.4 -> 146);
- *   with v = (Ymax - y) * 218 / (Ymax - Ymin):
- *   row    = floor(v) + 1, but v itself when v is a whole number and y > 0
- *            (y = 0 -> 110, 0.05 -> 109, 0.1 -> 108, -0.1 -> 111).
- * C->PX answers floor of the same v's (C->PX(0,0) = {160,109}). */
+ *   row    = ceil(v) in the upper half (v < 109), floor(v) + 1 from the
+ *            middle down, with v = (Ymax - y) * 218 / (Ymax - Ymin)
+ *            (y = 0.1 -> 108, 0.05 -> 109, 0 -> 110, -0.1 -> 111; in the
+ *            second window y = 1 -> 209 and y = 15 -> 68).
+ * C->PX answers {floor(u) + 1, floor(v)} (C->PX(0,0) = {160,109}). */
 static int win_x(ppl_vm *V, const real *x, real *v)
 {
     real t, k, d;
@@ -127,13 +129,14 @@ static int cart_x(ppl_vm *V, const value *a, int *out)
 
 static int cart_y(ppl_vm *V, const value *a, int *out)
 {
-    real y, v, f;
+    real y, v, f, mid;
     int st;
     if (to_real(a, &y)) return E_BADTYPE;
     if ((st = win_y(V, &y, &v))) return st;
     dec_floor(&f, &v);
     if ((st = real_to_i(&f, out))) return st;
-    if (!(dec_cmp(&f, &v) == 0 && !y.s && !dec_is_zero(&y))) *out = clampi(*out + 1);
+    dec_from_int(&mid, 109);
+    if (!(dec_cmp(&f, &v) == 0 && dec_cmp(&v, &mid) < 0)) *out = clampi(*out + 1);
     return 0;
 }
 
