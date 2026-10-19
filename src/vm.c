@@ -4,6 +4,7 @@
 #include "gfx.h"
 #include "bc.h"
 #include "compile.h"
+#include "bi.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stddef.h>
@@ -73,14 +74,68 @@ static int sysinfo_get(ppl_vm *V, const char *name, value *out)
         }
         return 0;
     }
-    if (!strcmp(name, "Notes")) { v_list(out, 0); return 0; }
+    if (!strcmp(name, "Notes")) {
+        /* the names of the notes */
+        uint32_t k;
+        if (v_list(out, 0)) return 0;
+        for (k = 0; V->notes.t == T_LIST && k < V->notes.u.l->n; k++)
+            list_push(out->u.l, &V->notes.u.l->v[k].u.l->v[0]);
+        return 0;
+    }
     return -1;
+}
+
+/* Notes(name) and Notes(name):=text (wzqai keeps its saved game in a note) */
+static int notes_find(ppl_vm *V, const value *key)
+{
+    uint32_t k;
+    if (V->notes.t != T_LIST) return -1;
+    for (k = 0; k < V->notes.u.l->n; k++)
+        if (v_equal(&V->notes.u.l->v[k].u.l->v[0], key)) return (int)k;
+    return -1;
+}
+
+static int notes_get(ppl_vm *V, int argc, const value *a, value *out)
+{
+    int k;
+    if (argc != 1 || a[0].t != T_STR) return E_BADTYPE;
+    if ((k = notes_find(V, &a[0])) < 0) return E_BADVAL;
+    v_copy(out, &V->notes.u.l->v[k].u.l->v[1]);
+    return 0;
+}
+
+static int notes_set(ppl_vm *V, int argc, const value *a, const value *text)
+{
+    int k;
+    value pair;
+    plist *l;
+    if (argc != 1 || a[0].t != T_STR || text->t != T_STR) return E_BADTYPE;
+    if (V->notes.t != T_LIST && v_list(&V->notes, 0)) return E_MEM;
+    if (!(l = list_own(&V->notes))) return E_MEM;
+    if ((k = notes_find(V, &a[0])) >= 0) {
+        plist *p = list_own(&l->v[k]);
+        if (!p) return E_MEM;
+        v_set(&p->v[1], text);
+        return 0;
+    }
+    if (v_list(&pair, 2)) return E_MEM;
+    v_set(&pair.u.l->v[0], &a[0]);
+    v_set(&pair.u.l->v[1], text);
+    k = list_push(l, &pair);
+    v_decref(&pair);
+    return k;
 }
 
 int vm_setting_get(ppl_vm *V, const char *name, value *out)
 {
     int i;
     if (!sysinfo_get(V, name, out)) return 0;
+    if (!strcmp(name, "TOff")) {
+        /* a 30-bit hex integer: #493E0:30h (Virtual Calculator) */
+        v_none(out); out->t = T_INT; out->ib = B_HEX; out->iw = 30;
+        out->u.i.hi = 0; out->u.i.lo = (uint32_t)V->hset.toff;
+        return 0;
+    }
     for (i = 0; SETS[i].name; i++)
         if (!strcmp(SETS[i].name, name)) { v_int32(out, *(int *)((char *)&V->hset + SETS[i].off)); return 0; }
     for (i = 0; APPSETS[i]; i++)
@@ -94,6 +149,14 @@ int vm_setting_set(ppl_vm *V, const char *name, const value *v)
     int32_t n;
     for (i = 0; PLOTVARS[i]; i++)
         if (!strcmp(PLOTVARS[i], name)) { if (to_real(v, &V->plot[i])) return E_BADTYPE; return 0; }
+    if (!strcmp(name, "TOff")) {
+        /* Virtual Calculator: 5000 and 536870911 (2^29-1) accepted; 4500 and 2^29 are
+         * "Invalid input" (the minimum is between 4501 and 5000) */
+        if (to_index(v, &n)) return E_BADTYPE;
+        if (n < 5000 || n > 536870911) return E_BADVAL;
+        V->hset.toff = V->set.toff = n;
+        return 0;
+    }
     for (i = 0; SETS[i].name; i++)
         if (!strcmp(SETS[i].name, name)) {
             if (to_index(v, &n)) return E_BADTYPE;
@@ -130,6 +193,7 @@ void ppl_init(ppl_vm *V)
     V->set.bits = 32;
     V->set.is_signed = 0;
     V->set.language = 1;
+    V->set.toff = 300000;
     V->hset = V->set;
     V->appset[2] = 4;
     dec_from_str(&V->plot[0], "-15.9", NULL); dec_from_str(&V->plot[1], "15.9", NULL);
@@ -172,6 +236,7 @@ void ppl_free(ppl_vm *V)
     hvar *h;
     while (V->sp) v_decref(&V->stack[--V->sp]);
     for (i = 0; i < SV_COUNT; i++) v_decref(&V->sysvars[i]);
+    v_decref(&V->notes);
     gfx_free(V);
     while (V->progs) { pprog *n = V->progs->next; free_prog(V->progs); V->progs = n; }
     for (h = V->hvars; h;) { hvar *n = h->next; v_decref(&h->v); free(h->name); free(h); h = n; }
@@ -319,6 +384,25 @@ static pprog *find_prog(ppl_vm *V, const char *name, size_t n)
     return NULL;
 }
 
+static value *new_hvar(ppl_vm *V, const char *name)
+{
+    hvar *h = (hvar *)calloc(1, sizeof *h);
+    if (!h) return NULL;
+    h->name = xstrdup(name);
+    v_int32(&h->v, 0);
+    h->next = V->hvars;
+    V->hvars = h;
+    V->gen++;
+    return &h->v;
+}
+
+/* F0-F9 (Function), X0-X9 and Y0-Y9 (Parametric), R0-R9 (Polar), U0-U9
+ * (Sequence), V0-V9 (Advanced Graphing) */
+static int sys_auto_name(const char *n)
+{
+    return n[0] && n[1] >= '0' && n[1] <= '9' && !n[2] && strchr("FXYRUV", n[0]) != NULL;
+}
+
 static int resolve(ppl_vm *V, const char *name, value **slot, pfunc **fn)
 {
     pprog *p;
@@ -342,19 +426,15 @@ static int resolve(ppl_vm *V, const char *name, value **slot, pfunc **fn)
         value t;
         if (!vm_setting_get(V, name, &t)) return R_SETTING;
     }
+    if (sys_auto_name(name)) {
+        /* the apps' function variables and a few Home variables exist on the Prime
+         * from the start: programs read and assign them without declaring them */
+        value *s = new_hvar(V, name);
+        if (!s) return R_NONE;
+        *slot = s;
+        return R_VAR;
+    }
     return R_NONE;
-}
-
-static value *new_hvar(ppl_vm *V, const char *name)
-{
-    hvar *h = (hvar *)calloc(1, sizeof *h);
-    if (!h) return NULL;
-    h->name = xstrdup(name);
-    v_int32(&h->v, 0);
-    h->next = V->hvars;
-    V->hvars = h;
-    V->gen++;
-    return &h->v;
 }
 
 /* resolve through the function's cache (settings are never cached) */
@@ -397,6 +477,20 @@ int vm_index(ppl_vm *V, const value *c, int argc, const value *idx, value *out)
     int32_t i, j;
     int st;
     if (argc == 0) { v_copy(out, c); return 0; }
+    if (argc == 1 && c->t == T_LIST && idx[0].t == T_LIST && idx[0].u.l->n == 2) {
+        /* L({m,n}): elements m..n as a list; n < m is "Invalid input" (Virtual
+         * Calculator: {10,20,30,40}({2,4}) = {20,30,40}, ({3,3}) = {30}) */
+        uint32_t k;
+        if ((st = to_index(&idx[0].u.l->v[0], &i)) || (st = to_index(&idx[0].u.l->v[1], &j))) return st;
+        if (j < i) return E_BADVAL;
+        if (i < 1 || (uint32_t)j > c->u.l->n) return E_INDEX;
+        if ((st = v_list(out, (uint32_t)(j - i + 1)))) return st;
+        for (k = 0; k < (uint32_t)(j - i + 1); k++) {
+            v_decref(&out->u.l->v[k]);
+            v_copy(&out->u.l->v[k], &c->u.l->v[i - 1 + k]);
+        }
+        return 0;
+    }
     if ((st = to_index(&idx[0], &i))) return st;
     switch (c->t) {
     case T_LIST: {
@@ -515,6 +609,27 @@ static int set_index(ppl_vm *V, value *var, int argc, const value *idx, const va
         m = mat_own(var);
         if (!m) return E_MEM;
         m->v[(i - 1) * m->cols + (j - 1)] = e;
+        return 0;
+    }
+    case T_STR: {
+        /* s[i]:=code sets one character (wzqai's save() codes a string this way) */
+        int32_t c;
+        pstr *ps;
+        if (argc != 1) return E_INDEX;
+        if (bi_int(val, &c) || c < 0 || c > 0xFFFF) return E_BADTYPE;
+        if (i < 1 || (uint32_t)i > var->u.s->len + 1) return E_INDEX;
+        if ((uint32_t)i == var->u.s->len + 1) {
+            pstr *ns = str_new(var->u.s->len + 1);
+            if (!ns) return E_MEM;
+            memcpy(ns->c, var->u.s->c, var->u.s->len * sizeof ns->c[0]);
+            ns->c[i - 1] = (uint16_t)c;
+            v_decref(var);
+            v_none(var); var->t = T_STR; var->u.s = ns;
+            return 0;
+        }
+        ps = str_own(var);
+        if (!ps) return E_MEM;
+        ps->c[i - 1] = (uint16_t)c;
         return 0;
     }
     default: return E_BADTYPE;
@@ -713,6 +828,14 @@ static int exec(ppl_vm *V, int base)
                 pfunc *fn = NULL;
                 const char *nm = fr->fn->names[RD16(code + pc)];
                 pc += 2;
+                if (!strcmp(nm, "Notes")) {
+                    int n = code[pc++], k;
+                    SAVE();
+                    e = notes_set(V, n, &S[V->sp - n], &S[V->sp - n - 1]);
+                    for (k = 0; k <= n; k++) v_decref(&S[--V->sp]);
+                    if (e) FAIL(e);
+                    break;
+                }
                 if (resolve(V, nm, &var, &fn) != R_VAR) { SAVE(); strncpy(V->errname, nm, sizeof V->errname - 1); FAIL(E_UNDEF); }
             }
             argc = code[pc++];
@@ -786,6 +909,13 @@ static int exec(ppl_vm *V, int base)
             } else if (k == R_VAR) {
                 value r;
                 e = vm_index(V, slot, argc, &S[V->sp - argc], &r);
+                for (k = 0; k < argc; k++) v_decref(&S[--V->sp]);
+                if (e) FAIL(e);
+                S[V->sp++] = r;
+            } else if (!strcmp(nm, "Notes")) {
+                value r;
+                v_none(&r);
+                e = notes_get(V, argc, &S[V->sp - argc], &r);
                 for (k = 0; k < argc; k++) v_decref(&S[--V->sp]);
                 if (e) FAIL(e);
                 S[V->sp++] = r;

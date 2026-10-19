@@ -39,6 +39,27 @@ static int opt_grob(ppl_vm *V, value **a, int *argc, grob **g)
 
 static int clampi(int32_t v) { return v < -COORD_MAX ? -COORD_MAX : v > COORD_MAX ? COORD_MAX : (int)v; }
 
+/* a point may be a complex number (x,y) wherever two coordinates go: RECT_P(G2,(1,2),(5,6),c)
+ * fills like RECT_P(G2,1,2,5,6,c) on the Prime.  Splits them into buf (shallow copies:
+ * the caller's values still own everything); 1 when there are too many. */
+static int expand_pts(int *argc, value **a, value *buf, int cap)
+{
+    int i, n = 0, any = 0;
+    for (i = 0; i < *argc; i++) if ((*a)[i].t == T_CPLX) any = 1;
+    if (!any) return 0;
+    for (i = 0; i < *argc; i++) {
+        if (n + 2 > cap) return 1;
+        if ((*a)[i].t == T_CPLX) {
+            real re = (*a)[i].u.c.re, im = (*a)[i].u.c.im;
+            v_real(&buf[n++], &re);
+            v_real(&buf[n++], &im);
+        } else buf[n++] = (*a)[i];
+    }
+    *argc = n;
+    *a = buf;
+    return 0;
+}
+
 /* a number: real (or # integer) -> int, truncated toward zero, clamped */
 static int num_i(const value *v, int *out)
 {
@@ -200,6 +221,8 @@ static int done(ppl_vm *V, grob *g, int y0, int y1, value *out)
 
 static int pixon(ppl_vm *V, int argc, value *a, value *out, int cart, int off)
 {
+    value pb_[24];
+    if (expand_pts(&argc, &a, pb_, 24)) return E_ARGC;
     grob *g;
     int st, x, y;
     uint32_t c = off ? GFX_WHITE : GFX_BLACK;
@@ -217,6 +240,8 @@ static BI(b_pixoff) { return pixon(V, argc, a, out, 1, 1); }
 
 static int getpix(ppl_vm *V, int argc, value *a, value *out, int cart)
 {
+    value pb_[24];
+    if (expand_pts(&argc, &a, pb_, 24)) return E_ARGC;
     grob *g;
     int st, x, y;
     if ((st = opt_grob(V, &a, &argc, &g))) return st;
@@ -236,6 +261,8 @@ static BI(b_getpix) { return getpix(V, argc, a, out, 1); }
  * are drawn */
 static int rect(ppl_vm *V, int argc, value *a, value *out, int cart)
 {
+    value pb_[24];
+    if (expand_pts(&argc, &a, pb_, 24)) return E_ARGC;
     grob *g;
     int st, x0 = 0, y0 = 0, x1, y1, nc = 0;
     uint32_t edge = GFX_WHITE, fill;
@@ -262,6 +289,8 @@ static BI(b_rect) { return rect(V, argc, a, out, 1); }
 
 static int line(ppl_vm *V, int argc, value *a, value *out, int cart)
 {
+    value pb_[24];
+    if (expand_pts(&argc, &a, pb_, 24)) return E_ARGC;
     grob *g;
     int st, x0, y0, x1, y1;
     uint32_t c = GFX_BLACK;
@@ -301,6 +330,8 @@ static int direction(ppl_vm *V, const real *t, int32_t *d)
  * draws a filled sector, measured clockwise (see gfx_pie). */
 static int arc(ppl_vm *V, int argc, value *a, value *out, int cart)
 {
+    value pb_[24];
+    if (expand_pts(&argc, &a, pb_, 24)) return E_ARGC;
     grob *g;
     int st, x, y, r, ry = 0, partial = 0, pie = 0, ell = 0;
     uint32_t c = GFX_BLACK, fill = GFX_BLACK;
@@ -513,6 +544,8 @@ static BI(b_triangle) { return triangle(V, argc, a, out, 1); }
 
 static int invert(ppl_vm *V, int argc, value *a, value *out, int cart)
 {
+    value pb_[24];
+    if (expand_pts(&argc, &a, pb_, 24)) return E_ARGC;
     grob *g;
     int st, x0 = 0, y0 = 0, x1, y1;
     if ((st = opt_grob(V, &a, &argc, &g))) return st;
@@ -541,6 +574,14 @@ static int dimgrob(ppl_vm *V, int argc, value *a, value *out, int cart)
     } else if ((st = num_i(&a[1], &w)) || (st = num_i(&a[2], &h))) return st;
     if (argc > 3 && a[3].t != T_LIST && (st = colour(&a[3], &c))) return st;
     if (w < 0 || h < 0) return E_BADVAL;
+    if ((long)w * h > GFX_MAX_PIXELS && argc <= 3) {
+        /* more than we can hold: the Prime has the memory for DIMGROB(G1,320,244)
+         * in Cartesian units (3200x2452 pixels; sudoku-ch asks for it and draws only
+         * in its top-left corner).  Keep a corner of it: drawing beyond is lost and
+         * GROBW_P/GROBH_P answer the smaller size. */
+        if (w > GFX_BIG_W) w = GFX_BIG_W;
+        if (h > GFX_BIG_H) h = GFX_BIG_H;
+    }
     if ((st = gfx_dim(V, n, w, h, c))) return st;
     if (argc > 3 && a[3].t == T_LIST) {
         /* pixel data: each integer holds 4 pixels of 16 bits, the lowest
@@ -588,6 +629,8 @@ static BI(b_grobh) { return grobwh(V, argc, a, out, 1, 1); }
  * the region must lie inside src */
 static int subgrob(ppl_vm *V, int argc, value *a, value *out, int cart)
 {
+    value pb_[24];
+    if (expand_pts(&argc, &a, pb_, 24)) return E_ARGC;
     grob *s, *t;
     int st, x0 = 0, y0 = 0, x1, y1, n, y;
     if ((st = opt_grob(V, &a, &argc, &s))) return st;
@@ -623,6 +666,8 @@ static BI(b_subgrob) { return subgrob(V, argc, a, out, 1); }
 /* BLIT_P([trg, dx1, dy1, [dx2, dy2]], src, [sx1, sy1, [sx2, sy2]], [c], [alpha]) */
 static int blit(ppl_vm *V, int argc, value *a, value *out, int cart)
 {
+    value pb_[24];
+    if (expand_pts(&argc, &a, pb_, 24)) return E_ARGC;
     grob *d, *s;
     int st, i, k, nd, ns, dx0 = 0, dy0 = 0, dx1, dy1, sx0 = 0, sy0 = 0, sx1, sy1;
     int use_key = 0, al = 255;
@@ -685,6 +730,8 @@ static int text_of(ppl_vm *V, const value *v, value *s)
  * grob). */
 static int textout(ppl_vm *V, int argc, value *a, value *out, int cart)
 {
+    value pb_[24];
+    if (expand_pts(&argc, &a, pb_, 24)) return E_ARGC;
     grob *g;
     value s;
     int st, x, y, font = 0, maxw = -1, bgon = 0, r;

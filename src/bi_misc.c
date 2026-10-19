@@ -110,6 +110,19 @@ static BI(b_btor)
 {
     value m;
     (void)argc;
+    if (a[0].t == T_LIST) {
+        /* element by element (slider: B→R(MOUSE()), a list of lists) */
+        uint32_t k, n = a[0].u.l->n;
+        int st;
+        if ((st = v_list(out, n))) return st;
+        for (k = 0; k < n; k++) {
+            value r;
+            if ((st = b_btor(V, 1, &a[0].u.l->v[k], &r))) { v_decref(out); return st; }
+            v_decref(&out->u.l->v[k]);
+            out->u.l->v[k] = r;
+        }
+        return 0;
+    }
     if (a[0].t != T_INT) { if (a[0].t == T_REAL) { v_copy(out, &a[0]); return 0; } return E_BADTYPE; }
     m = a[0];
     int_mask(V, &m);

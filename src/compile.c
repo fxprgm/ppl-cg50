@@ -298,6 +298,18 @@ static void ccall(comp *C, node *n)
         emit(C, BC_INDEX); emit(C, n->nkids);
         return;
     }
+    if (n->nkids == 3 && (!strcmp(nm, "IFTE") || !strcmp(nm, "when") || !strcmp(nm, "ifte"))) {
+        /* evaluates only the branch it takes: IFTE(0,1/0,5) is 5 on the Prime */
+        int jf, je;
+        cexpr(C, n->kids[0]);
+        jf = emit_jump(C, BC_JF);
+        cexpr(C, n->kids[1]);
+        je = emit_jump(C, BC_JMP);
+        patch(C, jf);
+        cexpr(C, n->kids[2]);
+        patch(C, je);
+        return;
+    }
     if ((b = bi_lookup(nm)) != NULL || (!strchr(nm, '.') && (b = bi_lookup_any(nm)) != NULL)) {
         call_builtin(C, n, b, n->nkids);
         return;

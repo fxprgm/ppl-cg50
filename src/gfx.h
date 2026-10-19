@@ -31,6 +31,10 @@
 #define GFX_W 320
 #define GFX_H 240
 #define GFX_NGROB 10
+#ifndef GFX_BIG_W            /* a grob above GFX_MAX_PIXELS is cut to this corner */
+#define GFX_BIG_W 640
+#define GFX_BIG_H 480
+#endif
 #ifndef GFX_MAX_PIXELS
 #define GFX_MAX_PIXELS (1024L * 1024L)  /* per grob; 4 MB */
 #endif

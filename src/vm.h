@@ -86,6 +86,7 @@ typedef struct ppl_settings {
     int bits;           /* Bits: integer word size */
     int is_signed;      /* Signed */
     int entry, language, separator;
+    int32_t toff;       /* TOff: power-off time, ms */
 } ppl_settings;
 
 /* ---- compiled code ---- */
@@ -140,6 +141,7 @@ typedef struct ppl_vm {
     int appset[4];                     /* current app's AAngle AComplex ADigits AFormat */
     real plot[4];                      /* Function app window: Xmin Xmax Ymin Ymax */
     value sysvars[80];                 /* A-Z, L0-L9, M0-M9, Z0-Z9, Ans... */
+    value notes;                       /* Notes: a list of {name, text} (this session only) */
     pprog *progs;
     hvar *hvars;
     uint32_t rng[4];

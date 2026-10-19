@@ -13,7 +13,9 @@
 # Accessibility (to type) and Screen Recording (to capture) permissions. It types only while
 # HP Prime is the frontmost app and stops otherwise, so keystrokes never land elsewhere.
 #
-# Typing notes: lines go through AppleScript `keystroke`. "E" types the EEX exponent
+# Typing notes: lines go through AppleScript `keystroke`, after two Esc presses (they close
+# an error box and clear the entry line). Use Entry:=1 (Algebraic): in Textbook entry "/"
+# opens a fraction template and the rest of the line lands in its denominator. "E" types the EEX exponent
 # (1+5E-12); ":=" works; "i" is the variable i, use (a,b) for complex numbers. A leading "-"
 # is read as "Ans -" (use (-1)*… or put it after an operand). Multi-line programs: type them
 # in the Program editor yourself, then call the function from here.
@@ -59,6 +61,9 @@ for l in "${lines[@]}"; do
     fi
     # escape backslashes and quotes for AppleScript
     esc=${l//\\/\\\\}; esc=${esc//\"/\\\"}
+    # Esc twice first: closes an error box left by the previous line and clears the entry line
+    osascript -e 'tell application "System Events" to key code 53' -e 'delay 0.25' \
+              -e 'tell application "System Events" to key code 53' -e 'delay 0.25' >/dev/null
     osascript -e "tell application \"System Events\" to keystroke \"$esc\"" -e 'delay 0.3' \
               -e 'tell application "System Events" to key code 36' -e 'delay 0.7' >/dev/null
     png=$(printf '%s/%s-%02d.png' "$OUT" "$NAME" "$k")

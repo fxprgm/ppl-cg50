@@ -1,0 +1,55 @@
+// Fixes found by running real programs from hpcalc.org (2026-10-19). Each case names the
+// program that needed it; the programs themselves are not in the repo.
+
+// cube: the apps' function variables (X1, Y1, F1...) exist without a declaration
+EXPORT APPVARS()
+BEGIN
+  X1 := 3; Y1 := X1 + 1;
+  RETURN {X1, Y1};
+END;
+//> APPVARS() => {3,4}
+// flashlight: TOff (Home: power-off time in ms) reads and writes
+//> TOff => #493E0:30h
+//> TOff:=4500 => *error*
+//> TOff:=5000 => 5000
+
+// gravity: IFTE evaluates only the branch it takes (Virtual Calculator: IFTE(0,1/0,5) = 5)
+//> IFTE(0,1/0,5) => 5
+//> IFTE(1,7,1/0) => 7
+//> 1+IFTE(0,2,3)*2 => 7
+
+// wzqai: s[i]:=code sets one character, with a # integer index too
+EXPORT STRSET()
+BEGIN
+  LOCAL s := "AB", i;
+  FOR i FROM #1 TO DIM(s) DO s[i] := BITXOR(s[i], 3); END;
+  s[3] := 67;
+  RETURN s;
+END;
+//> STRSET() => "BAC"
+
+// slider: B→R on lists (MOUSE() answers a list of lists)
+//> B→R({#3h,{5,#4h}}) => {3,{5,4}}
+//> B→R({{},{}}) => {{},{}}
+
+// snake-pd: points as complex numbers (Virtual Calculator: same pixels as x,y pairs)
+//> DIMGROB_P(G2,20,20,0);RECT_P(G2,(1,2),(5,6),#FF0000h);{GETPIX_P(G2,3,4),GETPIX_P(G2,6,6),GETPIX_P(G2,5,6)} => {#FF0000h,#0h,#FF0000h}
+//> DIMGROB_P(G2,20,20,0);LINE_P(G2,(1,1),(9,1),#FFh);{GETPIX_P(G2,5,1),GETPIX_P(G2,5,2)} => {#FFh,#0h}
+
+// sudoku-ch: DIMGROB(G1,320,244) is 3200x2452 pixels on the Prime; here a 640x480 corner
+//> DIMGROB(G1,320,244);{GROBW_P(G1),GROBH_P(G1)} => {640,480}
+
+// snake-pd: L({m,n}) is elements m..n (Virtual Calculator; n < m is an error)
+//> LOCAL L:={10,20,30,40}; L({2,4}) => {20,30,40}
+//> LOCAL L:={10,20,30,40}; L({3,3}) => {30}
+//> LOCAL L:={10,20,30,40}; L({4,2}) => *error*
+
+// wzqai: a saved game in Notes (here: for this session only)
+EXPORT NOTESAVE()
+BEGIN
+  LOCAL fn := "sv";
+  IF NOT POS(Notes, fn) THEN Notes(fn) := "abc"; END;
+  Notes(fn) := Notes(fn) + "d";
+  RETURN {Notes, Notes(fn)};
+END;
+//> NOTESAVE() => {{"sv"},"abcd"}
