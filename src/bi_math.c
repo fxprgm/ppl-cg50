@@ -270,14 +270,19 @@ static int min2(ppl_vm *V, const value *x, const value *y, value *out) { return 
 static int maxmin(ppl_vm *V, int argc, value *a, value *out, int ismax)
 {
     if (argc == 1) {
-        uint32_t i;
+        uint32_t i, n;
         value best;
-        if (a[0].t != T_LIST) { v_copy(out, &a[0]); return 0; }
-        if (!a[0].u.l->n) return E_DIM;
-        v_copy(&best, &a[0].u.l->v[0]);
-        for (i = 1; i < a[0].u.l->n; i++) {
+        const value *el;
+        /* a vector too (xchart.ppl: MAX(row(mat,I)), by an author who checks his
+         * programs on the Prime) */
+        if (a[0].t == T_LIST) { el = a[0].u.l->v; n = a[0].u.l->n; }
+        else if (a[0].t == T_MAT && a[0].u.m->vec) { el = a[0].u.m->v; n = (uint32_t)a[0].u.m->cols; }
+        else { v_copy(out, &a[0]); return 0; }
+        if (!n) return E_DIM;
+        v_copy(&best, &el[0]);
+        for (i = 1; i < n; i++) {
             value t;
-            int st = maxmin2(V, &best, &a[0].u.l->v[i], &t, ismax);
+            int st = maxmin2(V, &best, &el[i], &t, ismax);
             v_decref(&best);
             if (st) return st;
             best = t;
@@ -444,6 +449,17 @@ static BI(b_hmsto)
     return 0;
 }
 
+/* atan2(y, x) (giac): the angle of the point (x, y), -π < θ ≤ π, in the
+ * current angle mode (vincenty.ppl, in radians); atan2(0, 0) = 0 as ARG(0) */
+static int atan2_2(ppl_vm *V, const value *y, const value *x, value *out)
+{
+    real ry, rx, r = {{0, 0, 0}, 0, 0, 0};
+    if (bi_real(y, &ry) || bi_real(x, &rx)) return E_BADTYPE;
+    if (dec_is_zero(&ry) && dec_is_zero(&rx)) { dec_zero(&r); v_real(out, &r); return 0; }
+    return bi_fin(out, &r, dec_atan2(&r, &ry, &rx, V->set.angle));
+}
+static BI(b_atan2) { (void)argc; return bi_map2(V, &a[0], &a[1], atan2_2, out); }
+
 /* table entries exported to builtins.c */
 const builtin bi_math_table[] = {
     { "SIN", b_sin, 1, 1, 0 }, { "COS", b_cos, 1, 1, 0 }, { "TAN", b_tan, 1, 1, 0 },
@@ -453,6 +469,7 @@ const builtin bi_math_table[] = {
     { "SINH", b_sinh, 1, 1, 0 }, { "COSH", b_cosh, 1, 1, 0 }, { "TANH", b_tanh, 1, 1, 0 },
     { "ASINH", b_asinh, 1, 1, 0 }, { "ACOSH", b_acosh, 1, 1, 0 }, { "ATANH", b_atanh, 1, 1, 0 },
     { "EXP", b_exp, 1, 1, 0 }, { "LN", b_ln, 1, 1, 0 }, { "LOG", b_log, 1, 2, 0 },
+    { "log10", b_log, 1, 1, 0 }, { "atan2", b_atan2, 2, 2, 0 },
     { "ALOG", b_alog, 1, 1, 0 }, { "EXPM1", b_expm1, 1, 1, 0 }, { "LNP1", b_lnp1, 1, 1, 0 },
     { "ABS", b_abs, 1, 1, 0 }, { "SIGN", b_sign, 1, 1, 0 },
     { "IP", b_ip, 1, 1, 0 }, { "FP", b_fp, 1, 1, 0 }, { "FLOOR", b_floor, 1, 1, 0 },

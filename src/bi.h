@@ -23,6 +23,7 @@ BI(b_asc); BI(b_char); BI(b_left); BI(b_right); BI(b_mid); BI(b_instring);
 BI(b_lower); BI(b_upper); BI(b_rotate); BI(b_replace); BI(b_string);
 BI(b_expr); BI(b_strfromid); BI(b_evallist); BI(b_execon); BI(b_sigma);
 BI(b_iterate); BI(b_listtomat); BI(b_mattolist); BI(b_listfn);
+BI(b_list2mat); BI(b_mat2list); BI(b_remove);
 
 /* matrix built-ins (bi_mat.c) */
 BI(b_makemat); BI(b_idenmat); BI(b_randmat); BI(b_trn); BI(b_det); BI(b_rref);
@@ -34,7 +35,7 @@ BI(b_specnorm); BI(b_specrad); BI(b_eigenval); BI(b_eigenvv); BI(b_cholesky);
 BI(b_diag); BI(b_hilbert); BI(b_jordanblock); BI(b_vandermonde); BI(b_polyeval);
 BI(b_polycoef); BI(b_polyroot); BI(b_l1norm); BI(b_maxnorm); BI(b_l2norm);
 BI(b_mkisom); BI(b_pivot); BI(b_svl); BI(b_svd); BI(b_schur); BI(b_lq);
-BI(b_hessenberg);
+BI(b_hessenberg); BI(b_lucas); BI(b_rowdim); BI(b_coldim); BI(b_eigvc); BI(b_eigvl); BI(b_randperm);
 
 /* probability and statistics (bi_prob.c) */
 BI(b_normald); BI(b_normald_cdf); BI(b_normald_icdf);
@@ -45,6 +46,6 @@ BI(b_chisquare); BI(b_chisquare_cdf); BI(b_chisquare_icdf);
 BI(b_student); BI(b_student_cdf); BI(b_student_icdf);
 BI(b_fisher); BI(b_fisher_cdf); BI(b_fisher_icdf);
 BI(b_beta); BI(b_erf); BI(b_erfc); BI(b_psi); BI(b_zeta);
-BI(b_mean); BI(b_median); BI(b_stddev); BI(b_variance);
+BI(b_mean); BI(b_median); BI(b_stddev); BI(b_variance); BI(b_stddevp);
 
 #endif

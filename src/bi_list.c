@@ -84,10 +84,43 @@ static int cmp_values(const value *x, const value *y)
 
 static int qcmp(const void *p, const void *q) { return cmp_values((const value *)p, (const value *)q); }
 
+/* a vector as a list (new reference) and back: SORT and REVERSE take vectors too
+ * (factoranalysis.ppl sorts EIGENVAL's vector) */
+static int vec_to_list(const value *v, value *out)
+{
+    const pmat *m = v->u.m;
+    int i, st;
+    if ((st = v_list(out, m->cols))) return st;
+    for (i = 0; i < m->cols; i++) v_copy(&out->u.l->v[i], &m->v[i]);
+    return 0;
+}
+
+static int list_to_vec(value *l, value *out)
+{
+    uint32_t i, n = l->u.l->n;
+    int st;
+    if ((st = v_mat(out, 1, (int)n, 1))) { v_decref(l); return st; }
+    for (i = 0; i < n; i++) v_copy(&out->u.m->v[i], &l->u.l->v[i]);
+    v_decref(l);
+    return 0;
+}
+
+#define IS_VEC(v) ((v)->t == T_MAT && (v)->u.m->vec)
+
 BI(b_sort)
 {
     plist *l;
     int32_t key = 0;
+    if (IS_VEC(&a[0])) {
+        value b[2], r;
+        int st;
+        if ((st = vec_to_list(&a[0], &b[0]))) return st;
+        if (argc > 1) b[1] = a[1];
+        st = b_sort(V, argc, b, &r);
+        v_decref(&b[0]);
+        if (st) return st;
+        return list_to_vec(&r, out);
+    }
     if (a[0].t != T_LIST) return E_BADTYPE;
     if (argc > 1 && bi_int(&a[1], &key)) return E_BADVAL;
     v_copy(out, &a[0]);
@@ -111,6 +144,12 @@ BI(b_sort)
 BI(b_reverse)
 {
     (void)V; (void)argc;
+    if (IS_VEC(&a[0])) {
+        int i, n = a[0].u.m->cols, st;
+        if ((st = v_mat(out, 1, n, 1))) return st;
+        for (i = 0; i < n; i++) v_copy(&out->u.m->v[i], &a[0].u.m->v[n - 1 - i]);
+        return 0;
+    }
     if (a[0].t == T_LIST) {
         uint32_t i, n = a[0].u.l->n;
         int st;
@@ -198,12 +237,17 @@ static int fold(ppl_vm *V, const value *l, int op, value *out)
 {
     uint32_t i;
     value acc;
-    if (l->t != T_LIST) return E_BADTYPE;
-    if (!l->u.l->n) { v_int32(out, op == OP_MUL ? 1 : 0); return 0; }
-    v_copy(&acc, &l->u.l->v[0]);
-    for (i = 1; i < l->u.l->n; i++) {
+    const value *el;
+    uint32_t n;
+    /* a vector too: ΣLIST(variance(matrix)) in factoranalysis.ppl (assumed) */
+    if (l->t == T_LIST) { el = l->u.l->v; n = l->u.l->n; }
+    else if (IS_VEC(l)) { el = l->u.m->v; n = l->u.m->cols; }
+    else return E_BADTYPE;
+    if (!n) { v_int32(out, op == OP_MUL ? 1 : 0); return 0; }
+    v_copy(&acc, &el[0]);
+    for (i = 1; i < n; i++) {
         value t;
-        int st = ar_binary(V, op, &acc, &l->u.l->v[i], &t);
+        int st = ar_binary(V, op, &acc, &el[i], &t);
         v_decref(&acc);
         if (st) return st;
         acc = t;
@@ -259,8 +303,47 @@ static int setop(const value *x, const value *y, value *out, int kind)
     return 0;
 }
 
-BI(b_union) { (void)V; (void)argc; return setop(&a[0], &a[1], out, 0); }
-BI(b_intersect) { (void)V; (void)argc; return setop(&a[0], &a[1], out, 1); }
+/* UNION(x, ...): every argument's elements (a list's or a vector's; any other
+ * value is one element), duplicates removed, in order.  One argument dedupes a
+ * list; the User Guide: UNION({1,2,3},{2,4,8},10) = {1,2,3,4,8,10}. */
+BI(b_union)
+{
+    int i, st;
+    (void)V;
+    if ((st = v_list(out, 0))) return st;
+    for (i = 0; i < argc; i++) {
+        const value *el = &a[i];
+        uint32_t k, n = 1;
+        if (a[i].t == T_LIST) { el = a[i].u.l->v; n = a[i].u.l->n; }
+        else if (IS_VEC(&a[i])) { el = a[i].u.m->v; n = (uint32_t)a[i].u.m->cols; }
+        for (k = 0; k < n; k++)
+            if (!in_list(out, &el[k]) && (st = list_push(out->u.l, &el[k]))) { v_decref(out); return st; }
+    }
+    return 0;
+}
+
+/* INTERSECT(list, list or value): the elements of the first that are in the
+ * second, duplicates of the first kept (as giac's intersect: listapi.ppl's
+ * ListMODE counts occurrences with SIZE(INTERSECT(L, x)); assumed) */
+BI(b_intersect)
+{
+    uint32_t i;
+    int st;
+    value y;
+    (void)V; (void)argc;
+    if (a[0].t != T_LIST) return E_BADTYPE;
+    if (a[1].t == T_LIST) v_copy(&y, &a[1]);
+    else {
+        if ((st = v_list(&y, 0))) return st;
+        if ((st = list_push(y.u.l, &a[1]))) { v_decref(&y); return st; }
+    }
+    if ((st = v_list(out, 0))) { v_decref(&y); return st; }
+    for (i = 0; i < a[0].u.l->n; i++)
+        if (in_list(&y, &a[0].u.l->v[i]) && (st = list_push(out->u.l, &a[0].u.l->v[i]))) break;
+    v_decref(&y);
+    if (st) v_decref(out);
+    return st;
+}
 BI(b_difference)
 {
     int i, st;
@@ -720,6 +803,79 @@ BI(b_mattolist)
         out->u.l->v[i] = row;
     }
     return 0;
+}
+
+/* list2mat(list [, n]): with n, the list cut into rows of n, the last row
+ * padded with zeros (User Guide); without, as ListToMat */
+BI(b_list2mat)
+{
+    const plist *l;
+    int32_t n, rows, i;
+    int st;
+    if (argc < 2) return b_listtomat(V, argc, a, out);
+    if (a[0].t != T_LIST) return E_BADTYPE;
+    if (bi_int(&a[1], &n) || n < 1) return E_BADVAL;
+    l = a[0].u.l;
+    if (!l->n) return E_DIM;
+    rows = (int32_t)((l->n + (uint32_t)n - 1) / (uint32_t)n);
+    if (rows > 65535 || n > 65535) return E_DIM;
+    if ((st = v_mat(out, rows, n, 0))) return st;
+    for (i = 0; i < (int32_t)l->n; i++) {
+        value e = l->v[i];
+        if (e.t == T_INT) { real x; to_real(&e, &x); v_real(&e, &x); }
+        if (e.t != T_REAL && e.t != T_CPLX) { v_decref(out); return E_BADTYPE; }
+        out->u.m->v[i] = e;
+    }
+    return 0;
+}
+
+static int flat_push(value *out, const value *v, int depth)
+{
+    int st;
+    if (v->t == T_MAT) {
+        int k, n = (v->u.m->vec ? 1 : v->u.m->rows) * v->u.m->cols;
+        for (k = 0; k < n; k++) if ((st = list_push(out->u.l, &v->u.m->v[k]))) return st;
+        return 0;
+    }
+    if (v->t == T_LIST && depth == 0) {
+        uint32_t k;
+        for (k = 0; k < v->u.l->n; k++) if ((st = flat_push(out, &v->u.l->v[k], 1))) return st;
+        return 0;
+    }
+    return list_push(out->u.l, v);
+}
+
+/* mat2list(matrix, vector or list): the elements in row order, as a list.  The
+ * User Guide shows mat2list([[1 8],[4 9]]) = [1 8 4 9]; the type is a list
+ * because repeating.ppl checks TYPE(mat2list(idivis(n))) == TYPE({}) ("empirical
+ * test" in its source).  A list's sub-lists and vectors are spread one level. */
+BI(b_mat2list)
+{
+    int st;
+    (void)V; (void)argc;
+    if (a[0].t != T_MAT && a[0].t != T_LIST) return E_BADTYPE;
+    if ((st = v_list(out, 0))) return st;
+    if ((st = flat_push(out, &a[0], 0))) { v_decref(out); return st; }
+    return 0;
+}
+
+/* remove(value, list or vector): without the elements equal to value (giac;
+ * the test form remove(x→test, l) needs a CAS function and is not here) */
+BI(b_remove)
+{
+    const value *el;
+    uint32_t i, n;
+    int st;
+    value r;
+    (void)V; (void)argc;
+    if (a[1].t == T_LIST) { el = a[1].u.l->v; n = a[1].u.l->n; }
+    else if (IS_VEC(&a[1])) { el = a[1].u.m->v; n = (uint32_t)a[1].u.m->cols; }
+    else return E_BADTYPE;
+    if ((st = v_list(&r, 0))) return st;
+    for (i = 0; i < n; i++)
+        if (!v_equal(&el[i], &a[0]) && (st = list_push(r.u.l, &el[i]))) { v_decref(&r); return st; }
+    if (a[1].t == T_LIST) { *out = r; return 0; }
+    return list_to_vec(&r, out);
 }
 
 /* placeholder for list functions not written yet */

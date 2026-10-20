@@ -227,6 +227,29 @@ static BI(b_msgbox)
 
 static BI(b_unsupported) { (void)V; (void)argc; (void)a; (void)out; return E_UNSUPPORTED; }
 
+/* STARTVIEW(n [,draw]): no app views here; answer 0 so the program goes on
+ * (STARTVIEW(-1), Home, is what programs call most) */
+static BI(b_startview) { (void)V; (void)argc; (void)a; v_int32(out, 0); return 0; }
+
+/* EDITLIST/EDITMAT(var [,title [,read only]]): no editor in the core; answer the
+ * list or matrix unchanged.  A front end with an editor replaces these entries
+ * through bi_set_host_table() (same names). */
+static BI(b_editlist)
+{
+    (void)V; (void)argc;
+    if (a[0].t != T_LIST && !(a[0].t == T_MAT && a[0].u.m->vec)) return E_BADTYPE;
+    v_copy(out, &a[0]);
+    return 0;
+}
+
+static BI(b_editmat)
+{
+    (void)V; (void)argc;
+    if (a[0].t != T_MAT) return E_BADTYPE;
+    v_copy(out, &a[0]);
+    return 0;
+}
+
 static BI(b_ifte)
 {
     int t, st;
@@ -343,8 +366,13 @@ static int date_days(const value *v, int *days)
     dec_mul(&t, &r, &h);
     if (dec_to_int32(&t, &ymd)) return E_BADVAL;
     {
+        static const uint8_t mdays[12] = { 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
         int y = ymd / 10000, m = (ymd / 100) % 100, d = ymd % 100;
-        if (m < 1 || m > 12 || d < 1 || d > 31) return E_BADVAL;
+        int leap = (y % 4 == 0 && y % 100 != 0) || y % 400 == 0;
+        /* a Gregorian date, 1582.1015 .. 9999.1231 (User Guide, date calculations);
+         * 29 February only in a leap year */
+        if (ymd < 15821015 || ymd > 99991231 || m < 1 || m > 12 || d < 1 || d > mdays[m - 1] ||
+            (m == 2 && d == 29 && !leap)) return E_BADVAL;
         *days = days_from_civil(y, m, d);
     }
     return 0;
@@ -368,6 +396,7 @@ static BI(b_dateadd)
     if ((st = date_days(&a[0], &d))) return st;
     if (bi_int(&a[1], &n)) return E_BADVAL;
     civil_from_days(d + n, &y, &m, &dd);
+    if (y > 9999 || y * 10000 + m * 100 + dd < 15821015) return E_BADVAL;
     dec_from_int(&r, y * 10000 + m * 100 + dd);
     dec_from_int(&h, 10000);
     dec_div(&r, &r, &h);
@@ -379,7 +408,10 @@ static BI(b_dayofweek)
 {
     int d, st, w;
     (void)V; (void)argc;
-    if ((st = date_days(&a[0], &d))) return st;
+    /* an invalid date answers -1, not an error: calendar.ppl (jmollera) tests
+     * DAYOFWEEK(y+0.0229) > 0 for a leap year and DAYOFWEEK(d) < 0 for an invalid
+     * date (assumed: the exact negative value is not measured) */
+    if ((st = date_days(&a[0], &d))) { if (st != E_BADVAL) return st; v_int32(out, -1); return 0; }
     /* 1970-01-01 was a Thursday; the Prime numbers Monday 1 .. Sunday 7 */
     w = ((d % 7) + 7 + 3) % 7 + 1;
     v_int32(out, w);
@@ -443,7 +475,10 @@ static BI(b_mouse)
 {
     value l;
     int st;
-    (void)V; (void)argc; (void)a;
+    (void)V; (void)a;
+    /* MOUSE(index): that element of the first pointer, -1 without pointer
+     * activity (User Guide) */
+    if (argc) { v_int32(out, -1); return 0; }
     if ((st = v_list(out, 2))) return st;
     v_list(&l, 0); out->u.l->v[0] = l;
     v_list(&l, 0); out->u.l->v[1] = l;
@@ -461,8 +496,8 @@ const builtin bi_misc_table[] = {
     { "ISKEYDOWN", b_iskeydown, 1, 1, 0 }, { "PRINT", b_print, 0, 1, 0 },
     { "MSGBOX", b_msgbox, 1, 3, 0 },
     { "INPUT", b_unsupported, 1, -1, BF_REF1 }, { "CHOOSE", b_unsupported, 2, -1, BF_REF1 },
-    { "EDITLIST", b_unsupported, 1, 1, 0 }, { "EDITMAT", b_unsupported, 1, 3, 0 },
-    { "STARTAPP", b_unsupported, 1, 1, 0 }, { "STARTVIEW", b_unsupported, 1, 2, 0 },
+    { "EDITLIST", b_editlist, 1, 3, 0 }, { "EDITMAT", b_editmat, 1, 3, 0 },
+    { "STARTAPP", b_unsupported, 1, 1, 0 }, { "STARTVIEW", b_startview, 1, 2, 0 },
     { "IFTE", b_ifte, 3, 3, 0 }, { "PIECEWISE", b_piecewise, 1, -1, 0 },
     { "EVAL", b_eval, 1, 1, 0 }, { "VERSION", b_version, 0, 0, BF_NOPAREN },
     { "CAS", b_cas, 1, -1, 0 },

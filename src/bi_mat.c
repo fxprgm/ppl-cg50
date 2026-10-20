@@ -239,7 +239,11 @@ static void cx_to(const cx *c, value *out)
     if (negligible(&im, &re)) xn_zero(&im);
     if (negligible(&re, &im)) xn_zero(&re);
     xn_to_real(&R, &re); xn_to_real(&I, &im);
-    c_make(out, &R, &I);
+    /* a zero imaginary part gives a real (c_make keeps (3,0) complex, as typed
+     * on the Prime; computed eigenvalues of a real matrix come back real there:
+     * the conformance table's EIGENVAL is a real vector) */
+    if (dec_is_zero(&I)) v_real(out, &R);
+    else c_make(out, &R, &I);
 }
 
 static void cluster_fix(cx *z, int n, const cx *a);
@@ -414,6 +418,15 @@ static int eig_x(xm *A, cx **out)
     if (!st) st = dk_roots(c, A->r, z);
     free(c);
     if (st) { free(z); return st; }
+    {
+        /* a real symmetric matrix has real eigenvalues: drop the imaginary noise
+         * the polynomial roots can carry (factoranalysis.ppl takes RE() of them
+         * and sorts them, and stores them in a list) */
+        int i, j, sym = 1;
+        for (i = 0; i < A->r && sym; i++)
+            for (j = 0; j < i && sym; j++) if (xn_cmp(XE(A, i, j), XE(A, j, i))) sym = 0;
+        if (sym) for (i = 0; i < A->r; i++) xn_zero(&z[i].im);
+    }
     cx_sort(z, A->r, 1);
     *out = z;
     return 0;
@@ -549,6 +562,39 @@ static uint32_t rnd(ppl_vm *V)
     V->rng[0] = V->rng[1]; V->rng[1] = V->rng[2]; V->rng[2] = V->rng[3];
     V->rng[3] = V->rng[3] ^ (V->rng[3] >> 19) ^ x ^ (x >> 8);
     return V->rng[3];
+}
+
+/* randperm(n): a random permutation of 1..n as a vector (giac counts from 1
+ * in the Prime's mode, assumed: listapi.ppl's shuffle falls back to
+ * MAKELIST(I,I,1,n)); randperm(list or vector): its elements shuffled */
+BI(b_randperm)
+{
+    int32_t n, i;
+    int st;
+    (void)argc;
+    if (a[0].t == T_LIST || (a[0].t == T_MAT && a[0].u.m->vec)) {
+        const value *el = a[0].t == T_LIST ? a[0].u.l->v : a[0].u.m->v;
+        n = a[0].t == T_LIST ? (int32_t)a[0].u.l->n : a[0].u.m->cols;
+        if (a[0].t == T_LIST) {
+            if ((st = v_list(out, (uint32_t)n))) return st;
+            for (i = 0; i < n; i++) { v_decref(&out->u.l->v[i]); v_copy(&out->u.l->v[i], &el[i]); }
+        } else {
+            if ((st = v_mat(out, 1, n, 1))) return st;
+            for (i = 0; i < n; i++) out->u.m->v[i] = el[i];
+        }
+    } else {
+        if (bi_int(&a[0], &n) || n < 0 || n > 65535) return E_BADVAL;
+        if ((st = v_mat(out, 1, n, 1))) return st;
+        for (i = 0; i < n; i++) v_int32(&out->u.m->v[i], i + 1);
+    }
+    {
+        value *v = out->t == T_LIST ? out->u.l->v : out->u.m->v;
+        for (i = n - 1; i > 0; i--) {         /* Fisher-Yates */
+            int32_t j = (int32_t)(rnd(V) % (uint32_t)(i + 1));
+            value t = v[i]; v[i] = v[j]; v[j] = t;
+        }
+    }
+    return 0;
 }
 
 BI(b_randmat)
@@ -882,6 +928,12 @@ BI(b_sub)
         int n;
         if (elems(&a[0], &el, &n)) return E_BADTYPE;
         if (bi_int(&a[1], &s) || bi_int(&a[2], &e)) return E_BADVAL;
+        /* end just before start: empty (assumed: circularshift.ppl's
+         * listright({5}) takes SUB(t,1,0)) */
+        if (e == s - 1 && s >= 1 && s <= n + 1) {
+            if (a[0].t == T_LIST) return v_list(out, 0);
+            return v_mat(out, 1, 0, 1);
+        }
         if (s < 1 || e > n || e < s) return E_INDEX;
         if (a[0].t == T_LIST) {
             if ((st = v_list(out, 0))) return st;
@@ -1225,20 +1277,22 @@ static int list_of(value *out, value *items, int n)
     return 0;
 }
 
-BI(b_lu)
+/* {L, U, P}: partial pivoting (the largest in the column) or, with firstnz,
+ * the first non-zero one */
+static int lu_core(const value *a, value *out, int firstnz)
 {
     xm A, L, P;
     int n, i, j, k, st;
     value parts[3];
-    (void)V; (void)argc;
-    if ((st = need_square(&a[0]))) return st;
-    if ((st = xm_from(&a[0], &A))) return st;
+    if ((st = need_square(a))) return st;
+    if ((st = xm_from(a, &A))) return st;
     n = A.r;
     xm_new(&L, n, n); xm_new(&P, n, n);
     xm_ident(&P);
     for (k = 0; k < n; k++) {
         int p = k;
-        for (i = k + 1; i < n; i++) if (xn_cmpmag(XE(&A, i, k), XE(&A, p, k)) > 0) p = i;
+        if (firstnz) { while (p < n - 1 && !XE(&A, p, k)->n) p++; }
+        else for (i = k + 1; i < n; i++) if (xn_cmpmag(XE(&A, i, k), XE(&A, p, k)) > 0) p = i;
         if (p != k)
             for (j = 0; j < n; j++) {
                 xn t = *XE(&A, p, j); *XE(&A, p, j) = *XE(&A, k, j); *XE(&A, k, j) = t;
@@ -1259,6 +1313,77 @@ BI(b_lu)
     xm_free(&A); xm_free(&L); xm_free(&P);
     return list_of(out, parts, 3);
 }
+
+BI(b_lu) { (void)V; (void)argc; return lu_core(&a[0], out, 0); }
+
+static int eigvecs(const value *a, value *P, value *D);
+
+/* lu(M), the CAS form: [p, L, U] with P*M = L*U, p the permutation as a
+ * vector of row numbers (row j of P has its 1 in column p(j)); a list here.
+ * The pivot is giac's: for an exact (integer) matrix the first non-zero one
+ * (User Guide: lu([[1,2],[3,4]]) = [[1 2] [[1 0],[3 1]] [[1 2],[0 -2]]];
+ * gaussjordan.ppl's LDU divides lu's U by unpermuted pivots), otherwise the
+ * largest in its column, as LU (assumed). */
+BI(b_lucas)
+{
+    value r, p;
+    pmat *P;
+    int i, j, st, exact = 1;
+    (void)V; (void)argc;
+    if (a[0].t == T_MAT) {
+        const pmat *m = a[0].u.m;
+        for (i = 0; i < nrows(m) * m->cols && exact; i++) {
+            real x;
+            if (m->v[i].t == T_CPLX || to_real(&m->v[i], &x) || !dec_is_int(&x)) exact = 0;
+        }
+    }
+    if ((st = lu_core(&a[0], &r, exact))) return st;
+    P = r.u.l->v[2].u.m;
+    if ((st = v_mat(&p, 1, P->rows, 1))) { v_decref(&r); return st; }
+    for (i = 0; i < P->rows; i++)
+        for (j = 0; j < P->cols; j++) {
+            real x;
+            if (!to_real(EL(P, i, j), &x) && !dec_is_zero(&x)) v_int32(&p.u.m->v[i], j + 1);
+        }
+    /* {L, U, P} -> {p, L, U} */
+    v_decref(&r.u.l->v[2]);
+    r.u.l->v[2] = r.u.l->v[1];
+    r.u.l->v[1] = r.u.l->v[0];
+    r.u.l->v[0] = p;
+    *out = r;
+    return 0;
+}
+
+/* rowDim/colDim: rows and columns of a matrix; a vector counts as one row
+ * (assumed) */
+BI(b_rowdim)
+{
+    (void)V; (void)argc;
+    if (need_mat(&a[0])) return E_BADTYPE;
+    v_int32(out, nrows(a[0].u.m));
+    return 0;
+}
+
+BI(b_coldim)
+{
+    (void)V; (void)argc;
+    if (need_mat(&a[0])) return E_BADTYPE;
+    v_int32(out, a[0].u.m->cols);
+    return 0;
+}
+
+/* eigVc / eigVl (giac's egv / egvl): the eigenvector matrix (columns, as
+ * EIGENVV's first part) and the diagonal eigenvalue matrix */
+static int eig_part(const value *a, value *out, int which)
+{
+    value P, D;
+    int st;
+    if ((st = eigvecs(a, &P, &D))) return st;
+    if (which) { *out = D; v_decref(&P); } else { *out = P; v_decref(&D); }
+    return 0;
+}
+BI(b_eigvc) { (void)V; (void)argc; return eig_part(&a[0], out, 0); }
+BI(b_eigvl) { (void)V; (void)argc; return eig_part(&a[0], out, 1); }
 
 /* Householder QR: A = Q R, Q orthogonal (m x m), R upper (m x n) */
 static int house_qr(xm *A, xm *Q)

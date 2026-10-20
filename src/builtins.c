@@ -26,14 +26,15 @@ static const builtin bi_core_table[] = {
     { "\xCF\x80LIST", b_pilist, 1, 1, 0 },         /* πLIST */
     { "\xCE\x94LIST", b_deltalist, 1, 1, 0 },      /* ΔLIST */
     { "DIFFERENCE", b_difference, 2, -1, 0 }, { "INTERSECT", b_intersect, 2, 2, 0 },
-    { "UNION", b_union, 2, 2, 0 }, { "EQ", b_eq, 2, 2, 0 },
+    { "UNION", b_union, 1, -1, 0 }, { "EQ", b_eq, 2, 2, 0 },
     { "MAKELIST", b_makelist, 2, 5, BF_QUOTE1 | BF_QUOTE2 },
     { "\xCE\xA3", b_sigma, 4, 4, BF_QUOTE1 | BF_QUOTE2 },          /* Σ */
     { "\xE2\x88\x91", b_sigma, 4, 4, BF_QUOTE1 | BF_QUOTE2 },      /* ∑ */
     { "ITERATE", b_iterate, 4, 4, BF_QUOTE1 | BF_QUOTE2 },
     { "EVALLIST", b_evallist, 1, 1, 0 }, { "EXECON", b_execon, 2, -1, 0 },
-    { "ListToMat", b_listtomat, 1, 1, 0 }, { "list2mat", b_listtomat, 1, 1, 0 },
-    { "MatToList", b_mattolist, 1, 1, 0 }, { "mat2list", b_mattolist, 1, 1, 0 },
+    { "ListToMat", b_listtomat, 1, 1, 0 }, { "list2mat", b_list2mat, 1, 2, 0 },
+    { "MatToList", b_mattolist, 1, 1, 0 }, { "mat2list", b_mat2list, 1, 1, 0 },
+    { "remove", b_remove, 2, 2, 0 },
     /* strings */
     { "ASC", b_asc, 1, 1, 0 }, { "CHAR", b_char, 1, 1, 0 },
     { "LEFT", b_left, 2, 2, 0 }, { "RIGHT", b_right, 2, 2, 0 }, { "MID", b_mid, 2, 3, 0 },
@@ -42,7 +43,7 @@ static const builtin bi_core_table[] = {
     { "STRING", b_string, 1, 4, 0 }, { "EXPR", b_expr, 1, 1, 0 },
     { "STRINGFROMID", b_strfromid, 1, 1, 0 },
     /* matrices */
-    { "MAKEMAT", b_makemat, 3, 3, BF_QUOTE1 }, { "IDENMAT", b_idenmat, 1, 1, 0 },
+    { "MAKEMAT", b_makemat, 2, 3, BF_QUOTE1 }, { "IDENMAT", b_idenmat, 1, 1, 0 },
     { "RANDMAT", b_randmat, 1, 4, 0 }, { "TRN", b_trn, 1, 1, 0 }, { "DET", b_det, 1, 1, 0 },
     { "RREF", b_rref, 1, 1, 0 }, { "ADDROW", b_addrow, 3, 3, BF_INPLACE }, { "ADDCOL", b_addcol, 3, 3, BF_INPLACE },
     { "DELROW", b_delrow, 2, 2, BF_INPLACE }, { "DELCOL", b_delcol, 2, 2, BF_INPLACE }, { "REDIM", b_redim, 2, 2, BF_INPLACE },
@@ -62,6 +63,9 @@ static const builtin bi_core_table[] = {
     { "mkisom", b_mkisom, 2, 2, 0 }, { "pivot", b_pivot, 3, 3, 0 }, { "SVL", b_svl, 1, 1, 0 },
     { "SVD", b_svd, 1, 1, 0 }, { "SCHUR", b_schur, 1, 1, 0 }, { "LQ", b_lq, 1, 1, 0 },
     { "hessenberg", b_hessenberg, 1, 1, 0 },
+    { "lu", b_lucas, 1, 1, 0 }, { "rowDim", b_rowdim, 1, 1, 0 }, { "colDim", b_coldim, 1, 1, 0 },
+    { "delrows", b_delrow, 2, 2, 0 }, { "delcols", b_delcol, 2, 2, 0 },
+    { "eigVc", b_eigvc, 1, 1, 0 }, { "eigVl", b_eigvl, 1, 1, 0 }, { "randperm", b_randperm, 1, 1, 0 },
     /* probability and statistics */
     { "NORMALD", b_normald, 1, 3, 0 }, { "NORMALD_CDF", b_normald_cdf, 1, 4, 0 },
     { "NORMALD_ICDF", b_normald_icdf, 1, 3, 0 },
@@ -82,6 +86,7 @@ static const builtin bi_core_table[] = {
     { "Psi", b_psi, 1, 2, 0 }, { "Zeta", b_zeta, 1, 1, 0 },
     { "mean", b_mean, 1, 2, 0 }, { "median", b_median, 1, 2, 0 },
     { "stddev", b_stddev, 1, 2, 0 }, { "variance", b_variance, 1, 2, 0 },
+    { "stddevp", b_stddevp, 1, 2, 0 },
     { NULL, NULL, 0, 0, 0 }
 };
 
