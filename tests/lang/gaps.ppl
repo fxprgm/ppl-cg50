@@ -1,0 +1,236 @@
+// Language gaps found in real programs (2026-10-20): DMS literals, element-by-element
+// operators, REPEAT..UNTIL c END, statements in CASE, Unicode spaces, MOD7, solver
+// arguments, failing initialisers, error lines, e^x, indexed assignment values, s[i,n],
+// functions overloaded by arity, BREAK (n).
+
+// a failing initialiser leaves its variable at 0; the later ones still run (pplx)
+EXPORT GQQ:=CAS("nop");
+EXPORT GQQ3:=7;
+//> GQQ3 => 7
+//> GQQ => 0
+
+// sexagesimal literals: d + m/60 + s/3600, shown as DMS, never converted to radians
+EXPORT DMS1()
+BEGIN
+  RETURN {HMS→(54°52′34.68″), HMS→(13°15′), HMS→(13°15′30″), HMS→(-005°42′53.10″)};
+END;
+//> DMS1() => {54.8763,13.25,13.2583333333,-5.71475}
+//> 18°51′58″ => 18°51′58″
+//> HMS→(36°40′ 20″) => 36.6722222222
+//> HMS→(18°51′58″)+1 => 19.8661111111
+//> SIN(30°) => 0.5
+
+// .* ./ .^ (.+ .-): term by term (HP's guide, ".*")
+//> [[1,2],[3,4]].*[[3,4],[5,6]] => [[3,8],[15,24]]
+//> [[2,4],[6,8]]./[[1,2],[3,4]] => [[2,2],[2,2]]
+//> [[1,2],[3,4]].^2 => [[1,4],[9,16]]
+//> [[1,2],[3,4]]^2 => [[7,10],[15,22]]
+//> {1,2,3}.*{4,5,6} => {4,10,18}
+//> {1,2}./{4,5} => {0.25,0.4}
+//> 2.*3+5.*2 => 16
+//> {1,2}.+{3,4} => {4,6}
+//> {5,6}.-{1,2} => {4,4}
+EXPORT EMUL(m)
+BEGIN
+  RETURN −MAKEMAT(I<J,2,2).*m;
+END;
+//> EMUL([[5,6],[7,8]]) => [[0,-6],[0,0]]
+
+// REPEAT .. UNTIL c END (qpi): the END after the test belongs to the REPEAT
+EXPORT REP1()
+BEGIN
+  LOCAL n := 0;
+  repeat
+    n := n + 1;
+  until n >= 5 end;
+  RETURN n;
+END;
+EXPORT REP2(k)
+BEGIN
+  LOCAL n := 0;
+  IF k THEN
+    REPEAT n := n + 2; UNTIL n > 5;
+  END;
+  RETURN n;
+END;
+EXPORT REP3()
+BEGIN
+  LOCAL n := 0, m := 0;
+  REPEAT
+    REPEAT m := m + 1; UNTIL m MOD 3 == 0 END;
+    n := n + 1;
+  UNTIL n == 2;
+  RETURN {n, m};
+END;
+//> REP1() => 5
+//> REP2(1) => 6
+//> REP2(0) => 0
+//> REP3() => {2,6}
+
+// statements after the IFs of a CASE run when no test is true (regress, us76)
+EXPORT CASE1(k)
+BEGIN
+  LOCAL r := 0;
+  CASE
+    IF k == 1 THEN r := 10; END;
+    IF k == 2 THEN r := 20; END;
+    r := 99;
+  END;
+  RETURN r;
+END;
+EXPORT CASE2(k)
+BEGIN
+  CASE
+    IF k == 1 THEN RETURN "one"; END;
+    KILL;
+  END;
+  RETURN "after";
+END;
+//> CASE1(1) => 10
+//> CASE1(2) => 20
+//> CASE1(3) => 99
+//> CASE2(1) => "one"
+//> CASE2(5) => *error*
+
+// no-break, thin, zero-width spaces and U+2028 are white space (depreciation)
+EXPORT SPACES()
+BEGIN
+  LOCAL a := 1, b := 2;
+  RETURN a + b​*2;
+END;
+ 
+//> SPACES() => 5
+
+// a word operator run into its number: N2J(edn)MOD7 (dfx)
+EXPORT MOD7(n)
+BEGIN
+  RETURN FLOOR(n)MOD7+1;
+END;
+//> MOD7(15) => 2
+//> MOD7(20.5) => 7
+//> {1 AND0, 0 OR1, 1 XOR1} => {0,1,0}
+
+// FNROOT / fsolve: equations, run-time variable names, no guess (mes, bonds)
+EXPORT SOLVE1(eqstr, varname)
+BEGIN
+  LOCAL sol;
+  IFERR
+    sol := fsolve(EVAL(eqstr), EVAL(varname), 10);
+  THEN
+    RETURN {0, 0};
+  END;
+  RETURN {1, sol};
+END;
+EXPORT SOLVE2()
+BEGIN
+  RETURN FNROOT((C/A)*((1-1/(1+(X/A))^(A*Y))/(X/A)) + 100/(1+(X/A))^(A*Y) = 95, X);
+END;
+//> FNROOT(X^2=4,X,1) => 2
+//> FNROOT(X^3-8,X) => 2
+//> ABS(FNROOT(X^2-4,X)) => 2
+//> FNROOT(3*X=X+8,X,0) => 4
+//> SOLVE1("V=2*10","V") => {1,20}
+//> SOLVE1("2*Q=8","Q") => {1,4}
+//> SOLVE1("7=20*Rr","Rr") => {1,0.35}
+//> C:=5;A:=2;Y:=10;ROUND(SOLVE2(),6) => 0.056617
+
+// e^x is EXP(x)
+//> e^(2.83314410795) => 16.9988230269
+//> e^1 => 2.71828182846
+//> e^{0,1} => {1,2.71828182846}
+
+// the value of an indexed assignment is the whole list or matrix (listapi's Pyappend)
+EXPORT PYAPPEND(LST, ITEM)
+BEGIN
+  RETURN LST(0):=ITEM;
+END;
+EXPORT SETEL()
+BEGIN
+  LOCAL L := {1,2,3}, M := [[1,2],[3,4]], i;
+  FOR i FROM 1 TO 3 DO L(i) := i*10; END;
+  RETURN {L, M(2,1):=9, L(1):=5};
+END;
+EXPORT LASTSET()
+BEGIN
+  LOCAL L := {1,2};
+  L(2) := 7;
+END;
+//> PYAPPEND({1,2},3) => {1,2,3}
+//> PYAPPEND({},{2,3}) => {{2,3}}
+//> SETEL() => {{10,20,30},[[1,2],[9,4]],{5,20,30}}
+//> LASTSET() => {1,7}
+
+// s[i,n]: n characters from position i (aslist)
+EXPORT SUBSTR(s)
+BEGIN
+  RETURN {s[2,3], s[1,1], s(4,10), s[2]};
+END;
+//> SUBSTR("hello") => {"ell","h","lo",101}
+
+// functions of one name with different numbers of parameters (astrocalc)
+OVL(a, b)
+BEGIN
+  RETURN a*10 + b;
+END;
+OVL(a)
+BEGIN
+  RETURN OVL(a, 7);
+END;
+EXPORT OVLT()
+BEGIN
+  RETURN {OVL(1), OVL(2, 3)};
+END;
+//> OVLT() => {17,23}
+
+// BREAK (1)
+EXPORT BRK1()
+BEGIN
+  LOCAL i;
+  FOR i FROM 1 TO 10 DO
+    IF i == 4 THEN BREAK (1); END;
+  END;
+  RETURN i;
+END;
+//> BRK1() => 4
+
+// run-time errors give the line of the failing call in a statement of several lines
+EXPORT LINES()
+BEGIN
+  PRINT("a" +
+        STRING(2) +
+        ASC(1/0));
+END;
+//> LINES() => *error* (line 201)
+EXPORT LINES2()
+BEGIN
+  LOCAL k := 0;
+  WHILE k < 3 DO
+    k := k + 1;
+  END;
+  IF k > 99 THEN k := 1; ELSE k := SIN(
+    "x"); END;
+END;
+//> LINES2() => *error* (line 210)
+
+// EXPR text sees the calling program's variables and the calling function's locals
+// (astrocalc: EXPR("Learth(Tau_)") with a file-level LOCAL; newtonstr: EXPR(sfx) on the
+// parameter x)
+LOCAL gTau := 0.5;
+gHalf(t)
+BEGIN
+  RETURN t / 2;
+END;
+EXPORT EXPRCTX(x)
+BEGIN
+  LOCAL y := 10, r;
+  r := {EXPR("x^2+y"), EXPR("gHalf(gTau)")};
+  EXPR("y:=y+1");
+  RETURN CONCAT(r, y);
+END;
+EXPORT SOLVELOC()
+BEGIN
+  LOCAL q := 0;
+  RETURN fsolve(EVAL("q^2-9"), EVAL("q"), 1);
+END;
+//> EXPRCTX(3) => {19,0.25,11}
+//> SOLVELOC() => 3

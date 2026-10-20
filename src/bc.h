@@ -42,10 +42,13 @@ enum {
     BC_LINE,      /* u16 line */
     BC_KILL,
     BC_SC,        /* u8 OP_AND/OP_OR, i16   AND/OR left operand decides: replace it with the result, jump */
+    BC_OLOAD,     /* u8 slot                a local of the function running EXPR (fn->outer_frame) */
+    BC_OSTORE,    /* u8 slot */
     BC_COUNT
 };
 
 /* variable reference kinds (BC_VREF, value.ib of T_VREF) */
-enum { VK_LOCAL = 1, VK_PROG, VK_SYS, VK_NAME };
+enum { VK_LOCAL = 1, VK_PROG, VK_SYS, VK_NAME,
+       VK_SLOT };   /* u.vp: a variable's value slot, made at run time (_FNROOTX) */
 
 #endif

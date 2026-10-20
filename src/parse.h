@@ -23,13 +23,15 @@ enum {
     P_ASSIGN = 1, P_STORE, P_EQ, P_EQ1, P_NE, P_LT, P_LE, P_GT, P_GE,
     P_PLUS, P_MINUS, P_MUL, P_DIV, P_POW, P_LPAR, P_RPAR, P_LBRACE,
     P_RBRACE, P_LBRACK, P_RBRACK, P_COMMA, P_SEMI, P_BANG, P_SQ, P_CUBE,
-    P_SQRT, P_PI, P_COLON, P_INV, P_PIPE, P_AMP, P_DEG
+    P_SQRT, P_PI, P_COLON, P_INV, P_PIPE, P_AMP, P_DEG,
+    P_EMUL, P_EDIV, P_EPOW, P_EADD, P_ESUB   /* .* ./ .^ .+ .- (element by element) */
 };
 
 typedef struct token {
     int kind, op, line;
     const char *s; int len;      /* source text of the token */
     real num;                    /* TK_NUM */
+    uint8_t dms;                 /* TK_NUM: a degrees-minutes-seconds literal 13°15′30″ */
     value iv;                    /* TK_INT */
     char *str; size_t slen;      /* TK_STR (UTF-8, unescaped), TK_ID (name) */
 } token;
@@ -70,6 +72,8 @@ typedef struct parser {
     char *arena; size_t used, cap;     /* bump allocator for the AST */
     struct arena_blk *blocks;
     int err; int errline; char msg[96];
+    int dcomma;                        /* #pragma mode(separator(,;...)): decimal comma, ';' separates */
+    int depth;                         /* bracket depth (decimal-comma mode: ';' inside is ',') */
     topdecl *decls; int ndecls, capdecls;
 } parser;
 

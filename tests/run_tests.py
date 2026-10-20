@@ -3,7 +3,8 @@
 Each .ppl file is a program; lines of the form
     //> EXPR => RESULT
 are evaluated on Home after loading it (`ppl --ascii run FILE EXPR...`) and
-the printed result compared with RESULT.  RESULT `*error*` expects an error.
+the printed result compared with RESULT.  RESULT `*error*` expects an error;
+`*error* TEXT` an error whose message contains TEXT (e.g. `(line 12)`).
 """
 import glob, os, subprocess, sys
 
@@ -20,6 +21,9 @@ for path in sorted(glob.glob(os.path.join(here, 'lang', '*.ppl'))):
         total += 1
         p = subprocess.run([ppl, '--ascii', 'run', path, expr], capture_output=True, text=True)
         got = p.stdout.strip() if p.returncode == 0 else '*error*'
+        if want.startswith('*error*') and want != '*error*' and got == '*error*':
+            # `*error* (line N)`: the error message must contain the rest
+            got = '*error* ' + want[7:].strip() if want[7:].strip() in p.stderr else '*error* ' + p.stderr.strip()
         if got != want:
             fails += 1
             err = p.stderr.strip().splitlines()[-1] if p.stderr.strip() else ''

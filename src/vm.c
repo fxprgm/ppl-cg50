@@ -214,6 +214,8 @@ static void free_func(pfunc *f)
     for (i = 0; i < f->nk; i++) v_decref(&f->k[i]);
     for (i = 0; i < f->nnames; i++) free(f->names[i]);
     free(f->names);
+    for (i = 0; i < f->nlocals_named; i++) free(f->lnames[i]);
+    free(f->lnames);
     free(f->nc);
     free(f->k);
     free(f->code);
@@ -294,7 +296,8 @@ int ppl_load(ppl_vm *V, const char *name, const char *src, size_t n, char *msg, 
             v_int32(&prog->g[prog->ng].v, 0);
             prog->ng++;
         } else {
-            for (j = 0; j < prog->nf; j++) if (!strcmp(prog->f[j]->name, d->name)) found = j;
+            for (j = 0; j < prog->nf; j++)
+                if (!strcmp(prog->f[j]->name, d->name) && prog->f[j]->nparams == d->nparams) found = j;
             if (found >= 0) {
                 if (d->exported) prog->f[found]->exported = 1;
                 if (d->kind == 1 && prog->f[found]->line) { st = E_SYNTAX; errline = d->line; snprintf(m, sizeof m, "%s defined twice", d->name); break; }
@@ -317,35 +320,36 @@ int ppl_load(ppl_vm *V, const char *name, const char *src, size_t n, char *msg, 
         topdecl *d = &P.decls[i];
         int j;
         if (d->kind != 1) continue;
-        for (j = 0; j < prog->nf; j++) if (!strcmp(prog->f[j]->name, d->name)) break;
+        for (j = 0; j < prog->nf; j++) if (!strcmp(prog->f[j]->name, d->name) && prog->f[j]->nparams == d->nparams) break;
         st = compile_function(V, prog, prog->f[j], d->params, d->nparams, d->body, m, sizeof m, &errline);
     }
-    if (!st) {
-        int any = 0;
-        for (i = 0; i < P.ndecls; i++) if (P.decls[i].kind == 2 && P.decls[i].body) any = 1;
-        if (any) {
-            pfunc *init = new_func(prog, "(init)");
-            st = compile_inits(V, prog, init, P.decls, P.ndecls, m, sizeof m, &errline);
-            if (!st) {
-                /* run it */
-                pprog *saved = V->progs;
-                prog->next = V->progs;
-                V->progs = prog;
-                {
-                    value r;
-                    int e = 0;
-                    extern int vm_run_func(ppl_vm *, pfunc *, int, const value *, value *);
-                    /* an error in an initialiser leaves the variable at 0 (the
-                     * program still loads; the error shows when it is used) */
-                    e = vm_run_func(V, init, 0, NULL, &r);
-                    if (!e) v_decref(&r);
-                }
-                V->progs = saved;
-                prog->next = NULL;
-            }
-            if (V->errfn == init) V->errfn = NULL;
-            free_func(init);
+    /* the initialisers of the program's variables, each on its own: one that fails
+     * (EXPORT QQ:=CAS("nop") in pplx) leaves its variable at 0 and the later ones
+     * still run; the program loads, and the first such error comes back in msg as a
+     * warning (what the Prime reports then is not known) */
+    for (i = 0; i < P.ndecls && !st; i++) {
+        pfunc *init;
+        value r;
+        int e;
+        pprog *saved;
+        extern int vm_run_func(ppl_vm *, pfunc *, int, const value *, value *);
+        if (P.decls[i].kind != 2 || !P.decls[i].body) continue;
+        init = new_func(prog, "(init)");
+        if (!init) { st = E_MEM; snprintf(m, sizeof m, "%s", ppl_errmsg(E_MEM)); break; }
+        st = compile_inits(V, prog, init, &P.decls[i], 1, m, sizeof m, &errline);
+        if (!st) {
+            saved = V->progs;
+            prog->next = V->progs;
+            V->progs = prog;
+            e = vm_run_func(V, init, 0, NULL, &r);
+            if (!e) v_decref(&r);
+            else if (msg && !msg[0])
+                snprintf(msg, msgn, "line %d: %s (initial value of %s)", P.decls[i].line, ppl_errmsg(e), P.decls[i].name);
+            V->progs = saved;
+            prog->next = NULL;
         }
+        if (V->errfn == init) V->errfn = NULL;
+        free_func(init);
     }
     parser_free(&P);
     if (st) {
@@ -361,6 +365,18 @@ int ppl_load(ppl_vm *V, const char *name, const char *src, size_t n, char *msg, 
     V->progs = prog;
     V->gen++;
     return 0;
+}
+
+/* f, or the function of f's program with the same name taking argc arguments */
+static pfunc *func_arity(pfunc *f, int argc)
+{
+    int i;
+    pprog *p = f->prog;
+    if (f->nparams == argc || !p) return f;
+    for (i = 0; i < p->nf; i++)
+        if (p->f[i]->nparams == argc && (p->f[i]->exported || !f->exported) && !strcmp(p->f[i]->name, f->name))
+            return p->f[i];
+    return f;
 }
 
 pfunc *vm_find_func(ppl_vm *V, const char *name, int exported_only)
@@ -502,6 +518,15 @@ int vm_index(ppl_vm *V, const value *c, int argc, const value *idx, value *out)
         return st;
     }
     case T_STR:
+        if (argc == 2) {
+            /* s[i,n]: n characters from i, as MID(s,i,n) (aslist: line + s[i,1]; the
+             * meaning is inferred from the program, not checked on a Prime) */
+            uint32_t len = c->u.s->len;
+            if ((st = to_index(&idx[1], &j))) return st;
+            if (i < 1 || (uint32_t)i > len || j < 0) return E_INDEX;
+            if ((uint32_t)j > len - (uint32_t)(i - 1)) j = (int32_t)(len - (uint32_t)(i - 1));
+            return v_str_u16(out, c->u.s->c + (i - 1), (uint32_t)j);
+        }
         if (argc != 1) return E_BADTYPE;
         if (i < 1 || (uint32_t)i > c->u.s->len) return E_INDEX;
         v_int32(out, c->u.s->c[i - 1]);
@@ -802,7 +827,7 @@ static int exec(ppl_vm *V, int base)
                 if (k == R_VAR) v_copy(&S[V->sp++], slot);
                 else if (k == R_SETTING) vm_setting_get(V, nm, &S[V->sp++]);
                 else if (k == R_FUNC) {
-                    int e = push_frame(V, fn, 0, 0, 0, 0);
+                    int e = push_frame(V, func_arity(fn, 0), 0, 0, 0, 0);
                     if (e) FAIL(e);
                     LOAD();
                 } else { strncpy(V->errname, nm, sizeof V->errname - 1); FAIL(E_UNDEF); }
@@ -906,7 +931,7 @@ static int exec(ppl_vm *V, int base)
             SAVE();
             k = resolve_cached(V, fr->fn, ni, &slot, &fn);
             if (k == R_FUNC) {
-                e = push_frame(V, fn, argc, 0, 0, 0);
+                e = push_frame(V, func_arity(fn, argc), argc, 0, 0, 0);
                 if (e) FAIL(e);
                 LOAD();
             } else if (k == R_VAR) {
@@ -1115,6 +1140,13 @@ static int exec(ppl_vm *V, int base)
             V->sp++;
             pc += 3;
             break;
+        case BC_OLOAD: NEED(1); v_copy(&S[V->sp++], &S[V->frames[fr->fn->outer_frame].bp + code[pc]]); pc++; break;
+        case BC_OSTORE: {
+            value *d = &S[V->frames[fr->fn->outer_frame].bp + code[pc++]];
+            v_decref(d);
+            *d = S[--V->sp];
+            break;
+        }
         case BC_LINE: fr->line = RD16(code + pc); pc += 2; POLL(); break;
         case BC_KILL: SAVE(); FAIL(E_KILL);
         default: SAVE(); FAIL(E_SYNTAX);
@@ -1171,7 +1203,7 @@ int ppl_call(ppl_vm *V, const char *fname, int argc, const value *argv, value *o
     pfunc *f = vm_find_func(V, fname, 1);
     if (!f) f = vm_find_func(V, fname, 0);
     if (!f) { strncpy(V->errname, fname, sizeof V->errname - 1); return E_UNDEF; }
-    return vm_run_func(V, f, argc, argv, out);
+    return vm_run_func(V, func_arity(f, argc), argc, argv, out);
 }
 
 int vm_call_value(ppl_vm *V, const char *name, int argc, value *argv, value *out)
@@ -1183,6 +1215,17 @@ int vm_run_thunk(ppl_vm *V, const value *th, value *out)
 {
     frame *parent;
     int e, base = V->nframes;
+    if (th->t == T_STR || th->t == T_SYM) {
+        /* an expression given as text (FNROOT through _FNROOTX): evaluated as on Home */
+        const pstr *ps = th->t == T_STR ? th->u.s : th->u.y->text;
+        size_t n = u16_to_utf8(NULL, ps->c, ps->len);
+        char *buf = (char *)malloc(n + 1);
+        if (!buf) return E_MEM;
+        u16_to_utf8(buf, ps->c, ps->len);
+        e = vm_eval_string(V, buf, n, out);
+        free(buf);
+        return e;
+    }
     if (th->t != T_THUNK) return E_BADTYPE;
     parent = &V->frames[th->u.th.idx];
     e = push_frame(V, parent->fn, 0, 1, parent->bp, th->u.th.pc);
@@ -1195,7 +1238,9 @@ int vm_run_thunk(ppl_vm *V, const value *th, value *out)
 
 static value *ref_slot(ppl_vm *V, const value *ref, int create)
 {
-    frame *f = &V->frames[ref->u.th.pc];
+    frame *f;
+    if (ref->ib == VK_SLOT) return ref->u.vp;
+    f = &V->frames[ref->u.th.pc];
     switch (ref->ib) {
     case VK_LOCAL: return &V->stack[f->bp + ref->u.th.idx];
     case VK_PROG: return &f->fn->prog->g[ref->u.th.idx].v;
@@ -1246,10 +1291,20 @@ int vm_eval_string(ppl_vm *V, const char *src, size_t n, value *out)
     parser_init(&P, src, n);
     b = parse_home(&P);
     if (P.err) { V->errline = P.errline; parser_free(&P); return E_SYNTAX; }
-    f = new_func(&home_prog, "(home)");
-    if (!f) { parser_free(&P); return E_MEM; }
-    f->home = 1;
-    e = compile_function(V, &home_prog, f, NULL, 0, b, msg, sizeof msg, &errline);
+    {
+        /* EXPR/EVAL of a text inside a program sees that program's variables and
+         * functions (astrocalc: EXPR("Learth(Tau_)") with Tau_ a file-level LOCAL) */
+        pprog *ctx = &home_prog;
+        pfunc *caller = V->nframes > 0 ? V->frames[V->nframes - 1].fn : NULL;
+        if (caller && caller->prog) ctx = caller->prog;
+        f = new_func(ctx, "(home)");
+        if (!f) { parser_free(&P); return E_MEM; }
+        f->home = 1;
+        /* ... and the locals of the function calling it (newtonstr: EXPR(sfx) with sfx
+         * naming the parameter x); a thunk frame shares its function's locals */
+        if (caller && caller->lnames) { f->outer = caller; f->outer_frame = V->nframes - 1; }
+        e = compile_function(V, ctx, f, NULL, 0, b, msg, sizeof msg, &errline);
+    }
     parser_free(&P);
     if (e) { free_func(f); return e; }
     e = vm_run_func(V, f, 0, NULL, out);
@@ -1264,3 +1319,200 @@ int ppl_eval(ppl_vm *V, const char *src, value *out)
     if (!e) v_set(&V->sysvars[SV_ANS], out);
     return e;
 }
+
+/* ------------------------------------------------------------ solver */
+
+extern int bi_fnroot_impl(ppl_vm *V, int argc, value *a, value *out);
+
+/* text of a string or symbolic value as UTF-8 (malloc'd), NULL otherwise */
+static char *text_of(const value *v)
+{
+    const pstr *ps;
+    size_t n;
+    char *buf;
+    if (v->t == T_STR) ps = v->u.s;
+    else if (v->t == T_SYM) ps = v->u.y->text;
+    else return NULL;
+    n = u16_to_utf8(NULL, ps->c, ps->len);
+    if (!(buf = (char *)malloc(n + 1))) return NULL;
+    u16_to_utf8(buf, ps->c, ps->len);
+    buf[n] = 0;
+    return buf;
+}
+
+/* "lhs=rhs" (or ==) at bracket depth 0 -> "(lhs)-(rhs)"; NULL when not an equation */
+static char *equation_as_difference(const char *t)
+{
+    int depth = 0;
+    size_t i, n = strlen(t);
+    for (i = 0; i < n; i++) {
+        char c = t[i];
+        if (c == '(' || c == '[' || c == '{') depth++;
+        else if (c == ')' || c == ']' || c == '}') depth--;
+        else if (c == '"') { for (i++; i < n && t[i] != '"'; i++) {} }
+        else if (c == '=' && !depth) {
+            char p = i ? t[i - 1] : 0;
+            size_t r = i + 1;
+            char *out;
+            if (p == ':' || p == '<' || p == '>' || p == '!' || p == '=') continue;
+            if (r < n && t[r] == '>') continue;          /* => store */
+            if (r < n && t[r] == '=') r++;
+            if (!(out = (char *)malloc(n + 8))) return NULL;
+            sprintf(out, "(%.*s)-(%s)", (int)i, t, t + r);
+            return out;
+        }
+    }
+    return NULL;
+}
+
+static void drop_hvar(ppl_vm *V, value *slot)
+{
+    hvar **pp;
+    for (pp = &V->hvars; *pp; pp = &(*pp)->next)
+        if (&(*pp)->v == slot) {
+            hvar *h = *pp;
+            *pp = h->next;
+            v_decref(&h->v); free(h->name); free(h);
+            V->gen++;
+            return;
+        }
+}
+
+/* the solver's expression at x (args[0] the expression, args[1] the variable) */
+static int fn_at(ppl_vm *V, value *args, const real *x, real *f)
+{
+    value xv, fv;
+    int st;
+    v_real(&xv, x);
+    if ((st = vm_store_ref(V, &args[1], &xv))) return st;
+    if ((st = vm_run_thunk(V, &args[0], &fv))) return st;
+    st = (fv.t == T_REAL || fv.t == T_INT) ? to_real(&fv, f) : E_BADTYPE;
+    v_decref(&fv);
+    if (!st && f->k != DEC_FINITE) st = E_BADVAL;
+    return st;
+}
+
+/* FNROOT with no guess: the expression is sampled at a few points from -100 to 100;
+ * guesses next to a sign change come first, then the others by |f|.  A result is
+ * taken when |f| there is below 1E-7 of the largest |f| sampled (at least 1E-7). */
+#define NSAMP 17
+static int fnroot_noguess(ppl_vm *V, value *args, value *out)
+{
+    static const char *const pts[NSAMP] = { "-100", "-10", "-5", "-2", "-1", "-0.5", "-0.1", "-0.01", "0",
+                                            "0.01", "0.1", "0.5", "1", "2", "5", "10", "100" };
+    real xs[NSAMP], fs[NSAMP], af[NSAMP], tol, big;
+    int ok[NSAMP], order[NSAMP], used[NSAMP], no = 0, i, j, st = E_BADVAL, have = 0;
+    value saved, best;
+    dec_from_str(&big, "1", NULL);
+    vm_load_ref(V, &args[1], &saved);
+    for (i = 0; i < NSAMP; i++) {
+        dec_from_str(&xs[i], pts[i], NULL);
+        ok[i] = !fn_at(V, args, &xs[i], &fs[i]);
+        used[i] = 0;
+        if (ok[i]) { dec_abs(&af[i], &fs[i]); if (dec_cmp(&af[i], &big) > 0) big = af[i]; }
+        if (V->err == E_BREAK || V->err == E_KILL) { st = V->err; goto out; }
+    }
+    vm_store_ref(V, &args[1], &saved);
+    dec_from_str(&tol, "1E-7", NULL);
+    dec_mul(&tol, &tol, &big);
+    /* next to sign changes */
+    for (i = 0, j = -1; i < NSAMP; i++) {
+        if (!ok[i]) continue;
+        if (j >= 0 && fs[i].s != fs[j].s && !used[i] && !used[j]) {
+            int k = dec_cmp(&af[i], &af[j]) < 0 ? i : j;
+            order[no++] = k; used[k] = 1;
+        }
+        j = i;
+    }
+    /* then by |f| */
+    for (;;) {
+        int m = -1;
+        for (i = 0; i < NSAMP; i++) if (ok[i] && !used[i] && (m < 0 || dec_cmp(&af[i], &af[m]) < 0)) m = i;
+        if (m < 0) break;
+        order[no++] = m; used[m] = 1;
+    }
+    /* bi_fnroot_impl answers a real: nothing to release */
+    v_none(&best);
+    for (i = 0; i < no; i++) {
+        value r;
+        real f;
+        int e;
+        v_real(&args[2], &xs[order[i]]);
+        if ((st = bi_fnroot_impl(V, 3, args, &r))) {
+            if (st == E_BREAK || st == E_KILL) return st;
+            continue;
+        }
+        if (!have) { best = r; have = 1; }
+        if (r.t != T_REAL) continue;
+        vm_load_ref(V, &args[1], &saved);
+        e = fn_at(V, args, &r.u.r, &f);
+        vm_store_ref(V, &args[1], &saved);
+        v_decref(&saved);
+        if (!e) {
+            dec_abs(&f, &f);
+            if (dec_cmp(&f, &tol) <= 0) { best = r; break; }
+        }
+    }
+    if (!have) return st ? st : E_BADVAL;
+    *out = best;
+    return 0;
+out:
+    vm_store_ref(V, &args[1], &saved);
+    v_decref(&saved);
+    return st;
+}
+
+/* _FNROOTX(expr, var[, guess]): FNROOT/fsolve when the variable is named at run time
+ * (fsolve(EVAL(eqstr),EVAL(varname),10) in mes) or the guess is left out (bonds:
+ * FNROOT(expr, X); what the Prime does without a guess is not known: fnroot_noguess).
+ * expr is a thunk or a text (an equation lhs=rhs solves lhs-rhs); var a reference or
+ * a name as text. */
+static int vm_fnrootx(ppl_vm *V, int argc, value *a, value *out)
+{
+    value args[3], *tmp = NULL;
+    char *t;
+    int st = 0;
+    v_none(&args[0]); v_none(&args[1]); v_none(&args[2]);
+    if ((t = text_of(&a[0])) != NULL) {
+        char *d = equation_as_difference(t);
+        if (d) { st = v_str_utf8(&args[0], d, strlen(d)); free(d); }
+        else st = v_str_utf8(&args[0], t, strlen(t));
+        free(t);
+        if (st) return st;
+    } else if (a[0].t == T_THUNK) args[0] = a[0];
+    else return E_BADTYPE;
+    if (a[1].t == T_VREF) args[1] = a[1];
+    else {
+        int sv;
+        value *slot = NULL;
+        pfunc *fn = NULL;
+        pfunc *cf = V->nframes > 0 ? V->frames[V->nframes - 1].fn : NULL;
+        int ls = -1;
+        if (!(t = text_of(&a[1]))) { st = E_BADTYPE; goto done; }
+        args[1].t = T_VREF;
+        /* the name as EXPR would read it: a local of the calling function first */
+        if (cf && cf->lnames)
+            for (ls = cf->nlocals_named - 1; ls >= 0; ls--) if (cf->lnames[ls] && !strcmp(cf->lnames[ls], t)) break;
+        if (ls >= 0) { args[1].ib = VK_LOCAL; args[1].u.th.idx = (uint16_t)ls; args[1].u.th.pc = (uint32_t)(V->nframes - 1); }
+        else if ((sv = sysvar_id(t)) >= 0) { args[1].ib = VK_SYS; args[1].u.th.idx = (uint16_t)sv; args[1].u.th.pc = 0; }
+        else {
+            if (resolve(V, t, &slot, &fn) != R_VAR) slot = tmp = new_hvar(V, t);
+            if (!slot) { free(t); st = E_MEM; goto done; }
+            args[1].ib = VK_SLOT; args[1].u.vp = slot;
+        }
+        free(t);
+    }
+    if (argc >= 3) {
+        args[2] = a[2];
+        st = bi_fnroot_impl(V, 3, args, out);
+    } else st = fnroot_noguess(V, args, out);
+done:
+    if (a[0].t != T_THUNK) v_decref(&args[0]);
+    if (tmp) drop_hvar(V, tmp);
+    return st;
+}
+
+const builtin bi_vm_table[] = {
+    { "_FNROOTX", vm_fnrootx, 2, 3, 0 },
+    { NULL, NULL, 0, 0, 0 }
+};

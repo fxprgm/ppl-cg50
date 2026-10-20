@@ -643,6 +643,13 @@ static int mat_op(ppl_vm *V, int op, const value *a, const value *b, value *out)
 int ar_binary(ppl_vm *V, int op, const value *a, const value *b, value *out)
 {
     real x, y;
+    if (op >= OP_EMUL && op <= OP_EPOW && a->t != T_LIST && b->t != T_LIST) {
+        /* .* ./ .^ : term by term on matrices (HP's guide: [[1,2],[3,4]].*[[3,4],[5,6]]
+         * = [[3,8],[15,24]]); elsewhere the plain operator (lists are term by term already) */
+        int bop = op == OP_EMUL ? OP_MUL : op == OP_EDIV ? OP_DIV : OP_POW;
+        if (a->t == T_MAT || b->t == T_MAT) return mat_map2(V, bop, a, b, out);
+        op = bop;
+    }
     if (a->t == T_LIST || b->t == T_LIST) return list_op(V, op, a, b, out);
     if (a->t == T_STR || b->t == T_STR) return str_op(V, op, a, b, out);
     if (a->t == T_MAT || b->t == T_MAT) return mat_op(V, op, a, b, out);

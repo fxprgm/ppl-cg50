@@ -1,0 +1,21 @@
+#pragma mode( separator(,;;) integer(h32) )
+// A program written with the decimal comma (medical): `#pragma mode(separator(,;;))`
+// makes ',' the decimal mark; ';' separates arguments and elements inside brackets
+// and statements outside them.
+
+EXPORT DC1(a;b)
+BEGIN
+  LOCAL L:={1,5; 2,25;
+            3};
+  ROUND(3,78*a+b;2);
+END;
+
+EXPORT DC2()
+BEGIN
+  LOCAL L:={1,5; 2,25; 3}; LOCAL s:=0; LOCAL i;
+  FOR i FROM 1 TO SIZE(L) DO s:=s+L(i); END;
+  LOCAL M:=[[1;2];[3;4,5]];
+  RETURN {s; IFTE(s>6;1;0); M(2;2)};
+END;
+//> DC1(2,1) => 8.56
+//> DC2() => {6.75,1,4.5}

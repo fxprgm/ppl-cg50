@@ -105,9 +105,19 @@ static int is_opglyph(uint32_t c)
     }
 }
 
+/* white space: ASCII, the no-break and other Unicode spaces (U+00A0, U+2000-U+200A,
+ * U+202F, U+205F, U+3000), the zero-width ones (U+200B-U+200D, U+2060, U+FEFF) and the
+ * line/paragraph separators U+2028/U+2029 (depreciation.ppl has one on a line of its own) */
+static int is_space(uint32_t c)
+{
+    return c == ' ' || c == '\t' || c == '\r' || c == '\f' || c == '\v' || c == 0xA0 || (c >= 0x2000 && c <= 0x200D)
+        || c == 0x2028 || c == 0x2029 || c == 0x202F || c == 0x205F || c == 0x2060 || c == 0x3000 || c == 0xFEFF;
+}
+
 static int is_idstart(uint32_t c)
 {
-    return c == '%' || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '_' || (c >= 0x80 && !is_opglyph(c));
+    return c == '%' || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '_' || (c >= 0x80 && !is_opglyph(c) && !is_space(c)
+        && c != 0x2032 && c != 0x2033);
 }
 
 static int is_idchar(uint32_t c)
@@ -197,6 +207,51 @@ static int lex_int(parser *P, token *t)
     return 0;
 }
 
+/* a sexagesimal literal after its degrees: °mm′[ss.s″] (spaces allowed between the
+ * parts, as the Prime's editor shows 36°40′ 20″).  The value is d + m/60 + s/3600 in
+ * the number's own unit, shown as degrees-minutes-seconds; it is NOT converted to
+ * the angle mode (HP's guide: HMS→(54°52′34.68″) returns 54.8763, and a hexagesimal
+ * value is "a single entity").  A lone 30° (no minutes) stays the angle-unit postfix. */
+static int dms_part(parser *P, const char **pq, real *v, uint32_t mark)
+{
+    const char *q = *pq;
+    char buf[48];
+    int n = 0, l;
+    uint32_t c;
+    for (;;) { c = peekcp(P, q, &l); if (l && is_space(c) && c != '\n') q += l; else break; }
+    while (q < P->end && ((*q >= '0' && *q <= '9') || (*q == '.' && mark == 0x2033))) { if (n < 40) buf[n++] = *q; q++; }
+    if (!n) return 0;
+    buf[n] = 0;
+    for (;;) { c = peekcp(P, q, &l); if (l && is_space(c) && c != '\n') q += l; else break; }
+    c = peekcp(P, q, &l);
+    if (c != mark) return 0;
+    dec_from_str(v, buf, NULL);
+    *pq = q + l;
+    return 1;
+}
+
+static void lex_dms(parser *P, token *t)
+{
+    const char *q = P->p;
+    int l;
+    real m, s, k, tot;
+    if (peekcp(P, q, &l) != 0x00B0) return;
+    q += l;
+    if (!dms_part(P, &q, &m, 0x2032)) return;
+    dec_zero(&s);
+    {
+        const char *r = q;
+        if (dms_part(P, &r, &s, 0x2033)) q = r;
+    }
+    /* (d*3600 + m*60 + s) / 3600: one rounding */
+    dec_from_int(&k, 3600); dec_mul(&tot, &t->num, &k);
+    dec_from_int(&k, 60); dec_mul(&m, &m, &k);
+    dec_add(&tot, &tot, &m); dec_add(&tot, &tot, &s);
+    dec_from_int(&k, 3600); dec_div(&t->num, &tot, &k);
+    t->dms = 1;
+    P->p = q;
+}
+
 static void lex(parser *P, token *t)
 {
     uint32_t c;
@@ -207,7 +262,7 @@ again:
         if (P->p >= P->end) { t->kind = TK_EOF; t->line = P->line; return; }
         c = peekcp(P, P->p, &len);
         if (c == '\n') { P->line++; P->p++; continue; }
-        if (c == ' ' || c == '\t' || c == '\r' || c == 0xA0 || c == 0x2009 || c == 0x200A || c == 0x202F || c == 0xFEFF) { P->p += len; continue; }
+        if (is_space(c)) { P->p += len; continue; }
         if (c == '/' && P->p + 1 < P->end && P->p[1] == '/') { while (P->p < P->end && *P->p != '\n') P->p++; continue; }
         if (c == '/' && P->p + 1 < P->end && P->p[1] == '*') {
             P->p += 2;
@@ -224,7 +279,11 @@ again:
         char buf[96];
         int n = 0;
         const char *q = P->p;
-        while (q < P->end && ((*q >= '0' && *q <= '9') || *q == '.')) { if (n < 90) buf[n++] = *q; q++; }
+        while (q < P->end && ((*q >= '0' && *q <= '9') || *q == '.'
+                              || (P->dcomma && *q == ',' && q + 1 < P->end && q[1] >= '0' && q[1] <= '9'))) {
+            if (n < 90) buf[n++] = *q == ',' ? '.' : *q;
+            q++;
+        }
         {
             /* exponent: E e or U+1D07, optional sign (+ - U+2212) */
             int el = 0;
@@ -247,7 +306,8 @@ again:
         P->p = q;
         t->kind = TK_NUM;
         dec_from_str(&t->num, buf, NULL);
-        if (q + 1 < P->end && *q == '_') {
+        lex_dms(P, t);
+        if (P->p == q && q + 1 < P->end && *q == '_') {
             /* a unit: 1_inch, 1_(ft/s), 10_ft^2, 20_°C, 1_ m (units.c parses the text) */
             const char *u = q + 1, *u0;
             while (u < P->end && (*u == ' ' || *u == '\t')) u++;
@@ -278,7 +338,19 @@ again:
         int n = 0;
         while (q < P->end && n < 7 && ((*q | 32) >= 'a' && (*q | 32) <= 'z')) { w[n++] = (char)(*q | 32); q++; }
         w[n] = 0;
-        if (!strcmp(w, "pragma") || !strcmp(w, "end")) { while (P->p < P->end && *P->p != '\n') P->p++; goto again; }
+        if (!strcmp(w, "pragma")) {
+            /* #pragma mode( separator(,;;) ... ): the first separator is the decimal mark */
+            const char *e = q;
+            while (e < P->end && *e != '\n') e++;
+            {
+                const char *k;
+                for (k = q; k + 10 < e; k++)
+                    if (!strncmp(k, "separator(", 10)) { P->dcomma = k[10] == ','; break; }
+            }
+            P->p = e;
+            goto again;
+        }
+        if (!strcmp(w, "end")) { while (P->p < P->end && *P->p != '\n') P->p++; goto again; }
         if (!strcmp(w, "cas")) { skip_line_until(P, "#end"); goto again; }
         if (!strcmp(w, "python")) { skip_line_until(P, "#END"); goto again; }
         P->p++;
@@ -380,14 +452,28 @@ operators:
         case '*': t->op = P_MUL; P->p++; break;
         case '/': t->op = P_DIV; P->p++; break;
         case '^': t->op = P_POW; P->p++; break;
-        case '(': t->op = P_LPAR; P->p++; break;
-        case ')': t->op = P_RPAR; P->p++; break;
-        case '{': t->op = P_LBRACE; P->p++; break;
-        case '}': t->op = P_RBRACE; P->p++; break;
-        case '[': t->op = P_LBRACK; P->p++; break;
-        case ']': t->op = P_RBRACK; P->p++; break;
+        case '(': t->op = P_LPAR; P->p++; P->depth++; break;
+        case ')': t->op = P_RPAR; P->p++; if (P->depth) P->depth--; break;
+        case '{': t->op = P_LBRACE; P->p++; P->depth++; break;
+        case '}': t->op = P_RBRACE; P->p++; if (P->depth) P->depth--; break;
+        case '[': t->op = P_LBRACK; P->p++; P->depth++; break;
+        case ']': t->op = P_RBRACK; P->p++; if (P->depth) P->depth--; break;
         case ',': t->op = P_COMMA; P->p++; break;
-        case ';': t->op = P_SEMI; P->p++; break;
+        /* decimal-comma programs separate arguments and elements with ';' */
+        case ';': t->op = P->dcomma && P->depth ? P_COMMA : P_SEMI; P->p++; break;
+        case '.':
+            /* element-by-element operators (a '.' after digits belongs to the number:
+             * 2.*X is 2*X) */
+            switch (c1) {
+            case '*': t->op = P_EMUL; break;
+            case '/': t->op = P_EDIV; break;
+            case '^': t->op = P_EPOW; break;
+            case '+': t->op = P_EADD; break;
+            case '-': t->op = P_ESUB; break;
+            default: t->op = 0; perr(P, "unexpected character"); P->p++; goto opdone;
+            }
+            P->p += 2;
+            break;
         case '|': t->op = P_PIPE; P->p++; break;
         case '&': t->op = P_AMP; P->p++; break;
         case 0x2212: t->op = P_MINUS; P->p += len; break;
@@ -415,6 +501,7 @@ operators:
             perr(P, "unexpected character");
         }
     }
+opdone:
     t->len = (int)(P->p - t->s);
 }
 
@@ -498,7 +585,7 @@ static node *primary(parser *P)
     if (P->err) return mk(P, N_NOP);
     switch (t.kind) {
     case TK_NUM:
-        n = mk(P, N_NUM); v_real(&n->lit, &t.num); next(P); return n;
+        n = mk(P, N_NUM); v_real(&n->lit, &t.num); n->lit.x = t.dms; next(P); return n;
     case TK_INT:
         n = mk(P, N_NUM); n->lit = t.iv; next(P); return n;
     case TK_UNIT: {
@@ -663,13 +750,38 @@ static node *rootexpr(parser *P)
 static node *powexpr(parser *P)
 {
     node *n = rootexpr(P);
-    if (is_op(P, P_POW)) {
+    if (is_op(P, P_POW) || is_op(P, P_EPOW)) {
         node *b = mk(P, N_BIN);
+        b->op = is_op(P, P_POW) ? OP_POW : OP_EPOW;
         next(P);
-        b->op = OP_POW; b->a = n; b->b = signed_operand(P, powexpr);
+        b->a = n; b->b = signed_operand(P, powexpr);
         n = b;
     }
     return n;
+}
+
+/* a word operator run into a number, MOD7 (dfx: N2J(edn)MOD7): where an operator
+ * is expected, an identifier made of the word and digits is the word, then a number
+ * (the number becomes the look-ahead token) */
+static int split_word(parser *P, const char *word, int kw)
+{
+    size_t wl = strlen(word), k;
+    token num;
+    if (P->tok.kind != TK_ID || P->tok.slen <= wl || P->has_peek) return 0;
+    for (k = 0; k < wl; k++) {
+        char c = P->tok.str[k];
+        if ((c >= 'a' && c <= 'z' ? c - 32 : c) != word[k]) return 0;
+    }
+    for (k = wl; k < P->tok.slen; k++) if (P->tok.str[k] < '0' || P->tok.str[k] > '9') return 0;
+    memset(&num, 0, sizeof num);
+    num.kind = TK_NUM;
+    num.line = P->tok.line;
+    dec_from_str(&num.num, P->tok.str + wl, NULL);
+    P->peek = num;
+    P->has_peek = 1;
+    P->tok.kind = TK_KW;
+    P->tok.op = kw;
+    return 1;
 }
 
 static node *negterm(parser *P)
@@ -686,7 +798,9 @@ static node *mulexpr(parser *P)
         int op;
         if (is_op(P, P_MUL)) op = OP_MUL;
         else if (is_op(P, P_DIV)) op = OP_DIV;
-        else if (is_kw(P, KW_MOD)) op = OP_MOD;
+        else if (is_op(P, P_EMUL)) op = OP_EMUL;
+        else if (is_op(P, P_EDIV)) op = OP_EDIV;
+        else if (is_kw(P, KW_MOD) || split_word(P, "MOD", KW_MOD)) op = OP_MOD;
         else break;
         {
             node *b = mk(P, N_BIN);
@@ -703,8 +817,8 @@ static node *addexpr(parser *P)
     node *n = mulexpr(P);
     for (;;) {
         int op;
-        if (is_op(P, P_PLUS)) op = OP_ADD;
-        else if (is_op(P, P_MINUS)) op = OP_SUB;
+        if (is_op(P, P_PLUS) || is_op(P, P_EADD)) op = OP_ADD;
+        else if (is_op(P, P_MINUS) || is_op(P, P_ESUB)) op = OP_SUB;
         else break;
         {
             node *b = mk(P, N_BIN);
@@ -772,7 +886,7 @@ static node *notexpr(parser *P)
 static node *andexpr(parser *P)
 {
     node *n = notexpr(P);
-    while (is_kw(P, KW_AND)) {
+    while (is_kw(P, KW_AND) || split_word(P, "AND", KW_AND)) {
         node *b = mk(P, N_BIN);
         next(P);
         b->op = OP_AND; b->a = n; b->b = notexpr(P);
@@ -786,8 +900,8 @@ static node *orexpr(parser *P)
     node *n = andexpr(P);
     for (;;) {
         int op;
-        if (is_kw(P, KW_OR)) op = OP_OR;
-        else if (is_kw(P, KW_XOR)) op = OP_XOR;
+        if (is_kw(P, KW_OR) || split_word(P, "OR", KW_OR)) op = OP_OR;
+        else if (is_kw(P, KW_XOR) || split_word(P, "XOR", KW_XOR)) op = OP_XOR;
         else break;
         {
             node *b = mk(P, N_BIN);
@@ -885,7 +999,10 @@ static node *statement(parser *P)
                 }
                 break;
             }
-            if (accept_kw(P, KW_DEFAULT)) n->c = stmts(P, KW_END, 0, 0);
+            /* DEFAULT, or (regress: `IF..END; KILL; END`, us76: statements after the IFs)
+             * any other statements before the END: they run when no test is true */
+            accept_kw(P, KW_DEFAULT);
+            if (!is_kw(P, KW_END)) n->c = stmts(P, KW_END, 0, 0);
             expect_kw(P, KW_END, "END");
             n->kids = v.v; n->nkids = v.n;
             return n;
@@ -925,6 +1042,9 @@ static node *statement(parser *P)
             n->b = stmts(P, KW_UNTIL, 0, 0);
             expect_kw(P, KW_UNTIL, "UNTIL");
             n->a = expr(P);
+            /* the Prime takes an END right after the test (qpi: `until c end;`); after
+             * a ';' an END closes the enclosing block as usual */
+            accept_kw(P, KW_END);
             return n;
         case KW_IFERR:
             n = mk(P, N_IFERR);
@@ -935,26 +1055,22 @@ static node *statement(parser *P)
             if (accept_kw(P, KW_ELSE)) n->c = stmts(P, KW_END, 0, 0);
             expect_kw(P, KW_END, "END");
             return n;
-        case KW_BREAK:
-            n = mk(P, N_BREAK);
+        case KW_BREAK: case KW_CONTINUE: {
+            /* BREAK n, CONTINUE n; also BREAK (1) (depreciation) */
+            int par;
+            n = mk(P, P->tok.op == KW_BREAK ? N_BREAK : N_CONTINUE);
             next(P);
             n->op = 1;
+            par = is_op(P, P_LPAR);
+            if (par) next(P);
             if (P->tok.kind == TK_NUM) {
                 int32_t k;
                 if (!dec_to_int32(&P->tok.num, &k) && k >= 1 && k < 100) n->op = (uint8_t)k;
                 next(P);
             }
+            if (par) expect_op(P, P_RPAR, "')'");
             return n;
-        case KW_CONTINUE:
-            n = mk(P, N_CONTINUE);
-            next(P);
-            n->op = 1;
-            if (P->tok.kind == TK_NUM) {
-                int32_t k;
-                if (!dec_to_int32(&P->tok.num, &k) && k >= 1 && k < 100) n->op = (uint8_t)k;
-                next(P);
-            }
-            return n;
+        }
         case KW_RETURN:
             n = mk(P, N_RETURN);
             next(P);
