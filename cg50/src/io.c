@@ -12,9 +12,11 @@
    Enter 30, EEX 31, 7 32, 8 33, 9 34, / 35, ALPHA 36, 4 37, 5 38, 6 39, * 40, Shift 41, 1 42,
    2 43, 3 44, - 45, On 46, 0 47, . 48, space 49, + 50 (hp-prime-kit interface.key-codes) */
 const keymap_t keymap[] = {
-	{ KEY_F1, 0, "F1", "Apps, tap 1" },  { KEY_F2, 5, "F2", "Home, tap 2" },
-	{ KEY_F3, 10, "F3", "CAS, tap 3" },  { KEY_F4, 1, "F4", "Symb, tap 4" },
-	{ KEY_F5, 6, "F5", "Plot, tap 5" },  { KEY_F6, 11, "F6", "Num, tap 6" },
+	/* F1-F6 alone tap the soft-menu buttons (no key code, as a tap on the Prime); SHIFT+F1-F6
+	   (SHIFT held, or pressed just before) are the Prime keys Apps, Home, CAS, Symb, Plot, Num */
+	{ KEY_F1, 0, "SH+F1", "Apps" },       { KEY_F2, 5, "SH+F2", "Home" },
+	{ KEY_F3, 10, "SH+F3", "CAS" },       { KEY_F4, 1, "SH+F4", "Symb" },
+	{ KEY_F5, 6, "SH+F5", "Plot" },       { KEY_F6, 11, "SH+F6", "Num" },
 	{ KEY_UP, 2, "UP", "Up" },              { KEY_LEFT, 7, "LEFT", "Left" },
 	{ KEY_RIGHT, 8, "RIGHT", "Right" },     { KEY_DOWN, 12, "DOWN", "Down" },
 	{ KEY_EXIT, 4, "EXIT", "Esc" },         { KEY_MENU, 13, "MENU", "Menu" },
@@ -43,12 +45,14 @@ const int keymap_count = sizeof keymap / sizeof keymap[0];
 pointer_t ptr = { false, 160, 120, false };
 
 #define QN 32
-static struct { int8_t code; bool soft; uint32_t seq; } kq[QN];
+static struct { int8_t code; uint32_t seq; } kq[QN];
 static int kq_n;
 static struct { touch_ev_t ev; uint32_t seq; } tq[QN];
 static int tq_n;
 static uint32_t seq;
 static bool brk;
+static bool shift_pending;       /* SHIFT was the last key pressed: the next F key is a Prime key */
+static uint8_t fshift;           /* F keys (bit n = F(n+1)) held since a shifted press */
 
 /* the touch now: down, where, where it started, the Prime's type; seen: MOUSE has reported it */
 static struct {
@@ -66,6 +70,7 @@ void io_reset(void)
 	kq_n = tq_n = 0;
 	memset(&touch, 0, sizeof touch);
 	brk = false;
+	shift_pending = false, fshift = 0;
 	arrow_since = 0;
 	memset(held, 0, sizeof held);
 	ptr.mode = false;               /* each run starts with the arrows as keys */
@@ -73,13 +78,13 @@ void io_reset(void)
 	clearevents();
 }
 
-static void push_key(int code, bool soft)
+static void push_key(int code)
 {
 	if (kq_n == QN) {
 		memmove(kq, kq + 1, sizeof kq[0] * (QN - 1));
 		kq_n--;
 	}
-	kq[kq_n].code = code, kq[kq_n].soft = soft, kq[kq_n].seq = seq++;
+	kq[kq_n].code = code, kq[kq_n].seq = seq++;
 	kq_n++;
 }
 
@@ -166,15 +171,26 @@ bool io_pump(void)
 		if (k >= KEY_F1 && k <= KEY_F6) {
 			int n = k - KEY_F1;
 			if (down) {
-				push_key(prime_code(k), true);
+				if (shift_pending || keydown(KEY_SHIFT)) {
+					/* SHIFT+F: the Prime key, no touch */
+					shift_pending = false;
+					fshift |= 1 << n;
+					push_key(prime_code(k));
+					continue;
+				}
 				if (touch.down)
 					touch_up();
 				touch_down(26 + 53 * n, 230, k);
 			}
-			else if (touch.down && touch.fkey == k)
-				touch_up();
+			else {
+				fshift &= ~(1 << n);
+				if (touch.down && touch.fkey == k)
+					touch_up();
+			}
 			continue;
 		}
+		if (down)
+			shift_pending = k == KEY_SHIFT;
 		if (k == KEY_LEFT || k == KEY_RIGHT || k == KEY_UP || k == KEY_DOWN)
 			held[k == KEY_LEFT ? 0 : k == KEY_RIGHT ? 1 : k == KEY_UP ? 2 : 3] = down;
 		if (ptr.mode && (k == KEY_LEFT || k == KEY_RIGHT || k == KEY_UP || k == KEY_DOWN)) {
@@ -198,7 +214,7 @@ bool io_pump(void)
 		if (down) {
 			int c = prime_code(k);
 			if (c >= 0)
-				push_key(c, false);
+				push_key(c);
 		}
 	}
 	/* a release a dialog's own key loop took: the touch ends, the arrow is up */
@@ -223,6 +239,9 @@ bool io_pump(void)
 			arrow_last = now;
 		}
 	}
+	for (int n = 0; n < 6; n++)
+		if ((fshift >> n & 1) && !keydown(KEY_F1 + n))
+			fshift &= ~(1 << n);
 	return brk;
 }
 
@@ -243,6 +262,8 @@ bool io_iskeydown(int code)
 	for (int i = 0; i < keymap_count; i++)
 		if (keymap[i].prime == code && keymap[i].prime >= 0 && keydown(keymap[i].cg_key)) {
 			int k = keymap[i].cg_key;
+			if (k >= KEY_F1 && k <= KEY_F6 && !(fshift >> (k - KEY_F1) & 1))
+				continue;       /* an F key alone is a tap, not the Prime key */
 			if (ptr.mode && (k == KEY_LEFT || k == KEY_RIGHT || k == KEY_UP || k == KEY_DOWN ||
 			                 k == KEY_EXE))
 				continue;
@@ -253,12 +274,6 @@ bool io_iskeydown(int code)
 
 bool io_next_event(int *key, touch_ev_t *t)
 {
-	/* soft keys (F1-F6) reach WAIT(-1) as their touches only */
-	int j = 0;
-	for (int i = 0; i < kq_n; i++)
-		if (!kq[i].soft)
-			kq[j++] = kq[i];
-	kq_n = j;
 	if (kq_n && (!tq_n || kq[0].seq < tq[0].seq)) {
 		*key = io_getkey();
 		return true;
