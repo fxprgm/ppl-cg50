@@ -13,7 +13,7 @@
 
 static ppl_vm *V;
 
-#define PMAX 32
+#define PMAX 160
 static struct { char name[48]; char *src; } loaded[PMAX];
 static int nloaded;
 
@@ -175,7 +175,7 @@ int progs_load(const char *path, bool quiet)
 
 /* ---- the picker -------------------------------------------------------------------------- */
 
-#define LMAX 120
+#define LMAX 256
 static files_entry_t list[LMAX];
 static int nlist;
 
@@ -287,14 +287,48 @@ void progs_autoload(char *out, int n, bool *any_error)
 
 /* ---- exported functions ------------------------------------------------------------------ */
 
+#define FLMAX 1024
+
+static int name_cmp(const char *a, const char *b)   /* ASCII, case-insensitive */
+{
+	for (;; a++, b++) {
+		int x = (*a >= 'a' && *a <= 'z') ? *a - 32 : *a, y = (*b >= 'a' && *b <= 'z') ? *b - 32 : *b;
+		if (x != y || !x) return x - y;
+	}
+}
+
+/* the letter printed in red on a CG50 key (its ALPHA letter), 0 for none */
+static char key_letter(int k)
+{
+	static const struct { int key; char c; } t[] = {
+		{ KEY_XOT, 'A' }, { KEY_LOG, 'B' }, { KEY_LN, 'C' }, { KEY_SIN, 'D' }, { KEY_COS, 'E' },
+		{ KEY_TAN, 'F' }, { KEY_FRAC, 'G' }, { KEY_FD, 'H' }, { KEY_LEFTP, 'I' }, { KEY_RIGHTP, 'J' },
+		{ KEY_COMMA, 'K' }, { KEY_ARROW, 'L' }, { KEY_7, 'M' }, { KEY_8, 'N' }, { KEY_9, 'O' },
+		{ KEY_4, 'P' }, { KEY_5, 'Q' }, { KEY_6, 'R' }, { KEY_MUL, 'S' }, { KEY_DIV, 'T' },
+		{ KEY_1, 'U' }, { KEY_2, 'V' }, { KEY_3, 'W' }, { KEY_ADD, 'X' }, { KEY_SUB, 'Y' },
+		{ KEY_0, 'Z' },
+	};
+	for (unsigned i = 0; i < sizeof t / sizeof t[0]; i++)
+		if (t[i].key == k) return t[i].c;
+	return 0;
+}
+
 int progs_functions(char *call, int n, int *run)
 {
-	static struct { pfunc *f; const char *prog; } fl[100];
+	/* every exported function, by program name (A-Z), each program's in source order */
+	static struct { pfunc *f; const char *prog; } fl[FLMAX];
 	int nf = 0;
 	for (pprog *p = V->progs; p; p = p->next)
-		for (int i = 0; i < p->nf && nf < 100; i++)
+		for (int i = 0; i < p->nf && nf < FLMAX; i++)
 			if (p->f[i]->exported)
 				fl[nf].f = p->f[i], fl[nf].prog = p->name, nf++;
+	for (int i = 1; i < nf; i++) {          /* insertion sort: stable, a few hundred entries */
+		__typeof__(fl[0]) t = fl[i];
+		int j = i;
+		while (j > 0 && name_cmp(fl[j - 1].prog, t.prog) > 0)
+			fl[j] = fl[j - 1], j--;
+		fl[j] = t;
+	}
 	ST->phase = PH_FUNCS;
 	if (!nf) {
 		ui_message("Run", "No program is loaded, or none exports a function.\n\n"
@@ -309,7 +343,7 @@ int progs_functions(char *call, int n, int *run)
 		if (sel >= top + rows) top = sel - rows + 1;
 		dclear(C_WHITE);
 		drect(0, 0, DWIDTH - 1, 17, C_PANEL);
-		text_draw(FONT, 6, 2, "Exported functions", C_TITLE, -1, -1);
+		text_draw(FONT, 6, 2, "Functions   \xE2\x86\x90\xE2\x86\x92 program   letter: jump", C_TITLE, -1, -1);
 		for (int r = 0; r < rows && top + r < nf; r++) {
 			int i = top + r, y = 22 + r * 15;
 			bool s = i == sel;
@@ -327,6 +361,28 @@ int progs_functions(char *call, int n, int *run)
 		int k = ui_key();
 		if (k == KEY_UP) sel = (sel + nf - 1) % nf;
 		else if (k == KEY_DOWN) sel = (sel + 1) % nf;
+		else if (k == KEY_RIGHT) {              /* the next program's first function */
+			int i = sel;
+			while (i < nf && !strcmp(fl[i].prog, fl[sel].prog)) i++;
+			sel = i < nf ? i : 0;
+		}
+		else if (k == KEY_LEFT) {               /* this program's first, or the previous one's */
+			int i = sel;
+			if (i > 0 && strcmp(fl[i - 1].prog, fl[i].prog)) i--;
+			while (i > 0 && !strcmp(fl[i - 1].prog, fl[i].prog)) i--;
+			if (i == sel) { i = nf - 1; while (i > 0 && !strcmp(fl[i - 1].prog, fl[i].prog)) i--; }
+			sel = i;
+		}
+		else if (key_letter(k)) {               /* the next program starting with that letter */
+			char c = key_letter(k);
+			for (int d = 1; d <= nf; d++) {
+				int i = (sel + d) % nf;
+				if ((fl[i].prog[0] & ~32) == c && (i == 0 || strcmp(fl[i - 1].prog, fl[i].prog))) {
+					sel = i;
+					break;
+				}
+			}
+		}
 		else if (k == KEY_EXE || k == KEY_F1 || k == KEY_F2) {
 			*run = !fl[sel].f->nparams && k != KEY_F2;
 			snprintf(call, n, "%s(%s", fl[sel].f->name, fl[sel].f->nparams ? "" : ")");

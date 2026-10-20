@@ -47,6 +47,8 @@ static int sysinfo_get(ppl_vm *V, const char *name, value *out)
     int i;
     for (i = 0; PLOTVARS[i]; i++) if (!strcmp(PLOTVARS[i], name)) { v_real(out, &V->plot[i]); return 0; }
     int t[6] = { 2026, 1, 1, 0, 0, 0 };
+    if (!strcmp(name, "DATE")) name = "Date";     /* moonphase writes TIME */
+    if (!strcmp(name, "TIME")) name = "Time";
     if (!strcmp(name, "Date") || !strcmp(name, "Time")) {
         real r, h;
         if (V->now) V->now(t);
@@ -418,6 +420,7 @@ static value *new_hvar(ppl_vm *V, const char *name)
  * (Statistics 2Var columns) */
 static int sys_auto_name(const char *n)
 {
+    if (!strcmp(n, "Terminal")) return 1;        /* sunpos: Terminal:={} */
     return n[0] && n[1] >= '0' && n[1] <= '9' && !n[2] && strchr("FXYRUVDC", n[0]) != NULL;
 }
 

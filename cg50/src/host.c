@@ -260,8 +260,8 @@ static BI(b_startview)
 	(void)V; (void)argc;
 	int32_t v;
 	if (bi_int(&a[0], &v)) return E_BADTYPE;
-	if (v != -1)
-		return E_UNSUPPORTED;
+	(void)v;                   /* every view: there are no app views here; go on (trianglesolver
+	                              opens STARTVIEW(6,1) before its own menu) */
 	v_int32(out, 0);
 	return 0;
 }
