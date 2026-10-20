@@ -310,7 +310,15 @@ static int cplx_op(ppl_vm *V, int op, const value *a, const value *b, value *out
         v_bool(out, t);
         return 0;
     }
-    default: return E_BADTYPE;
+    default:
+        if (op >= OP_LT && op <= OP_GE && dec_is_zero(&x.im) && dec_is_zero(&y.im)) {
+            /* (2,0)<3 is 1 on the Prime: a complex with no imaginary part compares as
+             * its real part (idorificeplate's IF β<0 after β:=√(...) with HComplex on) */
+            value p, q;
+            v_real(&p, &x.re); v_real(&q, &y.re);
+            return ar_binary(V, op, &p, &q, out);
+        }
+        return E_BADTYPE;
     }
     (void)V;
     if (st) return st;

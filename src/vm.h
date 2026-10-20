@@ -259,6 +259,7 @@ int bi_count(void);
 /* ---- VM (vm.c) ---- */
 void ppl_init(ppl_vm *V);
 void ppl_free(ppl_vm *V);
+int vm_sqrt(ppl_vm *V, const value *a, value *out);   /* √ */
 int  ppl_load(ppl_vm *V, const char *name, const char *src, size_t n, char *msg, size_t msgn);
 int  ppl_call(ppl_vm *V, const char *fname, int argc, const value *argv, value *out);
 int  ppl_eval(ppl_vm *V, const char *src, value *out);   /* Home expression(s) */

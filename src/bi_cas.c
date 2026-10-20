@@ -156,6 +156,8 @@ static BI(b_sqrtf)
     value two;
     (void)argc;
     v_int32(&two, 2);
+    if (a[0].t == T_CPLX || (a[0].t == T_REAL && a[0].u.r.s && !dec_is_zero(&a[0].u.r) && V->set.complex_ok))
+        return vm_sqrt(V, &a[0], out);   /* as √: sqrt((1,2)) = 1.27201964951+0.786151377757*i */
     if (a[0].t == T_REAL && a[0].u.r.s && !dec_is_zero(&a[0].u.r) && !V->set.complex_ok) return E_NONREAL;
     return ar_binary(V, OP_NTHROOT, &two, &a[0], out);
 }

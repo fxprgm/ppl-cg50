@@ -733,6 +733,9 @@ static int do_csqrt(ppl_vm *V, const cplx *x, value *out)
     return c_make(out, &z.re, &z.im);
 }
 
+/* √ as a function (sqrt, SQRT on a complex argument) */
+int vm_sqrt(ppl_vm *V, const value *a, value *out) { return ar_map1(V, a, do_sqrt, do_csqrt, out); }
+
 /* ------------------------------------------------------------ the loop */
 
 #define RD16(p) ((int)(((unsigned)(p)[0] << 8) | (p)[1]))

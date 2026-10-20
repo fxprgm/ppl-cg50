@@ -53,3 +53,9 @@ BEGIN
   RETURN {Notes, Notes(fn)};
 END;
 //> NOTESAVE() => {{"sv"},"abcd"}
+
+// idorificeplate: sqrt of a complex as √ (Virtual Calculator: sqrt((1,2)) = 1.27201964951+0.786151377757*i)
+//> sqrt((1,2)) => 1.27201964951+0.786151377757*i
+// and a complex with no imaginary part compares as a real ((2,0)<3 is 1)
+//> (2,0)<3 => 1
+//> LOCAL b:=√((0.01,0)); b<0 => 0
