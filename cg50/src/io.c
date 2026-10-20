@@ -51,7 +51,12 @@ static struct { touch_ev_t ev; uint32_t seq; } tq[QN];
 static int tq_n;
 static uint32_t seq;
 static bool brk;
-static bool shift_pending;       /* SHIFT was the last key pressed: the next F key is a Prime key */
+/* SHIFT was the last key pressed: the next F key is a Prime key. Its own code (41) waits:
+   SHIFT then F3 gives only CAS (10), SHIFT then another key gives 41 and that key, SHIFT
+   alone gives 41 after SHIFT_WAIT ms. */
+static bool shift_pending;
+static uint32_t shift_t;
+#define SHIFT_WAIT 700
 static uint8_t fshift;           /* F keys (bit n = F(n+1)) held since a shifted press */
 
 /* the touch now: down, where, where it started, the Prime's type; seen: MOUSE has reported it */
@@ -172,7 +177,7 @@ bool io_pump(void)
 			int n = k - KEY_F1;
 			if (down) {
 				if (shift_pending || keydown(KEY_SHIFT)) {
-					/* SHIFT+F: the Prime key, no touch */
+					/* SHIFT+F: the Prime key, no touch, no Shift key */
 					shift_pending = false;
 					fshift |= 1 << n;
 					push_key(prime_code(k));
@@ -189,8 +194,15 @@ bool io_pump(void)
 			}
 			continue;
 		}
-		if (down)
-			shift_pending = k == KEY_SHIFT;
+		if (down && shift_pending) {     /* the Shift before this key */
+			push_key(41);
+			shift_pending = false;
+		}
+		if (k == KEY_SHIFT && down) {
+			shift_pending = true;
+			shift_t = clock_real_ms();
+			continue;
+		}
 		if (k == KEY_LEFT || k == KEY_RIGHT || k == KEY_UP || k == KEY_DOWN)
 			held[k == KEY_LEFT ? 0 : k == KEY_RIGHT ? 1 : k == KEY_UP ? 2 : 3] = down;
 		if (ptr.mode && (k == KEY_LEFT || k == KEY_RIGHT || k == KEY_UP || k == KEY_DOWN)) {
@@ -238,6 +250,10 @@ bool io_pump(void)
 				ptr_step(dx * sp, dy * sp);
 			arrow_last = now;
 		}
+	}
+	if (shift_pending && clock_real_ms() - shift_t >= SHIFT_WAIT) {
+		push_key(41);
+		shift_pending = false;
 	}
 	for (int n = 0; n < 6; n++)
 		if ((fshift >> n & 1) && !keydown(KEY_F1 + n))

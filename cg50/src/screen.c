@@ -207,9 +207,9 @@ static void panel_draw(void)
 		snprintf(b, sizeof b, "%d,%d", ptr.x, ptr.y);
 		text_draw(SMALL, x + 4, 94, b, C_WHITE, -1, -1);
 	}
-	static const char *const help[] = { "F1-F6 tap", "the menu", "OPTN ptr", "AC/ON break" };
-	for (int i = 0; i < 4; i++)
-		text_draw(SMALL, x + 4, DHEIGHT - 48 + 11 * i, help[i], C_LABEL, -1, 12);
+	static const char *const help[] = { "F1-F6 tap", "the menu", "SHIFT+F:", "Apps..Num", "OPTN ptr", "AC/ON break" };
+	for (int i = 0; i < 6; i++)
+		text_draw(SMALL, x + 4, DHEIGHT - 70 + 11 * i, help[i], C_LABEL, -1, 12);
 }
 
 void panel_update(void)
