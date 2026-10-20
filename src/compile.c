@@ -27,7 +27,8 @@ typedef struct comp {
     int try_depth;
     int err, errline;
     char msg[96];
-    int line;
+    int line;                  /* line of the last BC_LINE emitted, -1 unknown */
+    node *tail;                /* the function body's last statement */
 } comp;
 
 static void cerr(comp *C, int line, const char *m)
@@ -118,6 +119,18 @@ static void emit_const(comp *C, const value *v)
     emit16(C, add_const(C, v));
 }
 
+/* run-time errors report the line of the failing call: a call on another line than
+ * the statement's start (a multi-line PRINT, deltawye) records its own line.  Code
+ * reached conditionally (branches, loops, thunks) leaves the line unknown, so the
+ * next statement or call records it again. */
+static void mark_line(comp *C, int line)
+{
+    if (line > 0 && line != C->line) {
+        C->line = line;
+        emit(C, BC_LINE); emit16(C, line > 65535 ? 65535 : line);
+    }
+}
+
 /* ------------------------------------------------------------ names */
 
 static int find_local(comp *C, const char *name)
@@ -130,11 +143,35 @@ static int find_local(comp *C, const char *name)
 static int new_slot(comp *C, const char *name)
 {
     int s = C->nslots++;
+    pfunc *f = C->fn;
     if (s >= 250 || C->nloc >= 256) { cerr(C, C->line, "too many local variables"); return 0; }
     C->loc[C->nloc].name = name;
     C->loc[C->nloc].slot = s;
     C->nloc++;
+    if (name) {
+        /* kept for EXPR, which reads the locals of the function calling it */
+        char **n = (char **)realloc(f->lnames, (size_t)(s + 1) * sizeof(char *));
+        if (n) {
+            int k;
+            for (k = f->lnames ? f->nlocals_named : 0; k <= s; k++) n[k] = NULL;
+            f->lnames = n;
+            f->nlocals_named = (uint8_t)(s + 1);
+            n[s] = (char *)malloc(strlen(name) + 1);
+            if (n[s]) strcpy(n[s], name);
+        }
+    }
     return s;
+}
+
+/* EXPR text run inside a function: that function's local of this name, -1 if none
+ * (the latest slot of the name: the innermost declaration, as near as we can tell) */
+static int find_outer(comp *C, const char *name)
+{
+    pfunc *o = C->fn->outer;
+    int i;
+    if (!o || !o->lnames) return -1;
+    for (i = o->nlocals_named - 1; i >= 0; i--) if (o->lnames[i] && !strcmp(o->lnames[i], name)) return i;
+    return -1;
 }
 
 static int find_pvar(comp *C, const char *name)
@@ -144,11 +181,18 @@ static int find_pvar(comp *C, const char *name)
     return -1;
 }
 
-static int find_pfunc(comp *C, const char *name)
+/* a function of this program; functions may share a name with different numbers of
+ * parameters (astrocalc: CONVERT_DATETIME(date) and CONVERT_DATETIME(date,time)):
+ * the one taking argc arguments first, else the first of that name (argc < 0: any) */
+static int find_pfunc(comp *C, const char *name, int argc)
 {
-    int i;
-    for (i = 0; i < C->prog->nf; i++) if (!strcmp(C->prog->f[i]->name, name)) return i;
-    return -1;
+    int i, first = -1;
+    for (i = 0; i < C->prog->nf; i++)
+        if (!strcmp(C->prog->f[i]->name, name)) {
+            if (argc < 0 || C->prog->f[i]->nparams == argc) return i;
+            if (first < 0) first = i;
+        }
+    return first;
 }
 
 int sysvar_id(const char *n)
@@ -198,7 +242,9 @@ static void emit_thunk(comp *C, node *n)
     emit(C, BC_THUNK);
     emit16(C, 0);
     at = here(C);
+    C->line = -1;
     cexpr(C, n);
+    C->line = -1;
     emit(C, BC_SUBRET);
     {
         int len = here(C) - at;
@@ -222,9 +268,49 @@ static void emit_reflist(comp *C, node *n, int depth)
     emit16(C, n->nkids);
 }
 
+extern int bi_fnroot_impl(ppl_vm *V, int argc, value *a, value *out);
+
+/* EVAL(x) or EXPR(x) around a solver's argument: x itself (a string evaluated by the
+ * solver at each step, as the Prime's CAS reads fsolve(EVAL(eqstr),EVAL(varname),10)) */
+static node *unwrap_eval(node *n)
+{
+    if (n->type == N_CALL && n->nkids == 1 && n->name
+        && (!strcmp(n->name, "EVAL") || !strcmp(n->name, "EXPR") || !strcmp(n->name, "eval") || !strcmp(n->name, "expr")))
+        return n->kids[0];
+    return n;
+}
+
+/* FNROOT and fsolve: an equation lhs=rhs is solved as lhs-rhs=0 (FNROOT(X^2=4,X,1) is 2);
+ * a variable that is not a plain name (EVAL(varname)) or a missing guess go through
+ * _FNROOTX (vm.c), which takes the name and the expression at run time */
+static void call_fnroot(comp *C, node *n, const builtin *b, int argc)
+{
+    node *e = n->kids[0], sub;
+    if (argc < 2 || argc > 3) { cerr(C, n->line, "wrong number of arguments"); return; }
+    if (e->type == N_BIN && e->op == OP_EQ) { sub = *e; sub.op = OP_SUB; e = &sub; }
+    if (argc == 3 && n->kids[1]->type == N_NAME) {
+        emit_thunk(C, e);
+        emit_vref(C, n->kids[1]);
+        cexpr(C, n->kids[2]);
+    } else {
+        node *u = unwrap_eval(e);
+        if (u != e) cexpr(C, u); else emit_thunk(C, e);
+        if (n->kids[1]->type == N_NAME) emit_vref(C, n->kids[1]);
+        else cexpr(C, unwrap_eval(n->kids[1]));
+        if (argc == 3) cexpr(C, n->kids[2]);
+        b = bi_lookup("_FNROOTX");
+        if (!b) { cerr(C, n->line, "wrong number of arguments"); return; }
+    }
+    mark_line(C, n->line);
+    emit(C, BC_CALLB);
+    emit16(C, bi_id(b));
+    emit(C, argc);
+}
+
 static void call_builtin(comp *C, node *n, const builtin *b, int argc)
 {
     int i;
+    if (b->fn == bi_fnroot_impl) { call_fnroot(C, n, b, argc); return; }
     if (b->minargs > argc || (b->maxargs >= 0 && argc > b->maxargs)) {
         cerr(C, n->line, "wrong number of arguments");
         return;
@@ -238,6 +324,7 @@ static void call_builtin(comp *C, node *n, const builtin *b, int argc)
         else if (i == 1 && (b->flags & BF_QUOTE2)) emit_vref(C, n->kids[i]);
         else cexpr(C, n->kids[i]);
     }
+    mark_line(C, n->line);
     emit(C, BC_CALLB);
     emit16(C, bi_id(b));
     emit(C, argc);
@@ -249,8 +336,9 @@ static void cname(comp *C, node *n)
     const builtin *b;
     const char *nm = n->name;
     if ((s = find_local(C, nm)) >= 0) { emit(C, BC_LLOAD); emit(C, s); return; }
+    if ((s = find_outer(C, nm)) >= 0) { emit(C, BC_OLOAD); emit(C, s); return; }
     if ((s = find_pvar(C, nm)) >= 0) { emit(C, BC_GLOAD); emit16(C, s); return; }
-    if ((s = find_pfunc(C, nm)) >= 0) { emit(C, BC_CALLF); emit16(C, s); emit(C, 0); return; }
+    if ((s = find_pfunc(C, nm, 0)) >= 0) { emit(C, BC_CALLF); emit16(C, s); emit(C, 0); return; }
     if ((s = sysvar_id(nm)) >= 0) { emit(C, BC_SLOAD); emit(C, s); return; }
     if (!strcmp(nm, "i")) {
         value v; real z, o;
@@ -275,8 +363,16 @@ static void ccall(comp *C, node *n)
     int s, i;
     const builtin *b;
     const char *nm = n->name;
+    mark_line(C, n->line);
     if ((s = find_local(C, nm)) >= 0) {
         emit(C, BC_LLOAD); emit(C, s);
+        for (i = 0; i < n->nkids; i++) cexpr(C, n->kids[i]);
+        mark_line(C, n->line);
+        emit(C, BC_INDEX); emit(C, n->nkids);
+        return;
+    }
+    if ((s = find_outer(C, nm)) >= 0) {
+        emit(C, BC_OLOAD); emit(C, s);
         for (i = 0; i < n->nkids; i++) cexpr(C, n->kids[i]);
         emit(C, BC_INDEX); emit(C, n->nkids);
         return;
@@ -284,17 +380,20 @@ static void ccall(comp *C, node *n)
     if ((s = find_pvar(C, nm)) >= 0) {
         emit(C, BC_GLOAD); emit16(C, s);
         for (i = 0; i < n->nkids; i++) cexpr(C, n->kids[i]);
+        mark_line(C, n->line);
         emit(C, BC_INDEX); emit(C, n->nkids);
         return;
     }
-    if ((s = find_pfunc(C, nm)) >= 0) {
+    if ((s = find_pfunc(C, nm, n->nkids)) >= 0) {
         for (i = 0; i < n->nkids; i++) cexpr(C, n->kids[i]);
+        mark_line(C, n->line);
         emit(C, BC_CALLF); emit16(C, s); emit(C, n->nkids);
         return;
     }
     if ((s = sysvar_id(nm)) >= 0) {
         emit(C, BC_SLOAD); emit(C, s);
         for (i = 0; i < n->nkids; i++) cexpr(C, n->kids[i]);
+        mark_line(C, n->line);
         emit(C, BC_INDEX); emit(C, n->nkids);
         return;
     }
@@ -306,8 +405,10 @@ static void ccall(comp *C, node *n)
         cexpr(C, n->kids[1]);
         je = emit_jump(C, BC_JMP);
         patch(C, jf);
+        C->line = -1;
         cexpr(C, n->kids[2]);
         patch(C, je);
+        C->line = -1;
         return;
     }
     if ((b = bi_lookup(nm)) != NULL || (!strchr(nm, '.') && (b = bi_lookup_any(nm)) != NULL)) {
@@ -315,20 +416,38 @@ static void ccall(comp *C, node *n)
         return;
     }
     for (i = 0; i < n->nkids; i++) cexpr(C, n->kids[i]);
+    mark_line(C, n->line);
     emit(C, BC_CALLN); emit16(C, add_name(C, nm)); emit(C, n->nkids);
 }
 
-static void cassign(comp *C, node *n)
+/* the value of an indexed assignment L(i):=x is the whole updated list or matrix
+ * (listapi's Pyappend: RETURN LST(0):=ITEM, documented as Lst:=Pyappend(Lst,ITEM));
+ * as a statement (container 0) the element is kept as the statement's value, so a
+ * loop of L(i):=x does not hold a second reference to L (which would copy it) */
+static void cassign(comp *C, node *n, int container)
 {
     node *t = n->a;
     int s, i;
     cexpr(C, n->b);
+    if (t->type != N_NAME && container && strcmp(t->name, "Notes")) {
+        for (i = 0; i < t->nkids; i++) cexpr(C, t->kids[i]);
+        if ((s = find_local(C, t->name)) >= 0) { emit(C, BC_LSETIDX); emit(C, s); emit(C, t->nkids); emit(C, BC_LLOAD); emit(C, s); }
+        else if ((s = find_pvar(C, t->name)) >= 0) { emit(C, BC_GSETIDX); emit16(C, s); emit(C, t->nkids); emit(C, BC_GLOAD); emit16(C, s); }
+        else if ((s = sysvar_id(t->name)) >= 0) { emit(C, BC_SSETIDX); emit(C, s); emit(C, t->nkids); emit(C, BC_SLOAD); emit(C, s); }
+        else {
+            int k = add_name(C, t->name);
+            emit(C, BC_NSETIDX); emit16(C, k); emit(C, t->nkids);
+            emit(C, BC_NLOAD); emit16(C, k);
+        }
+        return;
+    }
     emit(C, BC_DUP);
     if (t->type == N_NAME) {
         const char *nm = t->name;
         if ((s = find_local(C, nm)) >= 0) { emit(C, BC_LSTORE); emit(C, s); }
+        else if ((s = find_outer(C, nm)) >= 0) { emit(C, BC_OSTORE); emit(C, s); }
         else if ((s = find_pvar(C, nm)) >= 0) { emit(C, BC_GSTORE); emit16(C, s); }
-        else if (find_pfunc(C, nm) >= 0) cerr(C, t->line, "cannot assign to a function");
+        else if (find_pfunc(C, nm, -1) >= 0) cerr(C, t->line, "cannot assign to a function");
         else if ((s = sysvar_id(nm)) >= 0) { emit(C, BC_SSTORE); emit(C, s); }
         else { emit(C, BC_NSTORE); emit16(C, add_name(C, nm)); }
         return;
@@ -395,14 +514,28 @@ static void cexpr(comp *C, node *n)
         break;
     case N_NOT: cexpr(C, n->a); emit(C, BC_NOT); break;
     case N_BIN:
+        if (n->op == OP_POW && n->a->type == N_NAME && !strcmp(n->a->name, "e") && find_local(C, "e") < 0
+            && find_pvar(C, "e") < 0 && find_pfunc(C, "e", -1) < 0) {
+            /* e^x is EXP(x): the Prime's e^x key is the exponential function (giac also
+             * reads e^x as exp(x)); powering the 12-digit e loses digits:
+             * e^2.83314410795 would be 16.998823027 where EXP gives 16.9988230269 */
+            const builtin *b = bi_lookup("EXP");
+            if (b) {
+                cexpr(C, n->b);
+                emit(C, BC_CALLB); emit16(C, bi_id(b)); emit(C, 1);
+                break;
+            }
+        }
         cexpr(C, n->a);
         if (n->op == OP_AND || n->op == OP_OR) {
             /* short-circuit, as on the Prime: 0 AND (A:=1) and 1 OR (A:=1) leave A alone */
             int j;
+            int l0 = C->line;
             emit(C, BC_SC); emit(C, n->op);
             emit16(C, 0); j = here(C) - 2;
             cexpr(C, n->b); emit(C, BC_BIN); emit(C, n->op);
             patch(C, j);
+            if (C->line != l0) C->line = -1;
             break;
         }
         cexpr(C, n->b); emit(C, BC_BIN); emit(C, n->op);
@@ -426,7 +559,7 @@ static void cexpr(comp *C, node *n)
         }
         break;
     case N_SQRT: cexpr(C, n->a); emit(C, BC_SQRT); break;
-    case N_ASSIGN: cassign(C, n); break;
+    case N_ASSIGN: cassign(C, n, 1); break;
     default: cerr(C, n->line, "syntax error"); break;
     }
 }
@@ -476,14 +609,12 @@ static void cstmt(comp *C, node *n)
 {
     int i;
     if (C->err) return;
-    if (n->type != N_BLOCK && n->line != C->line && n->line > 0) {
-        C->line = n->line;
-        emit(C, BC_LINE); emit16(C, n->line > 65535 ? 65535 : n->line);
-    }
+    if (n->type != N_BLOCK) mark_line(C, n->line);
     switch (n->type) {
     case N_BLOCK: cblock(C, n); break;
     case N_EXPR:
-        cexpr(C, n->a);
+        if (n->a->type == N_ASSIGN && n->a->a->type != N_NAME && n != C->tail) cassign(C, n->a, 0);
+        else cexpr(C, n->a);
         emit(C, BC_SETLAST);
         break;
     case N_LOCAL:
@@ -503,9 +634,11 @@ static void cstmt(comp *C, node *n)
         if (n->c) {
             je = emit_jump(C, BC_JMP);
             patch(C, jf);
+            C->line = -1;
             cblock(C, n->c);
             patch(C, je);
         } else patch(C, jf);
+        C->line = -1;
         break;
     }
     case N_CASE: {
@@ -518,9 +651,11 @@ static void cstmt(comp *C, node *n)
             cblock(C, br->b);
             if (ne < 128) ends[ne++] = emit_jump(C, BC_JMP);
             patch(C, jf);
+            C->line = -1;
         }
         if (n->c) cblock(C, n->c);
         for (i = 0; i < ne; i++) patch(C, ends[i]);
+        C->line = -1;
         break;
     }
     case N_FOR: {
@@ -533,6 +668,8 @@ static void cstmt(comp *C, node *n)
         if (n->d) cexpr(C, n->d); else { emit(C, BC_SINT); emit(C, 1); }
         emit(C, BC_LSTORE); emit(C, sl_step);
         top = here(C);
+        C->line = -1;
+        mark_line(C, n->line);
         cexpr(C, n->a);
         emit(C, BC_LLOAD); emit(C, sl_end);
         emit(C, BC_BIN); emit(C, n->op ? OP_GE : OP_LE);
@@ -548,10 +685,13 @@ static void cstmt(comp *C, node *n)
         emit_jump_to(C, BC_JMP, top);
         patch(C, jf);
         pop_loop(C, cont);
+        C->line = -1;
         break;
     }
     case N_WHILE: {
         int top = here(C), jf;
+        C->line = -1;
+        mark_line(C, n->line);
         cexpr(C, n->a);
         jf = emit_jump(C, BC_JF);
         push_loop(C);
@@ -559,20 +699,25 @@ static void cstmt(comp *C, node *n)
         emit_jump_to(C, BC_JMP, top);
         patch(C, jf);
         pop_loop(C, top);
+        C->line = -1;
         break;
     }
     case N_REPEAT: {
         int top = here(C), cont;
+        C->line = -1;
         push_loop(C);
         cblock(C, n->b);
         cont = here(C);
+        C->line = -1;
+        mark_line(C, n->a->line);
         cexpr(C, n->a);
         emit_jump_to(C, BC_JF, top);
         pop_loop(C, cont);
+        C->line = -1;
         break;
     }
     case N_IFERR: {
-        int tr, je, saved = C->line;
+        int tr, je;
         emit(C, BC_TRY); emit16(C, 0);
         tr = here(C) - 2;
         C->try_depth++;
@@ -582,9 +727,10 @@ static void cstmt(comp *C, node *n)
         if (n->c) cblock(C, n->c);
         je = emit_jump(C, BC_JMP);
         patch(C, tr);
-        C->line = saved;
+        C->line = -1;
         cblock(C, n->b);
         patch(C, je);
+        C->line = -1;
         break;
     }
     case N_BREAK: case N_CONTINUE: {
@@ -627,6 +773,7 @@ int compile_function(ppl_vm *V, pprog *prog, pfunc *fn, char **params, int np, n
     int i;
     comp_init(&C, V, prog, fn);
     C.line = -1;
+    if (body && body->type == N_BLOCK && body->nkids) C.tail = body->kids[body->nkids - 1];
     for (i = 0; i < np; i++) new_slot(&C, params[i]);
     fn->nparams = (uint8_t)np;
     cblock(&C, body);

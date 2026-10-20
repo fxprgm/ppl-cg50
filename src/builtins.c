@@ -10,6 +10,7 @@ extern const builtin bi_misc_table[];
 extern const builtin bi_gfx_table[];
 extern const builtin bi_cas_table[];
 extern const builtin bi_cas2_table[];
+extern const builtin bi_vm_table[];
 
 static const builtin bi_core_table[] = {
     /* lists */
@@ -105,6 +106,7 @@ static void init_table(void)
     add_table(bi_core_table);
     add_table(bi_cas_table);
     add_table(bi_cas2_table);
+    add_table(bi_vm_table);
 }
 
 const builtin *bi_lookup(const char *name)

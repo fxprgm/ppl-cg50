@@ -236,6 +236,7 @@ static int cmd_run(int argc, char **argv)
     e = ppl_load(V, base_name(argv[0], name, sizeof name), src, n, msg, sizeof msg);
     free(src);
     if (e) { report_error(V, e, msg); ppl_free(V); free(V); return 1; }
+    if (msg[0]) fprintf(stderr, "Warning: %s\n", msg);
     if (argc == 1) {
         pprog *p = V->progs;
         for (i = 0; i < p->nf; i++)
