@@ -239,7 +239,11 @@ static void cx_to(const cx *c, value *out)
     if (negligible(&im, &re)) xn_zero(&im);
     if (negligible(&re, &im)) xn_zero(&re);
     xn_to_real(&R, &re); xn_to_real(&I, &im);
-    c_make(out, &R, &I);
+    /* a zero imaginary part gives a real (c_make keeps (3,0) complex, as typed
+     * on the Prime; computed eigenvalues of a real matrix come back real there:
+     * the conformance table's EIGENVAL is a real vector) */
+    if (dec_is_zero(&I)) v_real(out, &R);
+    else c_make(out, &R, &I);
 }
 
 static void cluster_fix(cx *z, int n, const cx *a);
@@ -1273,20 +1277,22 @@ static int list_of(value *out, value *items, int n)
     return 0;
 }
 
-BI(b_lu)
+/* {L, U, P}: partial pivoting (the largest in the column) or, with firstnz,
+ * the first non-zero one */
+static int lu_core(const value *a, value *out, int firstnz)
 {
     xm A, L, P;
     int n, i, j, k, st;
     value parts[3];
-    (void)V; (void)argc;
-    if ((st = need_square(&a[0]))) return st;
-    if ((st = xm_from(&a[0], &A))) return st;
+    if ((st = need_square(a))) return st;
+    if ((st = xm_from(a, &A))) return st;
     n = A.r;
     xm_new(&L, n, n); xm_new(&P, n, n);
     xm_ident(&P);
     for (k = 0; k < n; k++) {
         int p = k;
-        for (i = k + 1; i < n; i++) if (xn_cmpmag(XE(&A, i, k), XE(&A, p, k)) > 0) p = i;
+        if (firstnz) { while (p < n - 1 && !XE(&A, p, k)->n) p++; }
+        else for (i = k + 1; i < n; i++) if (xn_cmpmag(XE(&A, i, k), XE(&A, p, k)) > 0) p = i;
         if (p != k)
             for (j = 0; j < n; j++) {
                 xn t = *XE(&A, p, j); *XE(&A, p, j) = *XE(&A, k, j); *XE(&A, k, j) = t;
@@ -1308,19 +1314,30 @@ BI(b_lu)
     return list_of(out, parts, 3);
 }
 
+BI(b_lu) { (void)V; (void)argc; return lu_core(&a[0], out, 0); }
+
 static int eigvecs(const value *a, value *P, value *D);
 
 /* lu(M), the CAS form: [p, L, U] with P*M = L*U, p the permutation as a
- * vector of row numbers (row j of P has its 1 in column p(j)).  The User Guide
- * shows lu([[1,2],[3,4]]) = [[1 2] [[1 0],[3 1]] [[1 2],[0 -2]]] for an exact
- * matrix; here the pivot is the largest in its column, as LU (assumed for
- * approximate matrices; gaussjordan.ppl only builds P from p).  A list here. */
+ * vector of row numbers (row j of P has its 1 in column p(j)); a list here.
+ * The pivot is giac's: for an exact (integer) matrix the first non-zero one
+ * (User Guide: lu([[1,2],[3,4]]) = [[1 2] [[1 0],[3 1]] [[1 2],[0 -2]]];
+ * gaussjordan.ppl's LDU divides lu's U by unpermuted pivots), otherwise the
+ * largest in its column, as LU (assumed). */
 BI(b_lucas)
 {
     value r, p;
     pmat *P;
-    int i, j, st;
-    if ((st = b_lu(V, argc, a, &r))) return st;
+    int i, j, st, exact = 1;
+    (void)V; (void)argc;
+    if (a[0].t == T_MAT) {
+        const pmat *m = a[0].u.m;
+        for (i = 0; i < nrows(m) * m->cols && exact; i++) {
+            real x;
+            if (m->v[i].t == T_CPLX || to_real(&m->v[i], &x) || !dec_is_int(&x)) exact = 0;
+        }
+    }
+    if ((st = lu_core(&a[0], &r, exact))) return st;
     P = r.u.l->v[2].u.m;
     if ((st = v_mat(&p, 1, P->rows, 1))) { v_decref(&r); return st; }
     for (i = 0; i < P->rows; i++)

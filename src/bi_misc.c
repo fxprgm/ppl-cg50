@@ -475,7 +475,10 @@ static BI(b_mouse)
 {
     value l;
     int st;
-    (void)V; (void)argc; (void)a;
+    (void)V; (void)a;
+    /* MOUSE(index): that element of the first pointer, -1 without pointer
+     * activity (User Guide) */
+    if (argc) { v_int32(out, -1); return 0; }
     if ((st = v_list(out, 2))) return st;
     v_list(&l, 0); out->u.l->v[0] = l;
     v_list(&l, 0); out->u.l->v[1] = l;

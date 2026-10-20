@@ -270,14 +270,19 @@ static int min2(ppl_vm *V, const value *x, const value *y, value *out) { return 
 static int maxmin(ppl_vm *V, int argc, value *a, value *out, int ismax)
 {
     if (argc == 1) {
-        uint32_t i;
+        uint32_t i, n;
         value best;
-        if (a[0].t != T_LIST) { v_copy(out, &a[0]); return 0; }
-        if (!a[0].u.l->n) return E_DIM;
-        v_copy(&best, &a[0].u.l->v[0]);
-        for (i = 1; i < a[0].u.l->n; i++) {
+        const value *el;
+        /* a vector too (xchart.ppl: MAX(row(mat,I)), by an author who checks his
+         * programs on the Prime) */
+        if (a[0].t == T_LIST) { el = a[0].u.l->v; n = a[0].u.l->n; }
+        else if (a[0].t == T_MAT && a[0].u.m->vec) { el = a[0].u.m->v; n = (uint32_t)a[0].u.m->cols; }
+        else { v_copy(out, &a[0]); return 0; }
+        if (!n) return E_DIM;
+        v_copy(&best, &el[0]);
+        for (i = 1; i < n; i++) {
             value t;
-            int st = maxmin2(V, &best, &a[0].u.l->v[i], &t, ismax);
+            int st = maxmin2(V, &best, &el[i], &t, ismax);
             v_decref(&best);
             if (st) return st;
             best = t;

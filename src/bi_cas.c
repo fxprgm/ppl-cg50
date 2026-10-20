@@ -572,6 +572,79 @@ static BI(b_rect)
     return vec2(out, &x, &y);
 }
 
+/* append(list or vector, x): x added at the end; head/tail: the first element,
+ * all but the first (giac; cashflow.ppl) */
+static BI(b_append)
+{
+    int st;
+    (void)V; (void)argc;
+    if (a[0].t == T_LIST) {
+        plist *l;
+        v_copy(out, &a[0]);
+        if (!(l = list_own(out))) { v_decref(out); return E_MEM; }
+        if ((st = list_push(l, &a[1]))) { v_decref(out); return st; }
+        return 0;
+    }
+    if (a[0].t == T_MAT && a[0].u.m->vec) {
+        int i, n = a[0].u.m->cols;
+        if (a[1].t != T_REAL && a[1].t != T_CPLX && a[1].t != T_INT) return E_BADTYPE;
+        if ((st = v_mat(out, 1, n + 1, 1))) return st;
+        for (i = 0; i < n; i++) out->u.m->v[i] = a[0].u.m->v[i];
+        v_copy(&out->u.m->v[n], &a[1]);
+        if (a[1].t == T_INT) { real x; to_real(&a[1], &x); v_real(&out->u.m->v[n], &x); }
+        return 0;
+    }
+    return E_BADTYPE;
+}
+
+static int seq_elems(const value *v, const value **el, uint32_t *n)
+{
+    if (v->t == T_LIST) { *el = v->u.l->v; *n = v->u.l->n; return 0; }
+    if (v->t == T_MAT && v->u.m->vec) { *el = v->u.m->v; *n = (uint32_t)v->u.m->cols; return 0; }
+    return E_BADTYPE;
+}
+
+static BI(b_head)
+{
+    const value *el;
+    uint32_t n;
+    (void)V; (void)argc;
+    if (a[0].t == T_STR) { if (!a[0].u.s->len) return E_DIM; return v_str_u16(out, a[0].u.s->c, 1); }
+    if (seq_elems(&a[0], &el, &n)) return E_BADTYPE;
+    if (!n) return E_DIM;
+    v_copy(out, &el[0]);
+    return 0;
+}
+
+static BI(b_tail)
+{
+    const value *el;
+    uint32_t n, i;
+    int st;
+    (void)V; (void)argc;
+    if (a[0].t == T_STR) return v_str_u16(out, a[0].u.s->c + (a[0].u.s->len ? 1 : 0), a[0].u.s->len ? a[0].u.s->len - 1 : 0);
+    if (seq_elems(&a[0], &el, &n)) return E_BADTYPE;
+    if (!n) return E_DIM;
+    if (a[0].t == T_LIST) {
+        if ((st = v_list(out, 0))) return st;
+        for (i = 1; i < n; i++) if ((st = list_push(out->u.l, &el[i]))) { v_decref(out); return st; }
+        return 0;
+    }
+    if ((st = v_mat(out, 1, (int)n - 1, 1))) return st;
+    for (i = 1; i < n; i++) out->u.m->v[i - 1] = el[i];
+    return 0;
+}
+
+/* sto(value, var): stores the value, answers it (giac; cashflow.ppl) */
+static BI(b_sto)
+{
+    int st;
+    (void)argc;
+    if ((st = vm_store_ref(V, &a[1], &a[0]))) return st;
+    v_copy(out, &a[0]);
+    return 0;
+}
+
 extern int bi_fnroot_impl(ppl_vm *V, int argc, value *a, value *out);
 
 const builtin bi_cas2_table[] = {
@@ -593,5 +666,7 @@ const builtin bi_cas2_table[] = {
     { "DOM_LIST", b_dom_list, 0, 0, BF_NOPAREN }, { "DOM_SYMBOLIC", b_dom_symbolic, 0, 0, BF_NOPAREN },
     { "DOM_RAT", b_dom_rat, 0, 0, BF_NOPAREN }, { "DOM_STRING", b_dom_string, 0, 0, BF_NOPAREN },
     { "DOM_FUNC", b_dom_func, 0, 0, BF_NOPAREN },
+    { "append", b_append, 2, 2, 0 }, { "head", b_head, 1, 1, 0 }, { "tail", b_tail, 1, 1, 0 },
+    { "sto", b_sto, 2, 2, BF_QUOTE2 },
     { NULL, NULL, 0, 0, 0 }
 };
