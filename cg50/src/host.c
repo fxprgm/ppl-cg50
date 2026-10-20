@@ -253,11 +253,25 @@ static BI(b_pixon) { return gfx_stub_pixon(V, argc, a, out); }
 static BI(b_drawmenu) { return gfx_stub_drawmenu(V, argc, a, out); }
 #endif
 
+/* STARTVIEW(-1): the Home view, which is what a program's dialogs open over here: nothing to
+   do (LSX starts with it). The app views (0..), the other negative views: not supported. */
+static BI(b_startview)
+{
+	(void)V; (void)argc;
+	int32_t v;
+	if (bi_int(&a[0], &v)) return E_BADTYPE;
+	if (v != -1)
+		return E_UNSUPPORTED;
+	v_int32(out, 0);
+	return 0;
+}
+
 const builtin host_table[] = {
 	{ "GETKEY", b_getkey, 0, 0, BF_NOPAREN }, { "ISKEYDOWN", b_iskeydown, 1, 1, 0 },
 	{ "WAIT", b_wait, 0, 1, BF_NOPAREN }, { "MOUSE", b_mouse, 0, 1, BF_NOPAREN },
 	{ "INPUT", dlg_input, 1, 6, BF_REF1 }, { "CHOOSE", dlg_choose, 2, -1, BF_REF1 },
 	{ "MSGBOX", dlg_msgbox, 1, 3, 0 }, { "FREEZE", b_freeze, 0, 0, BF_NOPAREN },
+	{ "STARTVIEW", b_startview, 1, 2, 0 },
 #ifdef GFX_STUB
 	{ "RECT", b_rect, 0, -1, BF_NOPAREN }, { "RECT_P", b_rect, 0, -1, BF_NOPAREN },
 	{ "LINE_P", b_line, 4, -1, 0 }, { "PIXON_P", b_pixon, 2, -1, 0 },
