@@ -42,6 +42,7 @@ typedef struct value {
         struct pmat *m;
         struct psym *y;
         struct { uint32_t pc; uint16_t idx; } th;  /* T_THUNK / T_VREF */
+        struct value *vp;                     /* T_VREF of kind VK_SLOT */
     } u;
 } value;
 
@@ -100,6 +101,10 @@ typedef struct pfunc {
     struct pprog *prog;
     int line;
     uint8_t home;                      /* Home code: := creates variables */
+    char **lnames;                     /* names of the local slots (NULL: hidden), for EXPR */
+    uint8_t nlocals_named;             /* entries in lnames */
+    struct pfunc *outer;               /* EXPR text: the function whose locals it sees */
+    int outer_frame;                   /* ... and that function's frame (BC_OLOAD/BC_OSTORE) */
 } pfunc;
 
 typedef struct ncache { uint32_t gen; uint8_t kind; void *p; } ncache;
@@ -205,7 +210,8 @@ void int_mask(const ppl_vm *V, value *v);   /* wrap an integer to its word size 
 /* ---- arithmetic (arith.c) ---- */
 enum { OP_ADD, OP_SUB, OP_MUL, OP_DIV, OP_POW, OP_MOD, OP_NTHROOT,
        OP_EQ, OP_NE, OP_LT, OP_LE, OP_GT, OP_GE, OP_AND, OP_OR, OP_XOR,
-       OP_IQUO };
+       OP_IQUO,
+       OP_EMUL, OP_EDIV, OP_EPOW };   /* .* ./ .^ : element by element on matrices */
 int  ar_binary(ppl_vm *V, int op, const value *a, const value *b, value *out);
 int  ar_neg(ppl_vm *V, const value *a, value *out);
 int  ar_not(ppl_vm *V, const value *a, value *out);
