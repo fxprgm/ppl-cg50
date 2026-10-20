@@ -397,10 +397,12 @@ static value *new_hvar(ppl_vm *V, const char *name)
 }
 
 /* F0-F9 (Function), X0-X9 and Y0-Y9 (Parametric), R0-R9 (Polar), U0-U9
- * (Sequence), V0-V9 (Advanced Graphing) */
+ * (Sequence), V0-V9 (Advanced Graphing); D0-D9 (Statistics 1Var data columns,
+ * lists: germanbankholidays.ppl assigns D1 := {31,28,...} undeclared) and C0-C9
+ * (Statistics 2Var columns) */
 static int sys_auto_name(const char *n)
 {
-    return n[0] && n[1] >= '0' && n[1] <= '9' && !n[2] && strchr("FXYRUV", n[0]) != NULL;
+    return n[0] && n[1] >= '0' && n[1] <= '9' && !n[2] && strchr("FXYRUVDC", n[0]) != NULL;
 }
 
 static int resolve(ppl_vm *V, const char *name, value **slot, pfunc **fn)
@@ -431,6 +433,7 @@ static int resolve(ppl_vm *V, const char *name, value **slot, pfunc **fn)
          * from the start: programs read and assign them without declaring them */
         value *s = new_hvar(V, name);
         if (!s) return R_NONE;
+        if (name[0] == 'D' || name[0] == 'C') { v_decref(s); v_list(s, 0); }   /* data columns */
         *slot = s;
         return R_VAR;
     }
@@ -483,7 +486,12 @@ int vm_index(ppl_vm *V, const value *c, int argc, const value *idx, value *out)
         uint32_t k;
         if ((st = to_index(&idx[0].u.l->v[0], &i)) || (st = to_index(&idx[0].u.l->v[1], &j))) return st;
         if (j < i) return E_BADVAL;
-        if (i < 1 || (uint32_t)j > c->u.l->n) return E_INDEX;
+        if (i < 1) return E_INDEX;
+        /* past the end: clamped, and empty when m is past the end (assumed:
+         * listapi.ppl's ListFIND steps with LST({X+1,SIZE(LST)+1}) until POS
+         * finds nothing, so L({n+1,n+1}) must not fail) */
+        if ((uint32_t)i > c->u.l->n) return v_list(out, 0);
+        if ((uint32_t)j > c->u.l->n) j = (int32_t)c->u.l->n;
         if ((st = v_list(out, (uint32_t)(j - i + 1)))) return st;
         for (k = 0; k < (uint32_t)(j - i + 1); k++) {
             v_decref(&out->u.l->v[k]);
@@ -643,6 +651,17 @@ static int sys_store(ppl_vm *V, int id, const value *v)
     if (id <= SV_Z) {
         if (v->t != T_REAL && v->t != T_INT) return E_BADTYPE;
     } else if (id >= SV_L0 && id < SV_L0 + 10) {
+        if (v->t == T_MAT && v->u.m->vec) {
+            /* a vector becomes a list (factoranalysis.ppl stores EIGENVAL's
+             * vector with LE▶L5 and sorts it; assumed from the program working) */
+            value l;
+            int k, n = v->u.m->cols;
+            if (v_list(&l, (uint32_t)n)) return E_MEM;
+            for (k = 0; k < n; k++) { v_decref(&l.u.l->v[k]); v_copy(&l.u.l->v[k], &v->u.m->v[k]); }
+            v_set(&V->sysvars[id], &l);
+            v_decref(&l);
+            return 0;
+        }
         if (v->t != T_LIST) return E_BADTYPE;
     } else if (id >= SV_M0 && id < SV_M0 + 10) {
         if (v->t != T_MAT) return E_BADTYPE;

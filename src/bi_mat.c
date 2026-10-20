@@ -924,6 +924,12 @@ BI(b_sub)
         int n;
         if (elems(&a[0], &el, &n)) return E_BADTYPE;
         if (bi_int(&a[1], &s) || bi_int(&a[2], &e)) return E_BADVAL;
+        /* end just before start: empty (assumed: circularshift.ppl's
+         * listright({5}) takes SUB(t,1,0)) */
+        if (e == s - 1 && s >= 1 && s <= n + 1) {
+            if (a[0].t == T_LIST) return v_list(out, 0);
+            return v_mat(out, 1, 0, 1);
+        }
         if (s < 1 || e > n || e < s) return E_INDEX;
         if (a[0].t == T_LIST) {
             if ((st = v_list(out, 0))) return st;
