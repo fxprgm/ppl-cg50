@@ -1,0 +1,65 @@
+// Units (TYPE 9): literals, arithmetic, conversions, display.
+EXPORT UWEIGHT(w)
+BEGIN
+  RETURN STRING(w*1_lbf/1_ft,2,1,0);
+END;
+EXPORT UBORE(d)
+BEGIN
+  RETURN " d = "+STRING(d*1_inch,2,3);
+END;
+EXPORT USUM()
+BEGIN
+  LOCAL a:=20_cm;
+  a:=a+5_inch;
+  RETURN a;
+END;
+//> 2_m => 2_m
+//> TYPE(2_m) => 9
+//> TYPE(1_ m) => 9
+//> 1_(MPa) => 1_MPa
+//> 10_ft^2 => 10_ft^2
+//> 5_ft*2_ft => 10_ft^2
+//> (3_m)^2 => 9_m^2
+//> 1_lbf/1_ft => 1_(lbf*ft^-1)
+//> 2_m/1_m => 2
+//> 1/2_s => 0.5_s^-1
+//> 1_(kgf/m)*80.2 => 80.2_(kgf/m)
+//> 0.67196897_(lb/ft*s) => 0.67196897_(lb/ft*s)
+//> 6.242796E-2_(lb/ft^3) => 0.06242796_(lb/ft^3)
+//> -2_m => -2_m
+//> USUM() => 32.7_cm
+//> 32.7_cm/4_s => 8.175_(cm*s^-1)
+//> CONVERT(32.7_cm/4_s,1_(km/h)) => 0.2943_(km/h)
+//> CONVERT(2_m,1_ft) => 6.56167979003_ft
+//> CONVERT(5_m,1_ft) => 16.4041994751_ft
+//> CONVERT(1_kgf,1_N) => 9.80665_N
+//> CONVERT(1_(kgf/m),1_(N/m)) => 9.80665_(N/m)
+//> CONVERT(20_°C,1_°F) => 68_°F
+//> CONVERT(68_°F,1_K) => 293.15_K
+//> CONVERT(1_psi,1_kPa) => 6.89475729317_kPa
+//> CONVERT(1_mile,1_ft) => 5280_ft
+//> CONVERT(1_m,1_s) => *error*
+//> MKSA(2_m) => 2_m
+//> MKSA(20_°C) => 293.15_K
+//> MKSA(8.175_(cm/s)) => 0.08175_(m*s^-1)
+//> UFACTOR(2_m,1_ft) => 6.56167979003_ft
+//> UFACTOR(100_C,1_A) => 100_(A*s)
+//> USIMPLIFY(5_(kg*m^2/s^2)) => 5_J
+//> USIMPLIFY(2_m) => 2_m
+//> UPART(2_m) => 1_m
+//> UVAL(2_m) => 2
+//> 1_m+2 => *error*
+//> 1_m+1_s => *error*
+//> 1_ft==12_inch => 1
+//> 1_ft<1_m => 1
+//> 1_m==1_s => 0
+//> ABS(-3_m) => 3_m
+//> ROUND(2.567_m,2) => 2.57_m
+//> IP(2.5_m) => 2_m
+//> ABS(-3) => 3
+//> {1_m,2_ft} => {1_m,2_ft}
+//> STRING(2_m) => "2_m"
+//> EXPR("2_m")*2 => 4_m
+//> UWEIGHT(28.553) => "28.6_(lbf*ft^-1)"
+//> UBORE(3.86495355621) => " d = 3.865_inch"
+//> 1_qq => *error*

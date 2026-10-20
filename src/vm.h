@@ -24,7 +24,7 @@ enum {
 enum { B_DEFAULT = 0, B_BIN = 1, B_OCT = 2, B_DEC = 3, B_HEX = 4 };
 
 typedef struct obj { uint32_t rc; } obj;
-struct pstr; struct plist; struct pmat; struct psym;
+struct pstr; struct plist; struct pmat; struct psym; struct pun;
 
 typedef struct { real re, im; } cplx;
 
@@ -41,6 +41,7 @@ typedef struct value {
         struct plist *l;
         struct pmat *m;
         struct psym *y;
+        struct { real r; struct pun *p; } un;  /* T_UNIT: magnitude and unit (units.h) */
         struct { uint32_t pc; uint16_t idx; } th;  /* T_THUNK / T_VREF */
     } u;
 } value;
@@ -72,6 +73,7 @@ enum {
     E_STATS,            /* Insufficient statistics data */
     E_NOTIMPL,          /* recognised name, not implemented yet */
     E_BREAK,            /* the user broke the program (ON key); IFERR does not catch it */
+    E_UNITS,            /* Inconsistent units */
     E_COUNT
 };
 const char *ppl_errmsg(int e);

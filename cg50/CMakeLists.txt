@@ -9,7 +9,7 @@ find_package(Gint 2.9 REQUIRED)
 
 set(CORE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../src)
 set(CORE dec decfn decfmt value arith parse compile vm builtins bi_math bi_misc bi_list bi_mat
-  bi_prob bi_cas hpprgm gfx bi_gfx font/gfx_font)
+  bi_prob bi_cas hpprgm units gfx bi_gfx font/gfx_font)
 list(TRANSFORM CORE PREPEND ${CORE_DIR}/)
 list(TRANSFORM CORE APPEND .c)
 

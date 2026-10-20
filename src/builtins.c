@@ -10,6 +10,7 @@ extern const builtin bi_misc_table[];
 extern const builtin bi_gfx_table[];
 extern const builtin bi_cas_table[];
 extern const builtin bi_cas2_table[];
+extern const builtin bi_unit_table[];
 
 static const builtin bi_core_table[] = {
     /* lists */
@@ -99,6 +100,7 @@ static void init_table(void)
 {
     if (nall) return;
     if (host_table) add_table(host_table);
+    add_table(bi_unit_table);       /* first: its ABS, ROUND... pass units to the core ones */
     add_table(bi_math_table);
     add_table(bi_misc_table);
     add_table(bi_gfx_table);

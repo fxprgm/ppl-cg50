@@ -2,6 +2,7 @@
  * strings, lists (element-wise) and matrices. */
 #include "vm.h"
 #include "decx.h"
+#include "units.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -645,6 +646,7 @@ int ar_binary(ppl_vm *V, int op, const value *a, const value *b, value *out)
     if (a->t == T_LIST || b->t == T_LIST) return list_op(V, op, a, b, out);
     if (a->t == T_STR || b->t == T_STR) return str_op(V, op, a, b, out);
     if (a->t == T_MAT || b->t == T_MAT) return mat_op(V, op, a, b, out);
+    if (a->t == T_UNIT || b->t == T_UNIT) return un_binary(V, op, a, b, out);
     if (a->t == T_CPLX || b->t == T_CPLX) return cplx_op(V, op, a, b, out);
     if (a->t == T_INT && b->t == T_INT) return int_op(V, op, a, b, out);
     if (a->t == T_SYM || b->t == T_SYM) return E_UNSUPPORTED;
@@ -667,6 +669,7 @@ int ar_neg(ppl_vm *V, const value *a, value *out)
         dec_neg(&re, &a->u.c.re); dec_neg(&im, &a->u.c.im);
         return c_make(out, &re, &im);
     }
+    case T_UNIT: return un_neg(a, out);
     case T_LIST: case T_MAT: {
         value m1;
         v_int32(&m1, -1);

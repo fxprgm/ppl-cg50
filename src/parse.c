@@ -247,15 +247,27 @@ again:
         P->p = q;
         t->kind = TK_NUM;
         dec_from_str(&t->num, buf, NULL);
-        if (q + 1 < P->end && *q == '_' && (q[1] == '(' || is_idstart((unsigned char)q[1]))) {
-            /* a unit: 1_inch, 1_(ft/s) */
-            const char *u = q + 1;
-            if (*u == '(') { int depth = 0; do { if (*u == '(') depth++; else if (*u == ')') depth--; u++; } while (u < P->end && depth > 0); }
-            else while (u < P->end && (is_idchar((unsigned char)*u) || (unsigned char)*u >= 0x80)) u++;
-            t->kind = TK_UNIT;
-            t->str = pa_strdup(P, q + 1, (size_t)(u - q - 1));
-            t->slen = (size_t)(u - q - 1);
-            P->p = u;
+        if (q + 1 < P->end && *q == '_') {
+            /* a unit: 1_inch, 1_(ft/s), 10_ft^2, 20_°C, 1_ m (units.c parses the text) */
+            const char *u = q + 1, *u0;
+            while (u < P->end && (*u == ' ' || *u == '\t')) u++;
+            u0 = u;
+            if (u < P->end && *u == '(') { int depth = 0; do { if (*u == '(') depth++; else if (*u == ')') depth--; u++; } while (u < P->end && depth > 0); }
+            else if (u < P->end && (is_idstart((unsigned char)*u) || (unsigned char)*u == 0xC2)) {
+                while (u < P->end && (is_idchar((unsigned char)*u) || (unsigned char)*u >= 0x80)) u++;
+                if (u + 1 < P->end && *u == '^') {          /* 10_ft^2 is 10 square feet */
+                    const char *w = u + 1;
+                    if (*w == '-') w++;
+                    else if (w + 2 < P->end && (unsigned char)w[0] == 0xE2 && (unsigned char)w[1] == 0x88 && (unsigned char)w[2] == 0x92) w += 3;
+                    if (w < P->end && *w >= '0' && *w <= '9') { while (w < P->end && *w >= '0' && *w <= '9') w++; u = w; }
+                }
+            }
+            if (u > u0) {
+                t->kind = TK_UNIT;
+                t->str = pa_strdup(P, u0, (size_t)(u - u0));
+                t->slen = (size_t)(u - u0);
+                P->p = u;
+            }
         }
         t->len = (int)(P->p - t->s);
         return;
