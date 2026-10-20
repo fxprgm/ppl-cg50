@@ -1,5 +1,6 @@
 /* value.c -- reference-counted objects and the text of values. */
 #include "vm.h"
+#include "units.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -14,6 +15,7 @@ void v_incref(const value *v)
     case T_LIST: v->u.l->h.rc++; break;
     case T_MAT: v->u.m->h.rc++; break;
     case T_SYM: v->u.y->h.rc++; break;
+    case T_UNIT: v->u.un.p->h.rc++; break;
     default: break;
     }
 }
@@ -26,6 +28,7 @@ void v_decref(value *v)
     case T_LIST: o = &v->u.l->h; break;
     case T_MAT: o = &v->u.m->h; break;
     case T_SYM: o = &v->u.y->h; break;
+    case T_UNIT: o = &v->u.un.p->h; break;
     default: return;
     }
     if (--o->rc == 0) obj_free(v);
@@ -46,6 +49,7 @@ static void obj_free(value *v)
         value s; s.t = T_STR; s.u.s = v->u.y->text;
         v_decref(&s); free(v->u.y); break;
     }
+    case T_UNIT: free(v->u.un.p); break;
     default: break;
     }
 }
@@ -283,6 +287,7 @@ int v_equal(const value *a, const value *b)
         x.t = y.t = T_STR; x.u.s = a->u.y->text; y.u.s = b->u.y->text;
         return v_equal(&x, &y);
     }
+    case T_UNIT: return un_equal(a, b);
     default: return 0;
     }
 }
@@ -484,6 +489,7 @@ void v_to_text(ppl_vm *V, sbuf *b, const value *v, int quote)
         break;
     }
     case T_SYM: str_text(b, v->u.y->text, 0); break;
+    case T_UNIT: un_text(V, b, v); break;
     case T_GROB: { char g[3] = { 'G', (char)('0' + v->ib), 0 }; sb_puts(b, g); break; }
     default: break;
     }
@@ -497,7 +503,7 @@ const char *ppl_errmsg(int e)
         "Index outside range", "Insufficient memory", "Infinite result",
         "Non-real result", "Wrong number of arguments", "Not supported",
         "Program stopped", "Undefined result", "Insufficient statistics data",
-        "Not implemented yet", "Break"
+        "Not implemented yet", "Break", "Inconsistent units"
     };
     return (e >= 0 && e < E_COUNT) ? m[e] : "Error";
 }

@@ -627,7 +627,7 @@ BI(b_replace)
 
 BI(b_string)
 {
-    if (argc >= 2 && (a[0].t == T_REAL || a[0].t == T_CPLX || a[0].t == T_LIST || a[0].t == T_MAT)) {
+    if (argc >= 2 && (a[0].t == T_REAL || a[0].t == T_CPLX || a[0].t == T_UNIT || a[0].t == T_LIST || a[0].t == T_MAT)) {
         /* STRING(value, format [, digits]) */
         int32_t f, d = V->set.digits;
         int sf = V->set.format, sd = V->set.digits;
