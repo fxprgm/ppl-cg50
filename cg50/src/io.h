@@ -2,8 +2,9 @@
  * WAIT), touches emulated for MOUSE and WAIT(-1), and the ON key (AC/ON) that breaks it.
  *
  * Touches: F1-F6 tap the six soft-menu buttons that DRAWMENU draws (x 26, 79, 132, 185, 238,
- * 291; y 230), and GETKEY also sees them as the Prime keys 0, 5, 10, 1, 6, 11 (Apps, Home, CAS,
- * Symb, Plot, Num: the keys published apps use as soft keys). OPTN toggles the pointer: the
+ * 291; y 230) and give no key code (a tap on the Prime gives none). SHIFT+F1-F6 (SHIFT held or
+ * pressed just before) are the Prime keys 0, 5, 10, 1, 6, 11 (Apps, Home, CAS, Symb, Plot,
+ * Num) for GETKEY, ISKEYDOWN and WAIT, with no touch. OPTN toggles the pointer: the
  * arrows then move it (faster when held) and EXE touches the screen under it (held EXE +
  * arrows = a drag). */
 #ifndef PPL_IO_H

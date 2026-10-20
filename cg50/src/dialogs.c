@@ -66,15 +66,36 @@ static void flush_screen(void)
 
 /* ---- INPUT ------------------------------------------------------------------------------- */
 
-#define FMAX 24
+#define FMAX 40
+#define ROWS_PER_PAGE 7          /* the Prime: at most seven lines of controls per page */
 enum { F_EDIT, F_CHECK, F_CHOOSE };
 typedef struct {
 	value ref, val;
 	int kind, group;          /* F_CHECK: radio group size (1 = a plain check box) */
 	int gstart, gsize;        /* the radio group this check box is in (gsize 1: none) */
 	const value *choices;     /* F_CHOOSE: the list of items */
-	char label[40], help[100];
+	bool str_only;            /* F_EDIT with allowed types [2]: text without quotes */
+	bool has_pos;             /* {x%, width%, line} given */
+	int pos[3];
+	int line, x, w, lx0;      /* layout: line (0..), field box x and width, label's left limit */
+	char label[48], help[100];
 } field_t;
+
+/* allowed types [t1, t2, ...]: only strings (2)? */
+static bool only_strings(const value *m)
+{
+	if (m->t != T_MAT || !m->u.m)
+		return false;
+	int k = m->u.m->vec ? m->u.m->cols : m->u.m->rows * m->u.m->cols;
+	if (k < 1)
+		return false;
+	for (int i = 0; i < k; i++) {
+		int32_t t = -1;
+		if (to_index(&m->u.m->v[i], &t) || t != T_STR)
+			return false;
+	}
+	return true;
+}
 
 static int fields_from(ppl_vm *V, const value *spec, field_t *f, int *n)
 {
@@ -105,6 +126,18 @@ static int fields_from(ppl_vm *V, const value *spec, field_t *f, int *n)
 				else if (k->t == T_LIST) {
 					x->kind = F_CHOOSE;
 					x->choices = k;
+				}
+				else if (k->t == T_MAT)
+					x->str_only = only_strings(k);
+			}
+			/* {x%, width%, line} */
+			if (e->u.l->n >= 3 && e->u.l->v[2].t == T_LIST && e->u.l->v[2].u.l->n >= 3) {
+				const value *p = e->u.l->v[2].u.l->v;
+				x->has_pos = true;
+				for (int j = 0; j < 3; j++) {
+					int32_t q = 0;
+					to_index(&p[j], &q);
+					x->pos[j] = q < 0 ? 0 : q > 1000 ? 1000 : q;
 				}
 			}
 			(*n)++;
@@ -137,34 +170,80 @@ static void field_text(ppl_vm *V, field_t *f, char *out, int n)
 			strcpy(out, "");
 		return;
 	}
-	value_text(V, &f->val, out, n, 1);
+	if (f->str_only && f->val.t == T_STR)
+		str_arg(V, &f->val, 0, out, n);
+	else
+		value_text(V, &f->val, out, n, !f->str_only);
 }
 
-#define ROWS_PER_PAGE 7
+/* where each field goes: with every pos given, {x%, width%, line} of the screen width (the
+   Prime's 320 pixels become our 396); else one field per line, labels in a column */
+static void input_layout(field_t *f, int n)
+{
+	bool pos = true;
+	for (int i = 0; i < n; i++)
+		if (!f[i].has_pos)
+			pos = false;   /* the Prime wants pos for all fields or none */
+	if (!pos) {
+		int lw = 0;
+		for (int i = 0; i < n; i++) {
+			int w = text_width(FONT, f[i].label);
+			if (w > lw) lw = w;
+		}
+		if (lw > 150) lw = 150;
+		for (int i = 0; i < n; i++) {
+			f[i].line = i;
+			f[i].x = 8 + lw + 6;
+			f[i].w = DWIDTH - 8 - f[i].x;
+			f[i].lx0 = 8;
+		}
+		return;
+	}
+	for (int i = 0; i < n; i++) {
+		int x = f[i].pos[0] * DWIDTH / 100, w = f[i].pos[1] * DWIDTH / 100;
+		if (x < 2) x = 2;
+		if (x > DWIDTH - 6) x = DWIDTH - 6;
+		if (x + w > DWIDTH - 4) w = DWIDTH - 4 - x;
+		f[i].line = f[i].pos[2], f[i].x = x, f[i].w = w;
+	}
+	/* a label may use the room between the field before it on its line and its field */
+	for (int i = 0; i < n; i++) {
+		int l = 4;
+		for (int j = 0; j < n; j++)
+			if (j != i && f[j].line == f[i].line && f[j].x < f[i].x && f[j].x + f[j].w + 4 > l)
+				l = f[j].x + f[j].w + 4;
+		f[i].lx0 = l;
+	}
+}
 
 static void input_draw(ppl_vm *V, const char *title, field_t *f, int n, int sel, editor_t *ed,
-                       bool editing, const char *err)
+                       bool editing, const char *err, int page, int npages)
 {
 	dclear(C_WHITE);
 	drect(0, 0, DWIDTH - 1, 17, C_PANEL);
-	text_draw(FONT, 6, 2, title, C_TITLE, -1, COLS - 2);
-	int lw = 0;
+	text_draw(FONT, 6, 2, title, C_TITLE, -1, COLS - 10);
 	for (int i = 0; i < n; i++) {
-		int w = text_width(FONT, f[i].label);
-		if (w > lw) lw = w;
-	}
-	if (lw > 150) lw = 150;
-	int page = sel / ROWS_PER_PAGE;
-	for (int r = 0; r < ROWS_PER_PAGE; r++) {
-		int i = page * ROWS_PER_PAGE + r;
-		if (i >= n)
-			break;
-		int y = 26 + r * 22;
-		int vx = 8 + lw + 6;
-		text_draw(FONT, 8 + lw - text_width(FONT, f[i].label), y + 3, f[i].label, C_BLACK, -1, 25);
+		if (f[i].line / ROWS_PER_PAGE != page)
+			continue;
+		int y = 26 + (f[i].line % ROWS_PER_PAGE) * 22;
+		int vx = f[i].x, w = f[i].w;
+		/* the label ends just before its field; too long, it shows its start, clipped */
+		if (f[i].label[0]) {
+			int room = vx - 6 - f[i].lx0, lw = text_width(FONT, f[i].label);
+			if (lw <= room)
+				text_draw(FONT, vx - 6 - lw, y + 3, f[i].label, C_BLACK, -1, -1);
+			else if (room >= 6)
+				text_draw(FONT, f[i].lx0, y + 3, f[i].label, C_BLACK, -1, room / 6);
+		}
 		bool s = i == sel;
-		drect_border(vx, y, DWIDTH - 8, y + 18, s ? C_RGB(29, 30, 31) : C_WHITE, 1, s ? C_SEL : C_LABEL);
-		int cols = (DWIDTH - 8 - vx - 6) / 6;
+		if (w < 4) {               /* a zero-width field: only a mark when selected */
+			if (s)
+				drect(vx, y, vx + 3, y + 18, C_SEL);
+			continue;
+		}
+		drect_border(vx, y, vx + w, y + 18, s ? C_RGB(29, 30, 31) : C_WHITE, 1, s ? C_SEL : C_LABEL);
+		int cols = (w - 6) / 6;
+		if (cols < 1) cols = 1;
 		if (s && editing)
 			ed_draw(ed, vx + 3, y + 3, cols, 1, C_BLACK, C_RGB(29, 30, 31));
 		else {
@@ -173,10 +252,9 @@ static void input_draw(ppl_vm *V, const char *title, field_t *f, int n, int sel,
 			text_draw(FONT, vx + 3, y + 3, t, C_BLACK, -1, cols);
 		}
 	}
-	if (n > ROWS_PER_PAGE) {
+	if (npages > 1) {
 		char pg[16];
-		int np = (n + ROWS_PER_PAGE - 1) / ROWS_PER_PAGE;
-		pg[0] = '1' + page, pg[1] = '/', pg[2] = '0' + np, pg[3] = 0;
+		pg[0] = '1' + page, pg[1] = '/', pg[2] = '0' + npages, pg[3] = 0;
 		text_right(FONT, DWIDTH - 6, 2, pg, C_LABEL, -1);
 	}
 	drect(0, 186, DWIDTH - 1, 204, C_BAR);
@@ -197,6 +275,7 @@ int dlg_input(ppl_vm *V, int argc, value *a, value *out)
 {
 	static field_t f[FMAX];
 	static editor_t ed;
+	static int ord[FMAX];        /* the fields in reading order (line, then x) */
 	int n = 0;
 	memset(f, 0, sizeof f);
 	int st = fields_from(V, &a[0], f, &n);
@@ -215,10 +294,6 @@ int dlg_input(ppl_vm *V, int argc, value *a, value *out)
 					f[j].gstart = i, f[j].gsize = (i + g <= n ? g : n - i);
 			i += g - 1;
 		}
-	char title[80];
-	str_arg(V, argc > 1 ? &a[1] : NULL, 0, title, sizeof title);
-	if (!title[0])
-		strcpy(title, "Input");
 	for (int i = 0; i < n; i++) {
 		if (argc > 2)
 			str_arg(V, &a[2], a[2].t == T_LIST ? i : (i ? -1 : 0), f[i].label, sizeof f[i].label);
@@ -232,15 +307,40 @@ int dlg_input(ppl_vm *V, int argc, value *a, value *out)
 		else
 			vm_load_ref(V, &f[i].ref, &f[i].val);
 	}
+	input_layout(f, n);
+	int npages = 1;
+	for (int i = 0; i < n; i++) {
+		ord[i] = i;
+		if (f[i].line / ROWS_PER_PAGE + 1 > npages)
+			npages = f[i].line / ROWS_PER_PAGE + 1;
+	}
+	if (npages > 9) npages = 9;
+	for (int i = 1; i < n; i++)   /* insertion sort: stable */
+		for (int j = i; j > 0; j--) {
+			field_t *p = &f[ord[j - 1]], *q = &f[ord[j]];
+			if (p->line < q->line || (p->line == q->line && p->x <= q->x))
+				break;
+			int t = ord[j]; ord[j] = ord[j - 1]; ord[j - 1] = t;
+		}
 	flush_screen();
 	ST->phase = PH_INPUT;
-	int sel = 0, rc = -1;
+	int pi = 0, rc = -1;       /* pi: position of the selected field in ord */
 	bool editing = false;
 	const char *err = NULL;
 	ed_clear(&ed);
 	ed.shift = ed.alpha = ed.lock = false;
 	while (rc < 0) {
-		input_draw(V, title, f, n, sel, &ed, editing, err);
+		int sel = ord[pi];
+		int page = f[sel].line / ROWS_PER_PAGE;
+		if (page >= npages) page = npages - 1;
+		/* the title: one string, or a list of titles, one per page */
+		char title[80];
+		str_arg(V, argc > 1 ? &a[1] : NULL, argc > 1 && a[1].t == T_LIST ? page : 0, title, sizeof title);
+		if (!title[0] && argc > 1 && a[1].t == T_LIST)
+			str_arg(V, &a[1], 0, title, sizeof title);
+		if (!title[0])
+			strcpy(title, "Input");
+		input_draw(V, title, f, n, sel, &ed, editing, err, page, npages);
 		int k = ui_key();
 		err = NULL;
 		if (k == KEY_ACON && !editing) {
@@ -259,28 +359,37 @@ int dlg_input(ppl_vm *V, int argc, value *a, value *out)
 			}
 			if (r == ED_EXE || k == KEY_F6 || ((k == KEY_UP || k == KEY_DOWN) && r == ED_UNUSED)) {
 				value v;
-				if (!ed.buf[0]) {
-					editing = false;
-					continue;
+				if (f[sel].str_only) {
+					/* a string-only field: the text as typed, without quotes */
+					if (v_str_utf8(&v, ed.buf, strlen(ed.buf))) {
+						err = ppl_errmsg(E_MEM);
+						continue;
+					}
 				}
-				int e = vm_eval_string(V, ed.buf, strlen(ed.buf), &v);
-				if (e == E_BREAK) { rc = -2; break; }
-				if (e) {
-					err = ppl_errmsg(e);
-					continue;
+				else {
+					if (!ed.buf[0]) {
+						editing = false;
+						continue;
+					}
+					int e = vm_eval_string(V, ed.buf, strlen(ed.buf), &v);
+					if (e == E_BREAK) { rc = -2; break; }
+					if (e) {
+						err = ppl_errmsg(e);
+						continue;
+					}
 				}
 				v_set(&f[sel].val, &v);
 				v_decref(&v);
 				editing = false;
 				if (k == KEY_F6) { rc = 1; break; }
-				if (k == KEY_UP) sel = sel > 0 ? sel - 1 : 0;
-				else if (sel < n - 1) sel++;
+				if (k == KEY_UP) pi = pi > 0 ? pi - 1 : 0;
+				else if (pi < n - 1) pi++;
 			}
 			continue;
 		}
 		if (k == KEY_F6) { rc = 1; break; }
-		if (k == KEY_UP) { if (sel > 0) sel--; continue; }
-		if (k == KEY_DOWN) { if (sel < n - 1) sel++; continue; }
+		if (k == KEY_UP) { if (pi > 0) pi--; continue; }
+		if (k == KEY_DOWN) { if (pi < n - 1) pi++; continue; }
 		if (k == KEY_F2 && argc > 4) { /* Reset */
 			for (int i = 0; i < n; i++) {
 				const value *rv = a[4].t == T_LIST && n > 1 ? (uint32_t)i < a[4].u.l->n ? &a[4].u.l->v[i] : NULL : &a[4];
@@ -319,14 +428,14 @@ int dlg_input(ppl_vm *V, int argc, value *a, value *out)
 			continue;
 		}
 		if (k == KEY_EXE) {
-			if (sel == n - 1) { rc = 1; break; }
-			sel++;
+			if (pi == n - 1) { rc = 1; break; }
+			pi++;
 			continue;
 		}
 		if (k == KEY_F5 || k == KEY_DEL || k == KEY_RIGHT || k == KEY_LEFT) {
 			/* edit the current value */
 			char t[ED_MAX];
-			value_text(V, &x->val, t, sizeof t, 1);
+			field_text(V, x, t, sizeof t);
 			ed_set(&ed, k == KEY_DEL ? "" : t);
 			editing = true;
 			continue;

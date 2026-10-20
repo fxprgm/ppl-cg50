@@ -1,0 +1,35 @@
+// ARC_P sweeps of a full turn or more, either way: the whole circle (earthspeed draws its
+// ring with ARC_P(G1,60,60,30,360,0,...) in degrees). Less than a turn with a2 < a1 wraps.
+
+EXPORT AROWS(n)
+BEGIN
+  RETURN MAKELIST(POLYEVAL(MAKELIST(GETPIX_P(G1,X,Y)==0,X,0,n-1),2),Y,0,n-1);
+END;
+
+EXPORT ARCDEG(a1, a2)
+BEGIN
+  LOCAL h:=HAngle, r;
+  HAngle:=1;
+  DIMGROB_P(G1,17,17,#FFFFFFh); ARC_P(G1,8,8,7,a1,a2,0); r:=AROWS(17);
+  HAngle:=h;
+  RETURN r;
+END;
+
+EXPORT ARCRAD(a1, a2)
+BEGIN
+  LOCAL h:=HAngle, r;
+  HAngle:=0;
+  DIMGROB_P(G1,17,17,#FFFFFFh); ARC_P(G1,8,8,7,a1,a2,0); r:=AROWS(17);
+  HAngle:=h;
+  RETURN r;
+END;
+
+EXPORT CIRCLE7() BEGIN DIMGROB_P(G1,17,17,#FFFFFFh); ARC_P(G1,8,8,7); RETURN AROWS(17); END;
+
+//> EQ(ARCDEG(360,0),CIRCLE7()) => 1
+//> EQ(ARCDEG(0,360),CIRCLE7()) => 1
+//> EQ(ARCDEG(720,0),CIRCLE7()) => 1
+//> EQ(ARCRAD(0,-6.3),CIRCLE7()) => 1
+//> EQ(ARCDEG(350,0),CIRCLE7()) => 0
+//> EQ(ARCDEG(350,0),ARCDEG(-10,0)) => 1
+//> EQ(ARCDEG(90,0),ARCDEG(90,360)) => 1

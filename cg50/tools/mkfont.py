@@ -1,6 +1,6 @@
 """Generate cg50/src/font_data.c: the X.org misc-fixed fonts 6x13 and 6x10 (public domain,
 tools/fonts/), with the glyphs for ASCII, Latin-1, Greek and the mathematical characters PPL
-programs use. Each glyph is `h` rows of uint8, bit 7 = leftmost pixel.
+programs use (Cyrillic, ⑴, ▓, ✔ too). Each glyph is `h` rows of uint8, bit 7 = leftmost pixel.
 
 usage: python3 -I cg50/tools/mkfont.py
 """
@@ -11,7 +11,9 @@ OUT = os.path.join(os.path.dirname(HERE), 'src', 'font_data.c')
 FONTS = [('6x13', 'font_6x13'), ('6x10', 'font_6x10')]
 RANGES = [(0x20, 0x7E), (0xA0, 0x17F), (0x391, 0x3C9), (0x2010, 0x2027), (0x2030, 0x2044),
           (0x2070, 0x209C), (0x2190, 0x21FF), (0x2200, 0x22FF), (0x2308, 0x230B),
-          (0x2500, 0x257F), (0x25A0, 0x25FF), (0x1D07, 0x1D07)]
+          (0x2500, 0x257F), (0x25A0, 0x25FF), (0x1D07, 0x1D07),
+          # Cyrillic (Є), enclosed alphanumerics (⑴), block elements (▓ ▋), dingbats (✔)
+          (0x400, 0x4FF), (0x2460, 0x24FF), (0x2580, 0x259F), (0x2700, 0x27BF)]
 
 
 def bdf(path):
@@ -57,7 +59,7 @@ def main():
            '#include "text.h"', '']
     for fname, cname in FONTS:
         bb, glyphs = bdf(os.path.join(HERE, 'fonts', fname + '.bdf'))
-        cps = [c for lo, hi in RANGES for c in range(lo, hi + 1) if c in glyphs]
+        cps = sorted({c for lo, hi in RANGES for c in range(lo, hi + 1) if c in glyphs})  # text.c bisects
         fw, fh = bb[0], bb[1]
         out.append('static const uint16_t cps_%s[%d] = {' % (fname, len(cps)))
         for i in range(0, len(cps), 12):

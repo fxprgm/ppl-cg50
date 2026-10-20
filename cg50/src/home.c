@@ -292,8 +292,8 @@ static void help(void)
 		drect(0, 0, DWIDTH - 1, 17, C_PANEL);
 		if (page == 0) {
 			text_draw(FONT, 6, 2, "Keys in programs: CG50 key, GETKEY code, Prime key", C_TITLE, -1, -1);
-			for (int i = 0; i < keymap_count && i < 51; i++) {
-				int x = 2 + (i / 17) * 132, y = 21 + 11 * (i % 17);
+			for (int i = 0; i < keymap_count && i < 54; i++) {
+				int x = 2 + (i / 18) * 132, y = 20 + 10 * (i % 18);
 				char t[40];
 				if (keymap[i].prime >= 0)
 					snprintf(t, sizeof t, "%-6s%3d %.11s", keymap[i].cg_name, keymap[i].prime, keymap[i].prime_name);
@@ -307,7 +307,8 @@ static void help(void)
 			text_draw(FONT, 6, 2, "Touch, pointer, views", C_TITLE, -1, -1);
 			ui_wrap(6, 22, COLS - 2, 12,
 			        "F1-F6 tap the six soft-menu buttons that DRAWMENU draws (MOUSE and WAIT(-1) see "
-			        "a touch at y 230); GETKEY sees them as Prime keys 0 5 10 1 6 11.\n"
+			        "a touch at y 230; no key code). SHIFT+F1-F6 are the Prime keys Apps Home CAS "
+			        "Symb Plot Num (0 5 10 1 6 11), with no touch.\n"
 			        "OPTN: the pointer. Arrows move it (faster when held), EXE touches under it, EXE "
 			        "held + arrows drags. OPTN again: arrows and EXE are keys again.\n"
 			        "AC/ON stops the program (Break). Setup (F5 at Home) picks the view: Fit (240 rows "
