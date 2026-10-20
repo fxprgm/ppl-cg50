@@ -357,13 +357,21 @@ static int arc(ppl_vm *V, int argc, value *a, value *out, int cart)
     if (argc >= 5) {
         real d, full, sweep, pi, two;
         if (to_real(&a[3], &a1) || to_real(&a[4], &a2)) return E_BADTYPE;
+        real ad, turn;
         /* the sweep from a1 to a2, counterclockwise, in radians */
         dec_sub(&d, &a2, &a1);
         if (dec_angle_to_rad(&sweep, &d, V->set.angle)) return E_BADVAL;
         dec_pi(&pi);
         dec_from_int(&two, 2);
         dec_mul(&full, &pi, &two);
-        if (dec_cmp(&sweep, &full) < 0) {
+        /* a full turn or more either way is the circle (ARC_P(…,360,0) is a ring: earthspeed);
+           less, a2 < a1 wraps (2 to 1 rad is the long way round, as the Prime's ARCS scene).
+           The negative full turn is not measured on the Prime: the most plausible reading. */
+        dec_abs(&ad, &d);
+        if (V->set.angle == ANG_DEG) dec_from_int(&turn, 360);
+        else if (V->set.angle == ANG_GRAD) dec_from_int(&turn, 400);
+        else turn = full;
+        if (dec_cmp(&ad, &turn) < 0) {
             if (sweep.s) dec_mod(&sweep, &sweep, &full);
             partial = 1;
             s[2] = dec_cmp(&sweep, &pi) > 0;
