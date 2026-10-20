@@ -414,6 +414,15 @@ static int eig_x(xm *A, cx **out)
     if (!st) st = dk_roots(c, A->r, z);
     free(c);
     if (st) { free(z); return st; }
+    {
+        /* a real symmetric matrix has real eigenvalues: drop the imaginary noise
+         * the polynomial roots can carry (factoranalysis.ppl takes RE() of them
+         * and sorts them, and stores them in a list) */
+        int i, j, sym = 1;
+        for (i = 0; i < A->r && sym; i++)
+            for (j = 0; j < i && sym; j++) if (xn_cmp(XE(A, i, j), XE(A, j, i))) sym = 0;
+        if (sym) for (i = 0; i < A->r; i++) xn_zero(&z[i].im);
+    }
     cx_sort(z, A->r, 1);
     *out = z;
     return 0;
@@ -549,6 +558,39 @@ static uint32_t rnd(ppl_vm *V)
     V->rng[0] = V->rng[1]; V->rng[1] = V->rng[2]; V->rng[2] = V->rng[3];
     V->rng[3] = V->rng[3] ^ (V->rng[3] >> 19) ^ x ^ (x >> 8);
     return V->rng[3];
+}
+
+/* randperm(n): a random permutation of 1..n as a vector (giac counts from 1
+ * in the Prime's mode, assumed: listapi.ppl's shuffle falls back to
+ * MAKELIST(I,I,1,n)); randperm(list or vector): its elements shuffled */
+BI(b_randperm)
+{
+    int32_t n, i;
+    int st;
+    (void)argc;
+    if (a[0].t == T_LIST || (a[0].t == T_MAT && a[0].u.m->vec)) {
+        const value *el = a[0].t == T_LIST ? a[0].u.l->v : a[0].u.m->v;
+        n = a[0].t == T_LIST ? (int32_t)a[0].u.l->n : a[0].u.m->cols;
+        if (a[0].t == T_LIST) {
+            if ((st = v_list(out, (uint32_t)n))) return st;
+            for (i = 0; i < n; i++) { v_decref(&out->u.l->v[i]); v_copy(&out->u.l->v[i], &el[i]); }
+        } else {
+            if ((st = v_mat(out, 1, n, 1))) return st;
+            for (i = 0; i < n; i++) out->u.m->v[i] = el[i];
+        }
+    } else {
+        if (bi_int(&a[0], &n) || n < 0 || n > 65535) return E_BADVAL;
+        if ((st = v_mat(out, 1, n, 1))) return st;
+        for (i = 0; i < n; i++) v_int32(&out->u.m->v[i], i + 1);
+    }
+    {
+        value *v = out->t == T_LIST ? out->u.l->v : out->u.m->v;
+        for (i = n - 1; i > 0; i--) {         /* Fisher-Yates */
+            int32_t j = (int32_t)(rnd(V) % (uint32_t)(i + 1));
+            value t = v[i]; v[i] = v[j]; v[j] = t;
+        }
+    }
+    return 0;
 }
 
 BI(b_randmat)
@@ -1259,6 +1301,66 @@ BI(b_lu)
     xm_free(&A); xm_free(&L); xm_free(&P);
     return list_of(out, parts, 3);
 }
+
+static int eigvecs(const value *a, value *P, value *D);
+
+/* lu(M), the CAS form: [p, L, U] with P*M = L*U, p the permutation as a
+ * vector of row numbers (row j of P has its 1 in column p(j)).  The User Guide
+ * shows lu([[1,2],[3,4]]) = [[1 2] [[1 0],[3 1]] [[1 2],[0 -2]]] for an exact
+ * matrix; here the pivot is the largest in its column, as LU (assumed for
+ * approximate matrices; gaussjordan.ppl only builds P from p).  A list here. */
+BI(b_lucas)
+{
+    value r, p;
+    pmat *P;
+    int i, j, st;
+    if ((st = b_lu(V, argc, a, &r))) return st;
+    P = r.u.l->v[2].u.m;
+    if ((st = v_mat(&p, 1, P->rows, 1))) { v_decref(&r); return st; }
+    for (i = 0; i < P->rows; i++)
+        for (j = 0; j < P->cols; j++) {
+            real x;
+            if (!to_real(EL(P, i, j), &x) && !dec_is_zero(&x)) v_int32(&p.u.m->v[i], j + 1);
+        }
+    /* {L, U, P} -> {p, L, U} */
+    v_decref(&r.u.l->v[2]);
+    r.u.l->v[2] = r.u.l->v[1];
+    r.u.l->v[1] = r.u.l->v[0];
+    r.u.l->v[0] = p;
+    *out = r;
+    return 0;
+}
+
+/* rowDim/colDim: rows and columns of a matrix; a vector counts as one row
+ * (assumed) */
+BI(b_rowdim)
+{
+    (void)V; (void)argc;
+    if (need_mat(&a[0])) return E_BADTYPE;
+    v_int32(out, nrows(a[0].u.m));
+    return 0;
+}
+
+BI(b_coldim)
+{
+    (void)V; (void)argc;
+    if (need_mat(&a[0])) return E_BADTYPE;
+    v_int32(out, a[0].u.m->cols);
+    return 0;
+}
+
+/* eigVc / eigVl (giac's egv / egvl): the eigenvector matrix (columns, as
+ * EIGENVV's first part) and the diagonal eigenvalue matrix */
+static int eig_part(const value *a, value *out, int which)
+{
+    value P, D;
+    int st;
+    if ((st = eigvecs(a, &P, &D))) return st;
+    if (which) { *out = D; v_decref(&P); } else { *out = P; v_decref(&D); }
+    return 0;
+}
+BI(b_eigvc) { (void)V; (void)argc; return eig_part(&a[0], out, 0); }
+BI(b_eigvl) { (void)V; (void)argc; return eig_part(&a[0], out, 1); }
 
 /* Householder QR: A = Q R, Q orthogonal (m x m), R upper (m x n) */
 static int house_qr(xm *A, xm *Q)

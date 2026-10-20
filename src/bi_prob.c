@@ -1256,14 +1256,76 @@ static int stat_moments(int argc, value *a, xn *mean, xn *var)
     return 0;
 }
 
-BI(b_mean) { xn m; int st; (void)V; if ((st = stat_moments(argc, a, &m, NULL))) return st; return done(out, &m); }
-BI(b_variance) { xn m, s; int st; (void)V; if ((st = stat_moments(argc, a, &m, &s))) return st; return done(out, &s); }
+/* a matrix (one argument): the statistic of each column, as a vector (User
+ * Guide: "with a matrix as argument, returns the mean of the columns";
+ * variance([[1,2],[3,5],[4,4]]) gives the column variances) */
+static int by_column(ppl_vm *V, const value *m, value *out, int (*f)(ppl_vm *, int, value *, value *))
+{
+    const pmat *M = m->u.m;
+    int i, j, st;
+    if ((st = v_mat(out, 1, M->cols, 1))) return st;
+    for (j = 0; j < M->cols; j++) {
+        value col, r;
+        if ((st = v_list(&col, M->rows))) break;
+        for (i = 0; i < M->rows; i++) v_copy(&col.u.l->v[i], &M->v[i * M->cols + j]);
+        st = f(V, 1, &col, &r);
+        v_decref(&col);
+        if (st) break;
+        out->u.m->v[j] = r;
+    }
+    if (st) v_decref(out);
+    return st;
+}
+#define COLUMNS(fn) if (argc == 1 && a[0].t == T_MAT && !a[0].u.m->vec) return by_column(V, &a[0], out, fn)
+
+BI(b_mean)
+{
+    xn m;
+    int st;
+    COLUMNS(b_mean);
+    if ((st = stat_moments(argc, a, &m, NULL))) return st;
+    return done(out, &m);
+}
+
+BI(b_variance)
+{
+    xn m, s;
+    int st;
+    COLUMNS(b_variance);
+    if ((st = stat_moments(argc, a, &m, &s))) return st;
+    return done(out, &s);
+}
+
 BI(b_stddev)
 {
     xn m, s;
     int st;
-    (void)V;
+    COLUMNS(b_stddev);
     if ((st = stat_moments(argc, a, &m, &s))) return st;
+    xn_sqrt(&s, &s, QP);
+    return done(out, &s);
+}
+
+/* stddevp: the sample standard deviation, sqrt(sum f (x-mean)^2 / (sum f - 1))
+ * (User Guide: stddevp({1,2,3}) = 1) */
+BI(b_stddevp)
+{
+    xn m, s, sw, one;
+    int st;
+    uint32_t i;
+    COLUMNS(b_stddevp);
+    if ((st = stat_moments(argc, a, &m, &s))) return st;
+    xn_zero(&sw);
+    if (argc > 1) {
+        const value *fe = a[1].t == T_LIST ? a[1].u.l->v : a[1].u.m->v;
+        uint32_t n = a[1].t == T_LIST ? a[1].u.l->n : (uint32_t)a[1].u.m->cols;
+        for (i = 0; i < n; i++) { xn f; argx(&fe[i], &f); xadd(&sw, &sw, &f); }
+    } else xn_from_int(&sw, a[0].t == T_LIST ? (int32_t)a[0].u.l->n : a[0].u.m->cols);
+    xn_from_int(&one, 1);
+    xmul(&s, &s, &sw);
+    xsub(&sw, &sw, &one);
+    if (!sw.n || sw.s) return E_DIV0;
+    xdiv(&s, &s, &sw);
     xn_sqrt(&s, &s, QP);
     return done(out, &s);
 }
@@ -1273,7 +1335,7 @@ BI(b_median)
     xn *v, *f, half, cum, tot, t;
     uint32_t n, i, j;
     int st;
-    (void)V;
+    COLUMNS(b_median);
     kinit();
     if ((st = stat_data(argc, a, &v, &f, &n))) return st;
     /* sort the values (with their frequencies) */
