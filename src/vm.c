@@ -1380,7 +1380,13 @@ static char *equation_as_difference(const char *t)
             if (r < n && t[r] == '>') continue;          /* => store */
             if (r < n && t[r] == '=') r++;
             if (!(out = (char *)malloc(n + 8))) return NULL;
-            sprintf(out, "(%.*s)-(%s)", (int)i, t, t + r);
+            /* not sprintf with a precision argument: the add-in's libc (fxlibc) has none
+             * and reads i as the string pointer (System ERROR in mes's fsolve) */
+            out[0] = '(';
+            memcpy(out + 1, t, i);
+            memcpy(out + 1 + i, ")-(", 3);
+            memcpy(out + 4 + i, t + r, n - r);
+            memcpy(out + 4 + i + (n - r), ")", 2);
             return out;
         }
     }

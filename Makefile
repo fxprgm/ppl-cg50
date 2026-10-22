@@ -27,9 +27,15 @@ asan:
 	$(MAKE) clean
 	$(MAKE) SAN="-fsanitize=address,undefined" CFLAGS="-std=c11 -Wall -Wextra -O1 -g"
 
-test: all
+test: all fmtcheck
 	./build/test_dec
 	./tests/run_tests.sh
+
+# the add-in's libc (fxlibc) printf has no '*' width or precision: it takes the int argument
+# as the next conversion's value (a string pointer for %.*s), so none may appear in the code
+fmtcheck:
+	@! grep -nE '%[-+ #0]*([0-9]*\.)?\*' src/*.c cg50/src/*.c || \
+	  { echo "printf '*' width/precision: fxlibc does not support it"; exit 1; }
 
 conform: build/ppl
 	./build/ppl conform tests/conformance/hpkit_cases.tsv > build/conform.txt
@@ -56,4 +62,4 @@ fonts:
 	echo "c80858440d8fb618e0ac5ff6f16251dbfa6b3316f00f3cdd17d477297dd87b04  $(FONTDIR)/freefont-20120503/FreeSans.ttf" | shasum -a 256 -c
 	python3 -I tools/mkfont.py $(FONTDIR)/DroidSans.ttf $(FONTDIR)/freefont-20120503/FreeSans.ttf > src/font/gfx_font.c
 
-.PHONY: all asan test conform sh4size clean fonts
+.PHONY: all asan test fmtcheck conform sh4size clean fonts
