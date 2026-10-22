@@ -594,6 +594,16 @@ static BI(b_append)
         if (a[1].t == T_INT) { real x; to_real(&a[1], &x); v_real(&out->u.m->v[n], &x); }
         return 0;
     }
+    if (a[0].t == T_MAT && a[1].t == T_MAT && a[1].u.m->vec) {
+        /* a vector appended to a matrix is a new row (giac; truss: append(intfor,d[1])) */
+        const pmat *m = a[0].u.m;
+        int n = m->rows * m->cols;
+        if (a[1].u.m->cols != m->cols) return E_DIM;
+        if ((st = v_mat(out, m->rows + 1, m->cols, 0))) return st;
+        memcpy(out->u.m->v, m->v, (size_t)n * sizeof(value));
+        memcpy(out->u.m->v + n, a[1].u.m->v, (size_t)m->cols * sizeof(value));
+        return 0;
+    }
     return E_BADTYPE;
 }
 

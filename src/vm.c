@@ -518,6 +518,23 @@ int vm_index(ppl_vm *V, const value *c, int argc, const value *idx, value *out)
         }
         return 0;
     }
+    if (argc == 1 && c->t == T_MAT && !c->u.m->vec && idx[0].t == T_LIST && idx[0].u.l->n == 2
+        && idx[0].u.l->v[0].t == T_LIST && idx[0].u.l->v[1].t == T_LIST) {
+        /* M({{r1,c1},{r2,c2}}): the sub-matrix (User Guide, "Matrix references";
+         * mathlib: d({{1,2},{1,3}}) of [[0,1,2],[5,6,7]] is [[1,2]]) */
+        const plist *p = idx[0].u.l->v[0].u.l, *q = idx[0].u.l->v[1].u.l;
+        const pmat *m = c->u.m;
+        int32_t r1, c1, r2, c2, r, k;
+        if (p->n != 2 || q->n != 2) return E_BADTYPE;
+        if ((st = to_index(&p->v[0], &r1)) || (st = to_index(&p->v[1], &c1))
+            || (st = to_index(&q->v[0], &r2)) || (st = to_index(&q->v[1], &c2))) return st;
+        if (r1 < 1 || c1 < 1 || r2 < r1 || c2 < c1 || r2 > m->rows || c2 > m->cols) return E_INDEX;
+        if ((st = v_mat(out, r2 - r1 + 1, c2 - c1 + 1, 0))) return st;
+        for (r = r1; r <= r2; r++)
+            for (k = c1; k <= c2; k++)
+                out->u.m->v[(r - r1) * (c2 - c1 + 1) + (k - c1)] = m->v[(r - 1) * m->cols + (k - 1)];
+        return 0;
+    }
     if ((st = to_index(&idx[0], &i))) return st;
     switch (c->t) {
     case T_LIST: {
@@ -548,6 +565,16 @@ int vm_index(ppl_vm *V, const value *c, int argc, const value *idx, value *out)
             if (argc != 1) return E_INDEX;
             if (i < 1 || i > m->cols) return E_INDEX;
             *out = m->v[i - 1];
+            return 0;
+        }
+        if (argc == 1 && i < 0) {
+            /* M(-n): column n as a vector (User Guide, "Matrix references") */
+            value r;
+            int k;
+            if (-i > m->cols) return E_INDEX;
+            if ((st = v_mat(&r, 1, m->rows, 1))) return st;
+            for (k = 0; k < m->rows; k++) r.u.m->v[k] = m->v[k * m->cols + (-i - 1)];
+            *out = r;
             return 0;
         }
         if (i < 1 || i > m->rows) return E_INDEX;
@@ -619,12 +646,31 @@ static int set_index(ppl_vm *V, value *var, int argc, const value *idx, const va
             m->v[i - 1] = e;
             return 0;
         }
+        if (argc == 1 && i < 0) {
+            /* M(-n):=vector replaces column n */
+            int k;
+            if (val->t != T_MAT || !val->u.m->vec || val->u.m->cols != var->u.m->rows) return E_DIM;
+            if (-i > var->u.m->cols) return E_INDEX;
+            if (!(m = mat_own(var))) return E_MEM;
+            for (k = 0; k < m->rows; k++) m->v[k * m->cols + (-i - 1)] = val->u.m->v[k];
+            return 0;
+        }
         if (argc == 1) {
-            /* replace a row with a vector */
+            /* replace a row with a vector; the row after the last adds one (User Guide:
+             * storing past the size resizes; jacxgauss: M0(K+1):=...) */
             int k;
             if (val->t != T_MAT || !val->u.m->vec || val->u.m->cols != var->u.m->cols) return E_DIM;
-            if (i < 1 || i > var->u.m->rows) return E_INDEX;
-            m = mat_own(var);
+            if (i < 1 || i > var->u.m->rows + 1) return E_INDEX;
+            if (i == var->u.m->rows + 1) {
+                value nv;
+                int n = var->u.m->rows * var->u.m->cols;
+                if ((st = v_mat(&nv, i, var->u.m->cols, 0))) return st;
+                memcpy(nv.u.m->v, var->u.m->v, (size_t)n * sizeof(value));
+                memcpy(nv.u.m->v + n, val->u.m->v, (size_t)var->u.m->cols * sizeof(value));
+                v_decref(var); *var = nv;
+                return 0;
+            }
+            if (!(m = mat_own(var))) return E_MEM;
             for (k = 0; k < m->cols; k++) m->v[(i - 1) * m->cols + k] = val->u.m->v[k];
             return 0;
         }
