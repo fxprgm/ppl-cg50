@@ -24,9 +24,12 @@ developed and tested on a desktop first.
 ## The fx-CG50 add-in (`cg50/`)
 
 `cg50/` wraps the core in a gint add-in, `PPL.g3a` ("HP PPL"): a Home command line with
-history, a picker for program files, the `PRINT` terminal, `INPUT`/`CHOOSE`/`MSGBOX`, the
-Prime's key codes for `GETKEY`/`ISKEYDOWN`/`WAIT`, touches for `MOUSE` (F1-F6 tap the soft menu,
-OPTN gives a pointer), AC/ON to break, and G0 shown in the CG50's 396x224 screen.
+history, a picker for program files, the `PRINT` terminal, `INPUT`/`CHOOSE`/`MSGBOX`, a grid
+editor for `EDITMAT`/`EDITLIST`, the Prime's key codes for `GETKEY`/`ISKEYDOWN`/`WAIT`, touches
+for `MOUSE` (F1-F6 tap the soft menu, OPTN gives a pointer), AC/ON to break, and G0 shown in the
+CG50's 396x224 screen. A source viewer (line numbers, colours, wrap, five font sizes) opens from
+the Load list (F2 View), the function list (F3 Source) and the error screens (F1). The Setup (F5)
+sets the Home font's size and bold; the settings are kept in `PPL.cfg` at the root.
 
 Build (fxSDK with gint 2.9 or later on the `PATH`):
 
@@ -42,7 +45,9 @@ programs (`.hpprgm`, or their text as `.ppl`/`.txt` in UTF-8 or UTF-16) to a fol
 `PPL`. They are loaded when the add-in starts; F1 (Load) at Home loads others, from `PPL` or
 the root. Type `SPIRO()` (or pick it with F2, Run) and EXE.
 
-The add-in is tested in the casio-cg50 emulator by `emu_go/ppl_probe_test.go` (`TestPPL`).
+The add-in is tested in the casio-cg50 emulator by `emu_go/ppl_probe_test.go` (`TestPPL`, and
+`TestPPLSpeed` for SH-4 instruction counts) and `emu_go/ppl_corpus_probe_test.go`
+(`TestPPLCorpus`: real programs, keys, screenshots, `PPL_PROF=1` for a PC profile).
 
 Design notes, the number semantics with their sources, and the current state are in
 [`notes/ppl.md`](notes/ppl.md).
