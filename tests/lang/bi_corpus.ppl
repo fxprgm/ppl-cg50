@@ -144,3 +144,10 @@ END;
 //> SUB({5},1,0) => {}
 //> CONCAT({5}, SUB({5},1,0)) => {5}
 //> SUB({1,2,3},2,5) => *error*
+
+// chisquare: the upper tail (x >= n/2+1, the continued fraction of Q(a,x)); mpmath at 20 digits
+//> CHISQUARE_CDF(4,8) => 0.908421805556
+//> CHISQUARE_CDF(19,30) => 0.948201541107
+//> CHISQUARE_CDF(10,40) => 0.999983055256
+//> CHISQUARE_ICDF(19,0.95) => 30.1435272056
+//> CHISQUARE_ICDF(4,0.99) => 13.276704136
