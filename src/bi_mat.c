@@ -1159,6 +1159,29 @@ static int rref1(ppl_vm *V, int argc, value *a, value *out)
 }
 BI(b_rref) { return listmap(V, argc, a, out, rref1); }
 
+/* ref: row echelon form with leading 1s, partial pivoting as rref (giac: ref([[1,2],[3,4]])
+ * is [[1,4/3],[0,1]]; gaussjordan's echelon) */
+static int ref1(ppl_vm *V, int argc, value *a, value *out)
+{
+    xm m;
+    int st, i, j, k;
+    (void)V; (void)argc;
+    if (need_mat(&a[0])) return E_BADTYPE;
+    if ((st = xm_from(&a[0], &m))) return st;
+    xm_eliminate(&m, 0, NULL);
+    for (i = 0; i < m.r; i++) {
+        xn piv;
+        for (j = 0; j < m.c && !XE(&m, i, j)->n; j++) {}
+        if (j == m.c) continue;
+        piv = *XE(&m, i, j);
+        for (k = j; k < m.c; k++) xn_div(XE(&m, i, k), XE(&m, i, k), &piv, MP);
+    }
+    st = xm_to(&m, out, a[0].u.m->vec);
+    xm_free(&m);
+    return st;
+}
+BI(b_ref) { return listmap(V, argc, a, out, ref1); }
+
 BI(b_rank)
 {
     xm m;
@@ -1266,6 +1289,65 @@ BI(b_lsq)
     if (vecb) { xm t; xm_trn(&t, &X); xm_free(&X); X = t; }
     st = xm_to(&X, out, vecb);
     xm_free(&X);
+    return st;
+}
+
+/* the k-th of n x (or y) values: from column col of an n x 2 matrix, or a list/vector */
+static int pr_elem(const value *v, int col, int k, real *r)
+{
+    if (v->t == T_LIST) return bi_real(&v->u.l->v[k], r);
+    if (col < 0) return bi_real(&v->u.m->v[k], r);
+    return bi_real(&v->u.m->v[k * 2 + col], r);
+}
+
+static int pr_len(const value *v, int *n)
+{
+    if (v->t == T_LIST) { *n = (int)v->u.l->n; return 0; }
+    if (v->t == T_MAT && v->u.m->vec) { *n = v->u.m->cols; return 0; }
+    return E_BADTYPE;
+}
+
+/* polynomial_regression(M, d) or (X, Y, d): the least-squares polynomial of degree d as its
+ * coefficients, highest power first (giac; mathlib: POLYEVAL(polynomial_regression(data,
+ * rowDim(data)-1), x) interpolates) */
+BI(b_polyreg)
+{
+    const value *X, *Y;
+    int cx = -1, cy = -1, m, my, d, i, j, st;
+    int32_t dd;
+    xm A, B, At, G, H, C;
+    (void)V;
+    if (argc == 2) {
+        if (a[0].t != T_MAT || a[0].u.m->vec || a[0].u.m->cols != 2) return E_BADTYPE;
+        X = Y = &a[0]; cx = 0; cy = 1; m = a[0].u.m->rows;
+    } else {
+        X = &a[0]; Y = &a[1];
+        if ((st = pr_len(X, &m)) || (st = pr_len(Y, &my))) return st;
+        if (m != my) return E_DIM;
+    }
+    if ((st = bi_int(&a[argc - 1], &dd))) return st;
+    d = (int)dd;
+    if (d < 0 || d >= m) return E_BADVAL;
+    if ((st = xm_new(&A, m, d + 1))) return st;
+    if ((st = xm_new(&B, m, 1))) { xm_free(&A); return st; }
+    for (i = 0; i < m; i++) {
+        real x, y;
+        xn xv, p;
+        if ((st = pr_elem(X, cx, i, &x)) || (st = pr_elem(Y, cy, i, &y))) { xm_free(&A); xm_free(&B); return st; }
+        xn_from_real(&xv, &x);
+        xn_from_real(XE(&B, i, 0), &y);
+        xn_from_int(&p, 1);
+        for (j = d; j >= 0; j--) { *XE(&A, i, j) = p; xn_mul(&p, &p, &xv, MP); }
+    }
+    xm_trn(&At, &A);
+    xm_mul(&G, &At, &A); xm_mul(&H, &At, &B);
+    st = xm_solve(&G, &H, &C);
+    xm_free(&A); xm_free(&B); xm_free(&At); xm_free(&G); xm_free(&H);
+    if (st) return st;
+    C.c = C.r; C.r = 1;                     /* the column as a vector */
+    xm_clean(&C);
+    st = xm_to(&C, out, 1);
+    xm_free(&C);
     return st;
 }
 

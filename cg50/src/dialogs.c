@@ -1,5 +1,6 @@
 /* INPUT, CHOOSE and MSGBOX on the CG50 (dialogs.h). */
 #include "dialogs.h"
+#include "parse.h"
 #include "home.h"
 #include "host.h"
 #include "io.h"
@@ -18,6 +19,7 @@ void value_text(ppl_vm *V, const value *v, char *out, int n, int quote)
 	sbuf b;
 	sb_init(&b);
 	v_to_text(V, &b, v, quote);
+	sb_drop_nul(&b);
 	int k = b.p ? (int)b.n : 0;
 	if (k > n - 1) {
 		k = n - 1;
@@ -75,14 +77,15 @@ typedef struct {
 	int gstart, gsize;        /* the radio group this check box is in (gsize 1: none) */
 	const value *choices;     /* F_CHOOSE: the list of items */
 	bool str_only;            /* F_EDIT with allowed types [2]: text without quotes */
+	bool sym_only;            /* F_EDIT with allowed types [8]: kept as an expression */
 	bool has_pos;             /* {x%, width%, line} given */
 	int pos[3];
 	int line, x, w, lx0;      /* layout: line (0..), field box x and width, label's left limit */
 	char label[48], help[100];
 } field_t;
 
-/* allowed types [t1, t2, ...]: only strings (2)? */
-static bool only_strings(const value *m)
+/* allowed types [t1, t2, ...]: only type t (2 strings, 8 expressions)? */
+static bool only_type(const value *m, int32_t want)
 {
 	if (m->t != T_MAT || !m->u.m)
 		return false;
@@ -91,10 +94,36 @@ static bool only_strings(const value *m)
 		return false;
 	for (int i = 0; i < k; i++) {
 		int32_t t = -1;
-		if (to_index(&m->u.m->v[i], &t) || t != T_STR)
+		if (to_index(&m->u.m->v[i], &t) || t != want)
 			return false;
 	}
 	return true;
+}
+
+/* a symbolic value 'text' after checking that text parses */
+static int sym_from_text(const char *t, value *out)
+{
+	parser P;
+	value tv;
+	psym *y;
+	parser_init(&P, t, strlen(t));
+	parse_home(&P);
+	int bad = P.err;
+	parser_free(&P);
+	if (bad)
+		return E_SYNTAX;
+	if (v_str_utf8(&tv, t, strlen(t)))
+		return E_MEM;
+	if (!(y = malloc(sizeof *y))) {
+		v_decref(&tv);
+		return E_MEM;
+	}
+	y->h.rc = 1;
+	y->text = tv.u.s;
+	v_none(out);
+	out->t = T_SYM;
+	out->u.y = y;
+	return 0;
 }
 
 static int fields_from(ppl_vm *V, const value *spec, field_t *f, int *n)
@@ -127,8 +156,10 @@ static int fields_from(ppl_vm *V, const value *spec, field_t *f, int *n)
 					x->kind = F_CHOOSE;
 					x->choices = k;
 				}
-				else if (k->t == T_MAT)
-					x->str_only = only_strings(k);
+				else if (k->t == T_MAT) {
+					x->str_only = only_type(k, T_STR);
+					x->sym_only = only_type(k, T_SYM);
+				}
 			}
 			/* {x%, width%, line} */
 			if (e->u.l->n >= 3 && e->u.l->v[2].t == T_LIST && e->u.l->v[2].u.l->n >= 3) {
@@ -271,7 +302,7 @@ static void input_draw(ppl_vm *V, const char *title, field_t *f, int n, int sel,
 	scr_push_all();
 }
 
-int dlg_input(ppl_vm *V, int argc, value *a, value *out)
+static int input_dialog(ppl_vm *V, int argc, value *a, value *out)
 {
 	static field_t f[FMAX];
 	static editor_t ed;
@@ -363,6 +394,18 @@ int dlg_input(ppl_vm *V, int argc, value *a, value *out)
 					/* a string-only field: the text as typed, without quotes */
 					if (v_str_utf8(&v, ed.buf, strlen(ed.buf))) {
 						err = ppl_errmsg(E_MEM);
+						continue;
+					}
+				}
+				else if (f[sel].sym_only) {
+					/* an expression field (simprule's {f,[8]}): what is typed, not its value */
+					if (!ed.buf[0]) {
+						editing = false;
+						continue;
+					}
+					int e = sym_from_text(ed.buf, &v);
+					if (e) {
+						err = ppl_errmsg(e);
 						continue;
 					}
 				}
@@ -467,7 +510,7 @@ int dlg_input(ppl_vm *V, int argc, value *a, value *out)
 
 /* ---- CHOOSE ------------------------------------------------------------------------------ */
 
-int dlg_choose(ppl_vm *V, int argc, value *a, value *out)
+static int choose_dialog(ppl_vm *V, int argc, value *a, value *out)
 {
 	if (a[0].t != T_VREF)
 		return E_BADTYPE;
@@ -550,7 +593,7 @@ int dlg_choose(ppl_vm *V, int argc, value *a, value *out)
 
 /* ---- MSGBOX ------------------------------------------------------------------------------ */
 
-int dlg_msgbox(ppl_vm *V, int argc, value *a, value *out)
+static int msgbox_dialog(ppl_vm *V, int argc, value *a, value *out)
 {
 	char text[600];
 	if (a[0].t == T_STR)
@@ -593,4 +636,347 @@ int dlg_msgbox(ppl_vm *V, int argc, value *a, value *out)
 	}
 	v_int32(out, rc);
 	return 0;
+}
+
+/* a dialog takes the touches that were waiting and those made while it was up (the Prime:
+ * dfx's menu tap, read by MOUSE, must not end the WAIT(-1) after its INPUT) */
+int dlg_input(ppl_vm *V, int argc, value *a, value *out)
+{
+	int e = input_dialog(V, argc, a, out);
+	io_flush_touches();
+	return e;
+}
+
+int dlg_choose(ppl_vm *V, int argc, value *a, value *out)
+{
+	int e = choose_dialog(V, argc, a, out);
+	io_flush_touches();
+	return e;
+}
+
+int dlg_msgbox(ppl_vm *V, int argc, value *a, value *out)
+{
+	int e = msgbox_dialog(V, argc, a, out);
+	io_flush_touches();
+	return e;
+}
+
+/* ---- EDITMAT / EDITLIST ------------------------------------------------------------------ */
+
+#define EM_CW 10                  /* a cell's width in characters */
+#define EM_Y0 36                  /* the first row */
+#define EM_ROWS 10                /* rows on the screen */
+
+typedef struct {
+	int rows, cols;               /* cols 1 for a list */
+	bool list;
+	value *c;                     /* rows x cols cells */
+} grid_t;
+
+static value *cell(grid_t *g, int r, int c) { return &g->c[r * g->cols + c]; }
+
+/* r x c cells, the old ones kept, new ones 0 */
+static int grid_resize(grid_t *g, int rows, int cols)
+{
+	value *n = malloc(sizeof(value) * (rows * cols > 0 ? rows * cols : 1));
+	if (!n)
+		return E_MEM;
+	for (int r = 0; r < rows; r++)
+		for (int c = 0; c < cols; c++) {
+			value *d = &n[r * cols + c];
+			if (r < g->rows && c < g->cols)
+				*d = *cell(g, r, c);
+			else
+				v_int32(d, 0);
+		}
+	for (int r = 0; r < g->rows; r++)
+		for (int c = 0; c < g->cols; c++)
+			if (r >= rows || c >= cols)
+				v_decref(cell(g, r, c));
+	free(g->c);
+	g->c = n, g->rows = rows, g->cols = cols;
+	return 0;
+}
+
+static void grid_free(grid_t *g)
+{
+	for (int i = 0; i < g->rows * g->cols; i++)
+		v_decref(&g->c[i]);
+	free(g->c);
+	g->c = NULL;
+}
+
+/* a row label, a column label: the program's, or the index */
+static void grid_label(ppl_vm *V, const value *labels, int i, char *out, int n)
+{
+	out[0] = 0;
+	if (labels && labels->t == T_LIST && (uint32_t)i < labels->u.l->n)
+		str_arg(V, labels, i, out, n);
+	if (!out[0] && !(labels && labels->t == T_LIST && labels->u.l->n)) {
+		int k = i + 1, p = 0;
+		char t[8];
+		do t[p++] = '0' + k % 10; while ((k /= 10) && p < 7);
+		for (int j = 0; j < p; j++)
+			out[j] = t[p - 1 - j];
+		out[p] = 0;
+	}
+}
+
+static void grid_draw(ppl_vm *V, grid_t *g, const char *title, const value *rl, const value *cl,
+                      int cr, int cc, int r0, int c0, int lw, int ncol, editor_t *ed, bool editing,
+                      const char *err, bool ro)
+{
+	char t[200];
+	dclear(C_WHITE);
+	drect(0, 0, DWIDTH - 1, 17, C_PANEL);
+	text_draw(FONT, 6, 2, title, C_TITLE, -1, COLS - 10);
+	/* the column labels; the phantom row and column (one past the end) take a new value */
+	int cw = EM_CW * 6 + 4;
+	drect(0, 19, DWIDTH - 1, EM_Y0 - 3, C_BAR);
+	for (int j = 0; j < ncol && c0 + j <= g->cols - (g->list ? 1 : 0); j++) {
+		int x = 4 + lw + j * cw;
+		if (c0 + j < g->cols) {
+			grid_label(V, cl, c0 + j, t, sizeof t);
+			text_draw(FONT, x + 2, 20, t, C_BLACK, -1, EM_CW);
+		}
+	}
+	for (int i = 0; i < EM_ROWS && r0 + i <= g->rows; i++) {
+		int y = EM_Y0 + i * LINE_H, r = r0 + i;
+		if (r < g->rows) {
+			grid_label(V, rl, r, t, sizeof t);
+			text_draw(FONT, 2, y, t, C_LABEL, -1, lw / 6);
+		}
+		for (int j = 0; j < ncol; j++) {
+			int c = c0 + j, x = 4 + lw + j * cw;
+			if (c > g->cols - (g->list ? 1 : 0) || (r == g->rows && c == g->cols))
+				break;
+			bool s = r == cr && c == cc;
+			if (s)
+				drect(x, y - 1, x + cw - 3, y + LINE_H - 2, editing ? C_RGB(29, 30, 31) : C_SEL);
+			if (r < g->rows && c < g->cols) {
+				value_text(V, cell(g, r, c), t, sizeof t, 1);
+				text_right(FONT, x + cw - 5, y, t, s && !editing ? C_WHITE : C_BLACK, -1);
+			}
+		}
+	}
+	drect(0, 186, DWIDTH - 1, 204, C_BAR);
+	if (editing)
+		ed_draw(ed, 6, 189, COLS - 2, 1, C_BLACK, C_BAR);
+	else if (err)
+		text_draw(FONT, 6, 189, err, C_ERR, -1, COLS - 2);
+	else if (cr < g->rows && cc < g->cols) {
+		value_text(V, cell(g, cr, cc), t, sizeof t, 1);
+		text_draw(FONT, 6, 189, t, C_BLACK, -1, COLS - 2);
+	}
+	static const char *const sk[6] = { "Edit", "Ins", "Del", NULL, NULL, "OK" };
+	static const char *const skr[6] = { NULL, NULL, NULL, NULL, NULL, "OK" };
+	static const char *const ske[6] = { "Cancel", NULL, NULL, NULL, NULL, "OK" };
+	ui_softbar(editing ? ske : ro ? skr : sk);
+	const char *m = ed_mode(ed);
+	if (editing && *m)
+		text_right(FONT, DWIDTH - 40, 2, m, C_WHITE, -1);
+	scr_push_all();
+}
+
+static int edit_grid(ppl_vm *V, int argc, value *a, value *out, bool list)
+{
+	static editor_t ed;
+	grid_t g = { 0, 0, list, NULL };
+	const value *src = &a[0], *rl = NULL, *cl = NULL;
+	char title[80];
+	bool ro = argc > 2 && truth(&a[2]);
+	int st = 0;
+	/* the cells */
+	if (list) {
+		if (src->t == T_LIST) {
+			if ((st = grid_resize(&g, src->u.l->n, 1)))
+				return st;
+			for (uint32_t i = 0; i < src->u.l->n; i++)
+				v_set(cell(&g, i, 0), &src->u.l->v[i]);
+		}
+		else if (src->t == T_MAT && src->u.m->vec) {
+			if ((st = grid_resize(&g, src->u.m->cols, 1)))
+				return st;
+			for (int i = 0; i < src->u.m->cols; i++)
+				*cell(&g, i, 0) = src->u.m->v[i];
+		}
+		else
+			return E_BADTYPE;
+	}
+	else {
+		if (src->t != T_MAT)
+			return E_BADTYPE;
+		const pmat *m = src->u.m;
+		int rows = m->vec ? 1 : m->rows;
+		if ((st = grid_resize(&g, rows, m->cols)))
+			return st;
+		for (int i = 0; i < rows * m->cols; i++)
+			g.c[i] = m->v[i];
+	}
+	/* the title, and the labels of {title, row labels, column labels} */
+	str_arg(V, argc > 1 ? &a[1] : NULL, 0, title, sizeof title);
+	if (argc > 1 && a[1].t == T_LIST) {
+		if (a[1].u.l->n > 1) rl = &a[1].u.l->v[1];
+		if (a[1].u.l->n > 2) cl = &a[1].u.l->v[2];
+	}
+	if (!title[0])
+		strcpy(title, list ? "List" : "Matrix");
+	/* the row label column: as wide as the widest label (3 to 8 characters) */
+	int lw = 3;
+	for (int i = 0; i < g.rows + 1; i++) {
+		char t[40];
+		grid_label(V, rl, i, t, sizeof t);
+		int w = utf8_len(t);
+		if (w > lw) lw = w;
+	}
+	if (lw > 8) lw = 8;
+	lw *= 6;
+	int ncol = (DWIDTH - 4 - lw) / (EM_CW * 6 + 4);
+	if (ncol < 1) ncol = 1;
+	flush_screen();
+	ST->phase = PH_EDIT;
+	int cr = 0, cc = 0, r0 = 0, c0 = 0, rc = -1;
+	bool editing = false;
+	const char *err = NULL;
+	ed_clear(&ed);
+	ed.shift = ed.alpha = ed.lock = false;
+	while (rc < 0) {
+		/* the cursor may stand one past the last row or column: a value there adds it */
+		int maxr = g.rows, maxc = list ? 0 : g.cols;
+		if (cr > maxr) cr = maxr;
+		if (cc > maxc) cc = maxc;
+		if (cr == g.rows && cc == g.cols && !list && g.rows) cc = g.cols - 1;
+		if (cr < r0) r0 = cr;
+		if (cr >= r0 + EM_ROWS) r0 = cr - EM_ROWS + 1;
+		if (cc < c0) c0 = cc;
+		if (cc >= c0 + ncol) c0 = cc - ncol + 1;
+		grid_draw(V, &g, title, rl, cl, cr, cc, r0, c0, lw, ncol, &ed, editing, err, ro);
+		int k = ui_key();
+		err = NULL;
+		if (k == KEY_ACON && !editing) {
+			rc = -2;
+			break;
+		}
+		if (editing) {
+			int r = ed_key(&ed, k);
+			if (r == ED_EXIT || k == KEY_F1) {
+				editing = false;
+				continue;
+			}
+			if (r == ED_EXE || k == KEY_F6) {
+				value v;
+				if (!ed.buf[0]) {
+					editing = false;
+					continue;
+				}
+				int e = vm_eval_string(V, ed.buf, strlen(ed.buf), &v);
+				if (e == E_BREAK) { rc = -2; break; }
+				if (!e && !list) {
+					/* a matrix holds numbers */
+					if (v.t == T_INT) { real x; to_real(&v, &x); v_real(&v, &x); }
+					else if (v.t != T_REAL && v.t != T_CPLX) { v_decref(&v); e = E_BADTYPE; }
+				}
+				if (e) {
+					err = ppl_errmsg(e);
+					continue;
+				}
+				if (cr >= g.rows || cc >= g.cols) {
+					e = grid_resize(&g, cr >= g.rows ? cr + 1 : g.rows, cc >= g.cols ? cc + 1 : g.cols);
+					if (e) { v_decref(&v); err = ppl_errmsg(e); continue; }
+				}
+				v_set(cell(&g, cr, cc), &v);
+				v_decref(&v);
+				editing = false;
+				if (k == KEY_F6) { rc = 1; break; }
+				/* a list goes down; a matrix right, then to the next row */
+				if (list) cr++;
+				else if (cc + 1 < g.cols) cc++;
+				else cc = 0, cr++;
+			}
+			continue;
+		}
+		if (k == KEY_F6 || k == KEY_EXIT) { rc = 1; break; }
+		if (k == KEY_UP) { if (cr > 0) cr--; continue; }
+		if (k == KEY_DOWN) { cr++; continue; }
+		if (k == KEY_LEFT) { if (cc > 0) cc--; continue; }
+		if (k == KEY_RIGHT) { cc++; continue; }
+		if (ro)
+			continue;
+		if (k == KEY_F2 && cr < g.rows) {
+			/* Ins: a row of zeros before the cursor's */
+			if ((st = grid_resize(&g, g.rows + 1, g.cols ? g.cols : 1)))
+				break;
+			for (int r = g.rows - 1; r > cr; r--)
+				for (int c = 0; c < g.cols; c++) {
+					value t = *cell(&g, r, c);
+					*cell(&g, r, c) = *cell(&g, r - 1, c);
+					*cell(&g, r - 1, c) = t;
+				}
+			continue;
+		}
+		if ((k == KEY_F3 || k == KEY_DEL) && cr < g.rows && (list || g.rows > 1)) {
+			/* Del: the cursor's row */
+			for (int r = cr; r + 1 < g.rows; r++)
+				for (int c = 0; c < g.cols; c++) {
+					value t = *cell(&g, r, c);
+					*cell(&g, r, c) = *cell(&g, r + 1, c);
+					*cell(&g, r + 1, c) = t;
+				}
+			if ((st = grid_resize(&g, g.rows - 1, g.cols)))
+				break;
+			continue;
+		}
+		ed_clear(&ed);
+		if (k == KEY_F1 || k == KEY_EXE) {
+			/* Edit: the current value */
+			char t[ED_MAX];
+			if (cr < g.rows && cc < g.cols) {
+				value_text(V, cell(&g, cr, cc), t, sizeof t, 1);
+				ed_set(&ed, t);
+			}
+			editing = true;
+			continue;
+		}
+		/* any other key starts a new value with that key */
+		int r = ed_key(&ed, k);
+		if (r != ED_UNUSED && r != ED_EXIT)
+			editing = true;
+	}
+	home_restore();
+	ST->phase = PH_RUN;
+	if (rc == -2) {
+		grid_free(&g);
+		io_clear_break();
+		return E_BREAK;
+	}
+	if (!st) {
+		/* the result: a list, or a matrix (a vector stays one while it has one row) */
+		if (list) {
+			if (!(st = v_list(out, g.rows)))
+				for (int i = 0; i < g.rows; i++)
+					v_set(&out->u.l->v[i], cell(&g, i, 0));
+		}
+		else {
+			bool vec = src->u.m->vec && g.rows == 1;
+			if (!(st = v_mat(out, g.rows, g.cols, vec)))
+				for (int i = 0; i < g.rows * g.cols; i++)
+					out->u.m->v[i] = g.c[i];
+		}
+	}
+	grid_free(&g);
+	return st;
+}
+
+int dlg_editmat(ppl_vm *V, int argc, value *a, value *out)
+{
+	int e = edit_grid(V, argc, a, out, false);
+	io_flush_touches();
+	return e;
+}
+
+int dlg_editlist(ppl_vm *V, int argc, value *a, value *out)
+{
+	int e = edit_grid(V, argc, a, out, true);
+	io_flush_touches();
+	return e;
 }

@@ -5,6 +5,7 @@ Each .ppl file is a program; lines of the form
 are evaluated on Home after loading it (`ppl --ascii run FILE EXPR...`) and
 the printed result compared with RESULT.  RESULT `*error*` expects an error;
 `*error* TEXT` an error whose message contains TEXT (e.g. `(line 12)`).
+A line `//+ NAME.ppl` loads tests/lang/lib/NAME.ppl as a second program.
 """
 import glob, os, subprocess, sys
 
@@ -12,14 +13,16 @@ here = os.path.dirname(os.path.abspath(__file__))
 ppl = os.path.join(here, '..', 'build', 'ppl')
 fails = total = 0
 for path in sorted(glob.glob(os.path.join(here, 'lang', '*.ppl'))):
-    cases = []
+    cases, libs = [], []
     for line in open(path, encoding='utf-8'):
+        if line.startswith('//+'):
+            libs.append(os.path.join(here, 'lang', 'lib', line[3:].strip()))
         if line.startswith('//>'):
             expr, want = line[3:].rsplit('=>', 1)
             cases.append((expr.strip(), want.strip()))
     for expr, want in cases:
         total += 1
-        p = subprocess.run([ppl, '--ascii', 'run', path, expr], capture_output=True, text=True)
+        p = subprocess.run([ppl, '--ascii', 'run', path] + libs + [expr], capture_output=True, text=True)
         got = p.stdout.strip() if p.returncode == 0 else '*error*'
         if want.startswith('*error*') and want != '*error*' and got == '*error*':
             # `*error* (line N)`: the error message must contain the rest

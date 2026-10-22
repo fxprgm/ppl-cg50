@@ -328,7 +328,7 @@ static void p_gammp(xn *r, const xn *a, const xn *x)
             xn ii, aim;
             xn_from_int(&ii, i);
             xn_sub(&aim, a, &ii, Q);
-            xn_mul(&an, &ii, &aim, Q); an.s ^= an.n ? 1 : 0;   /* -i (i - a) */
+            xn_mul(&an, &ii, &aim, Q);                          /* i (a - i) = -i (i - a) */
             xn_add(&b, &b, &K_TWO, Q);
             xn_mul(&d, &an, &d, Q); xn_add(&d, &d, &b, Q);
             if (!d.n) d = tiny;

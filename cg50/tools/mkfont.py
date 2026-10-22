@@ -14,6 +14,10 @@ RANGES = [(0x20, 0x7E), (0xA0, 0x17F), (0x391, 0x3C9), (0x2010, 0x2027), (0x2030
           (0x2500, 0x257F), (0x25A0, 0x25FF), (0x1D07, 0x1D07),
           # Cyrillic (Є), enclosed alphanumerics (⑴), block elements (▓ ▋), dingbats (✔)
           (0x400, 0x4FF), (0x2460, 0x24FF), (0x2580, 0x259F), (0x2700, 0x27BF)]
+# glyphs drawn here instead: 6x13's º is a full-height o over a bar, which reads as a 9 in
+# the terminal (obstructionflow); a small raised o over a bar, as 6x10 draws it
+OVERRIDE = {('6x13', 0xBA): ['......', '......', '..##..', '.#..#.', '.#..#.', '..##..', '......',
+                             '.####.', '......', '......', '......', '......', '......']}
 
 
 def bdf(path):
@@ -67,7 +71,10 @@ def main():
         out.append('};')
         out.append('static const uint8_t bits_%s[%d] = {' % (fname, len(cps) * fh))
         for c in cps:
-            out.append('\t' + ', '.join('0x%02X' % b for b in cell(bb, glyphs[c])) + ',')
+            rows = cell(bb, glyphs[c])
+            if (fname, c) in OVERRIDE:
+                rows = [sum(0x80 >> i for i, ch in enumerate(r) if ch == '#') for r in OVERRIDE[(fname, c)]]
+            out.append('\t' + ', '.join('0x%02X' % b for b in rows) + ',')
         out.append('};')
         out.append('const pfont_t %s = { %d, %d, %d, cps_%s, bits_%s };' % (cname, fw, fh, len(cps), fname, fname))
         out.append('')

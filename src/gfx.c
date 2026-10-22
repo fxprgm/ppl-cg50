@@ -604,9 +604,34 @@ void gfx_blit(grob *dst, int dx0, int dy0, int dx1, int dy1,
     for (y = dy0 < 0 ? 0 : dy0; y < dy1 && y < dst->h; y++) {
         int sy = sy0 + (int)(((int64_t)(y - dy0) * sh) / dh);
         if (sy < 0 || sy >= src->h) continue;
-        for (x = dx0 < 0 ? 0 : dx0; x < dx1 && x < dst->w; x++) {
-            int sx = sx0 + (int)(((int64_t)(x - dx0) * sw) / dw);
+        if (sw == dw) {
+            /* the same width: a straight run of pixels, clipped once (BLIT_P of a whole grob
+             * every frame: gravity) */
+            const uint32_t *s;
+            uint32_t *d;
+            int xa = dx0 < 0 ? 0 : dx0, xb = dx1 < dst->w ? dx1 : dst->w;
+            if (sx0 + (xa - dx0) < 0) xa = dx0 - sx0;
+            if (sx0 + (xb - dx0) > src->w) xb = dx0 + src->w - sx0;
+            if (xa >= xb) continue;
+            s = sp + (long)sy * sstride + sx0 + (xa - dx0);
+            d = dst->px + (long)y * dst->w + xa;
+            for (x = xa; x < xb; x++, s++, d++) {
+                uint32_t p = *s;
+                if ((p >> 24) == 255 || (use_key && (p & 0xFFFFFFu) == (key & 0xFFFFFFu))) continue;
+                if (a) put(dst, x, y, (p & 0xFFFFFFu) | ((uint32_t)a << 24));
+                else *d = p;
+            }
+            continue;
+        }
+        /* sx = sx0 + floor((x - dx0) sw / dw), stepped: the quotient q and the remainder
+         * rr of sw / dw per pixel (a 64-bit division per pixel was most of a game's time
+         * on the SH-4) */
+        int xs = dx0 < 0 ? 0 : dx0, q = sw / dw, rr = sw % dw;
+        int64_t n0 = (int64_t)(xs - dx0) * sw;
+        int sx = sx0 + (int)(n0 / dw), acc = (int)(n0 % dw);
+        for (x = xs; x < dx1 && x < dst->w; x++, sx += q, acc += rr) {
             uint32_t p;
+            if (acc >= dw) { acc -= dw; sx++; }
             if (sx < 0 || sx >= src->w) continue;
             p = sp[(long)sy * sstride + sx];
             if (use_key && (p & 0xFFFFFFu) == (key & 0xFFFFFFu)) continue;

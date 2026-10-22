@@ -144,3 +144,59 @@ END;
 //> SUB({5},1,0) => {}
 //> CONCAT({5}, SUB({5},1,0)) => {5}
 //> SUB({1,2,3},2,5) => *error*
+
+// chisquare: the upper tail (x >= n/2+1, the continued fraction of Q(a,x)); mpmath at 20 digits
+//> CHISQUARE_CDF(4,8) => 0.908421805556
+//> CHISQUARE_CDF(19,30) => 0.948201541107
+//> CHISQUARE_CDF(10,40) => 0.999983055256
+//> CHISQUARE_ICDF(19,0.95) => 30.1435272056
+//> CHISQUARE_ICDF(4,0.99) => 13.276704136
+
+// simprule: EVAL of a quoted expression uses the variables' current values; with an
+// undefined name it stays as it is
+//> X:=2; EVAL('2*X') => 4
+//> X:=1; EVAL('SIN(X)') => 0.841470984808
+//> LOCAL t:=5; EXPR('2*t') => 10
+//> EVAL('2*qq') => 2*qq
+
+// matrices (User Guide, "Matrix references"; jacxgauss, mathlib, truss)
+//> LOCAL a:=[[1,2],[3,4]]; a(-1) => [1,3]
+//> LOCAL a:=[[1,2],[3,4]]; a(-1):=[5,6]; a => [[5,2],[6,4]]
+//> LOCAL d:=[[0,1,2],[5,6,7]]; d({{1,2},{1,3}}) => [[1,2]]
+//> LOCAL d:=[[0,1,2],[5,6,7]]; d({{1,1},{2,2}}) => [[0,1],[5,6]]
+//> M0:=[[0,0,0]]; M0(2):=[1,2,3]; M0 => [[0,0,0],[1,2,3]]
+//> append([[0.1]],[0.05]) => [[0.1],[0.05]]
+//> append([[1,2]],[3,4]) => [[1,2],[3,4]]
+//> append([[1,2]],[3]) => *error*
+
+// gaussjordan: ref, the row echelon form with leading 1s (giac: [[1,4/3],[0,1]])
+//> ref([[1,2],[3,4]]) => [[1,1.33333333333],[0,1]]
+//> ref([[2,4,6],[1,2,3],[1,0,1]]) => [[1,2,3],[0,1,1],[0,0,0]]
+
+// listapi: a setting called with parentheses
+//> SIZE(Programs())>=1 => 1
+
+// bezier, repeating: TEVAL is the time taken, a measurement in seconds
+//> TYPE(TEVAL(1+1)) => 9
+
+// mathlib: polynomial_regression, coefficients highest power first
+//> polynomial_regression([[1,1],[2,4],[3,9]],2) => [1,0,0]
+//> POLYEVAL(polynomial_regression([[1,1],[2,4],[3,9]],2),2.5) => 6.25
+//> polynomial_regression({1,2,3,4},{2,4,6,8.5},1) => [2.15,-0.25]
+// and a column stored from a one-row matrix, growing the matrix
+//> LOCAL a:=[[0,0],[0,0]]; a(-1):=[[1,2,3]]; a => [[1,0],[2,0],[3,0]]
+
+// elliptic: int with an integrable singularity at an end point (tanh-sinh)
+//> int(1/√(1-X^2),X,0,1) => 1.57079632675
+//> int(1/√((1-X^2)*(1-0.25*X^2)),X,0,1) => 1.68575035476
+//> int(X^2,X,0,3) => 9
+//> int(1/√(X),X,0,1) => 2
+//> int(1/√(1-X^2),X,0,0.999) => 1.52607123963
+//> int(LN(X),X,0,1) => -1
+//> int(1/X,X,1,1000) => 6.90775527898
+// a kink inside: the Gauss-Legendre fallback
+//> int(ABS(X-0.3),X,0,1) => 0.290000236875
+
+// listapi: CHAR(0) in a string is kept (SIZE) but not shown (the display stopped at it)
+//> {"A"+CHAR(0)+"B","C"} => {"AB","C"}
+//> SIZE("A"+CHAR(0)+"B") => 3

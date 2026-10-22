@@ -5,6 +5,7 @@
  * call fails with "Not supported". */
 #include "bi.h"
 #include "decx.h"
+#include <stdlib.h>
 #include <string.h>
 
 static int int_args(int argc, value *a, int32_t *v)
@@ -265,8 +266,199 @@ static BI(b_euler)
     return 0;
 }
 
-/* ∫(expr, var, a, b): 10-point Gauss-Legendre on 1, 2, 4 ... 64 panels
- * until two successive results agree to 12 digits; sums in the xn engine */
+/* ∫(expr, var, a, b): tanh-sinh quadrature, x = mid + half tanh(π/2 sinh t) with step
+ * h = 1, 1/2 ... 1/64 until two levels agree to 12 digits after the third; sums in the
+ * xn engine.  Its nodes crowd the end points, so an integrable singularity there is fine
+ * (elliptic: int(1/√(1-t^2),t,0,1) = π/2).  The integrand is evaluated in 12-digit reals:
+ *   - a node's point is rounded to 12 digits; its value is moved back to the exact point
+ *     with the slope between its neighbours, f + s (e - ẽ) (e, ẽ the exact and rounded
+ *     distances to the end point);
+ *   - a node closer to an end point E than 1E-9 |E| would round onto it: past that the
+ *     side goes on with the power law f ~ e^-α of its last two nodes (if α < 1). */
+#define TS_LEVELS 7
+#define TS_P 30
+#define TS_MAXK (6 * 64)
+
+/* one side of a level: node 0 is the midpoint; e the rounded distance to the end point,
+ * de = e(exact) - e, f the value, W the weight w half; then the power-law tail */
+typedef struct {
+    int n, done, model;
+    real e[TS_MAXK + 1], de[TS_MAXK + 1], f[TS_MAXK + 1];
+    xn W[TS_MAXK + 1];
+    real al;
+    xn tail;
+} ts_side;
+
+static int ts_eval(ppl_vm *V, value *a, const real *x, real *f)
+{
+    value xv, fv;
+    int st;
+    v_real(&xv, x);
+    if ((st = vm_store_ref(V, &a[1], &xv))) return st;
+    if ((st = vm_run_thunk(V, &a[0], &fv))) return st;
+    st = bi_real(&fv, f);
+    v_decref(&fv);
+    return st;
+}
+
+/* α with f2/f1 = (e2/e1)^-α, e1 > e2; 0 when it cannot be told */
+static int ts_alpha(const real *e1, const real *f1, const real *e2, const real *f2, real *al)
+{
+    real q, l1, l2;
+    dec_zero(al);
+    if (dec_is_zero(f1) || dec_is_zero(f2) || f1->s != f2->s || !dec_cmp(e1, e2)) return 0;
+    dec_div(&q, f2, f1); if (dec_ln(&l1, &q)) return 0;
+    dec_div(&q, e1, e2); if (dec_ln(&l2, &q) || dec_is_zero(&l2)) return 0;
+    dec_div(al, &l1, &l2);
+    return 1;
+}
+
+/* the next node of a side at exact distance d (dr as a real), weight W: evaluated, or the
+ * power law once too close; 1 when the side is over, -error */
+static int ts_node(ppl_vm *V, value *a, ts_side *S, const xn *ep, int side, const xn *d,
+                   const real *dr, const real *emin, const real *epr, const xn *W)
+{
+    real xr, fr, ex;
+    xn x, de, t;
+    int st, n = S->n;
+    if (!S->model) {
+        if (side) xn_add(&x, ep, d, TS_P); else xn_sub(&x, ep, d, TS_P);
+        xn_to_real(&xr, &x);
+        if (dec_cmp(dr, emin) < 0 || !dec_cmp(&xr, epr)) {
+            /* too close to evaluate: the power law from here on, if it is integrable */
+            real one;
+            dec_from_int(&one, 1);
+            if (n < 3 || !ts_alpha(&S->e[n - 2], &S->f[n - 2], &S->e[n - 1], &S->f[n - 1], &S->al)
+                || dec_cmp(&S->al, &one) >= 0)
+                return 1;
+            S->model = 1;
+        }
+    }
+    if (S->model) {
+        /* f (d/e)^-α from the last node */
+        real q;
+        dec_div(&q, dr, &S->e[n - 1]);
+        if (dec_ln(&q, &q)) return 1;
+        dec_mul(&q, &q, &S->al); if (!dec_is_zero(&q)) q.s ^= 1;
+        if (dec_exp(&q, &q)) return 1;
+        dec_mul(&q, &S->f[n - 1], &q);
+        xn_from_real(&t, &q);
+        xn_mul(&t, &t, W, TS_P);
+        xn_add(&S->tail, &S->tail, &t, TS_P);
+        return !t.n || (S->tail.n && xn_top(&t) < xn_top(&S->tail) - TS_P);
+    }
+    if (n > TS_MAXK) return 1;
+    if ((st = ts_eval(V, a, &xr, &fr))) return -st;
+    xn_from_real(&de, &xr);
+    xn_sub(&de, &de, ep, TS_P); de.s = 0;
+    xn_to_real(&ex, &de);
+    xn_sub(&de, d, &de, TS_P);
+    xn_to_real(&S->de[n], &de);
+    S->e[n] = ex; S->f[n] = fr; S->W[n] = *W;
+    S->n++;
+    /* a node that adds nothing at 30 digits ends the side */
+    xn_from_real(&t, &fr);
+    xn_mul(&t, &t, W, TS_P);
+    return !t.n && n > 4;
+}
+
+/* a side's sum: the nodes moved back to their exact points, then the tail */
+static void ts_sum(ts_side *S, xn *sum)
+{
+    int k;
+    xn_zero(sum);
+    for (k = 1; k < S->n; k++) {
+        real f = S->f[k], s, de;
+        xn t;
+        int lo = k - 1, hi = k + 1 < S->n ? k + 1 : k;
+        if (!dec_is_zero(&S->de[k])) {
+            real al;
+            dec_div(&de, &S->e[k], &S->e[0]);
+            dec_from_str(&s, "1E-3", NULL);
+            if (dec_cmp(&de, &s) < 0) {
+                /* near the end point: the power law through the neighbours, s = -α f/e */
+                if (ts_alpha(&S->e[lo], &S->f[lo], &S->e[hi], &S->f[hi], &al)) {
+                    dec_mul(&s, &al, &f); dec_div(&s, &s, &S->e[k]);
+                    dec_mul(&s, &s, &S->de[k]);
+                    dec_sub(&f, &f, &s);
+                }
+            } else {
+                dec_sub(&s, &S->f[hi], &S->f[lo]);
+                dec_sub(&de, &S->e[hi], &S->e[lo]);
+                if (!dec_is_zero(&de)) {
+                    dec_div(&s, &s, &de);
+                    dec_mul(&s, &s, &S->de[k]);
+                    dec_add(&f, &f, &s);
+                }
+            }
+        }
+        xn_from_real(&t, &f);
+        xn_mul(&t, &t, &S->W[k], TS_P);
+        xn_add(sum, sum, &t, TS_P);
+    }
+    xn_add(sum, sum, &S->tail, TS_P);
+}
+
+/* one level (lo < hi): the sum over t = k h, k = -K..K, times h */
+static int ts_level(ppl_vm *V, value *a, const real *lo, const real *hi, int lev, ts_side *sd, xn *res)
+{
+    xn L, H, half, mid, h, pi2, pi4, t, et, iet, u, E, c, w, d, one, tmp, s1;
+    real xr, fr, dr, emin[2];
+    int st, k, side;
+    xn_from_real(&L, lo); xn_from_real(&H, hi);
+    xn_from_int(&one, 1);
+    xn_sub(&half, &H, &L, TS_P); xn_div_int(&half, &half, 2, TS_P);
+    xn_add(&mid, &H, &L, TS_P); xn_div_int(&mid, &mid, 2, TS_P);
+    xn_from_int(&h, 1); for (k = 0; k < lev; k++) xn_div_int(&h, &h, 2, TS_P);
+    xn_from_str(&pi2, "1.570796326794896619231321691639751442");
+    xn_div_int(&pi4, &pi2, 2, TS_P);
+    /* the midpoint, weight π/2; each side's node 0 */
+    xn_to_real(&xr, &mid);
+    if ((st = ts_eval(V, a, &xr, &fr))) return st;
+    for (side = 0; side < 2; side++) {
+        /* the closest distance evaluated (an end point at 0 has no rounding) */
+        ts_side *S = &sd[side];
+        real m, q;
+        dec_abs(&m, side ? lo : hi);
+        dec_from_str(&q, dec_is_zero(&m) ? "1E-30" : "1E-9", NULL);
+        if (dec_is_zero(&m)) xn_to_real(&m, &half);
+        dec_mul(&emin[side], &m, &q);
+        S->n = 1; S->done = S->model = 0;
+        xn_to_real(&S->e[0], &half); dec_zero(&S->de[0]); S->f[0] = fr;
+        xn_zero(&S->tail);
+    }
+    for (k = 1; k <= TS_MAXK && !(sd[0].done && sd[1].done); k++) {
+        xn_mul_int(&t, &h, k, TS_P);
+        if (xn_exp(&et, &t, TS_P)) break;
+        xn_div(&iet, &one, &et, TS_P);
+        xn_sub(&u, &et, &iet, TS_P); xn_mul(&u, &u, &pi4, TS_P);           /* u = π/2 sinh t */
+        xn_mul_int(&tmp, &u, -2, TS_P);
+        if (xn_exp(&E, &tmp, TS_P) || !E.n) break;                          /* E = e^-2u */
+        xn_add(&tmp, &one, &E, TS_P);
+        xn_div(&c, &E, &tmp, TS_P); xn_mul_int(&c, &c, 2, TS_P);           /* 1 - tanh u */
+        xn_mul(&w, &tmp, &tmp, TS_P); xn_div(&w, &E, &w, TS_P); xn_mul_int(&w, &w, 2, TS_P);
+        xn_add(&tmp, &et, &iet, TS_P); xn_mul(&w, &w, &tmp, TS_P);          /* 2E/(1+E)² 2 cosh t */
+        xn_mul(&w, &w, &pi2, TS_P);                                         /* = π/2 cosh t / cosh² u */
+        xn_mul(&w, &w, &half, TS_P);
+        xn_mul(&d, &c, &half, TS_P);                                        /* exact distance to the end */
+        if (xn_to_real(&dr, &d) || dec_is_zero(&dr)) break;
+        for (side = 0; side < 2; side++) {
+            ts_side *S = &sd[side];
+            if (S->done) continue;
+            st = ts_node(V, a, S, side ? &L : &H, side, &d, &dr, &emin[side], side ? lo : hi, &w);
+            if (st < 0) return -st;
+            if (st > 0) S->done = 1;
+        }
+    }
+    xn_from_real(&t, &fr);
+    xn_mul(&t, &t, &pi2, TS_P);
+    xn_mul(res, &t, &half, TS_P);
+    for (side = 0; side < 2; side++) { ts_sum(&sd[side], &s1); xn_add(res, res, &s1, TS_P); }
+    xn_mul(res, res, &h, TS_P);
+    return 0;
+}
+
+/* 10-point Gauss-Legendre on `panels` equal panels (the fallback of ∫ below) */
 static int gl_panels(ppl_vm *V, value *a, const real *lo, const real *hi, int panels, xn *res)
 {
     static const char *xs[5] = { "0.1488743389816312108848260", "0.4333953941292471907992659",
@@ -304,25 +496,49 @@ static int gl_panels(ppl_vm *V, value *a, const real *lo, const real *hi, int pa
     return 0;
 }
 
+/* the change between the last two estimates, |a - b| */
+static void diff_of(xn *d, const xn *a, const xn *b) { xn_sub(d, a, b, TS_P); d->s = 0; }
+
 static BI(b_integral)
 {
     real lo, hi, r = {{0, 0, 0}, 0, 0, 0}, prev;
     value saved;
-    int st = 0, p;
-    xn cur;
+    int st = 0, lev, p, neg = 0;
+    xn cur, last, dts, dgl, gl;
+    ts_side *sd;
     (void)argc;
     if (bi_real(&a[2], &lo) || bi_real(&a[3], &hi)) return E_BADTYPE;
+    if (!dec_cmp(&lo, &hi)) { v_int32(out, 0); return 0; }
+    if (dec_cmp(&lo, &hi) > 0) { real t = lo; lo = hi; hi = t; neg = 1; }
+    sd = (ts_side *)malloc(2 * sizeof(ts_side));
+    if (!sd) return E_MEM;
     vm_load_ref(V, &a[1], &saved);
     dec_zero(&prev);
-    for (p = 1; p <= 64; p *= 2) {
-        if ((st = gl_panels(V, a, &lo, &hi, p, &cur))) break;
+    xn_zero(&last); xn_zero(&dts);
+    for (lev = 0; lev < TS_LEVELS; lev++) {
+        if ((st = ts_level(V, a, &lo, &hi, lev, sd, &cur))) break;
         xn_to_real(&r, &cur);
-        if (p > 1 && dec_cmp(&r, &prev) == 0) break;
+        diff_of(&dts, &cur, &last);
+        last = cur;
+        if (lev >= 2 && dec_cmp(&r, &prev) == 0) break;
         prev = r;
     }
+    if (!st && lev == TS_LEVELS) {
+        /* no agreement: a kink, a step or an oscillation inside, where Gauss-Legendre
+         * panels do better; the result whose last two estimates differ least */
+        xn_zero(&last); xn_zero(&dgl); xn_zero(&gl);
+        for (p = 1; p <= 64; p *= 2) {
+            if ((st = gl_panels(V, a, &lo, &hi, p, &gl))) break;
+            diff_of(&dgl, &gl, &last);
+            last = gl;
+        }
+        if (!st && xn_cmpmag(&dgl, &dts) < 0) xn_to_real(&r, &gl);
+    }
+    free(sd);
     vm_store_ref(V, &a[1], &saved);
     v_decref(&saved);
     if (st) return st;
+    if (neg && !dec_is_zero(&r)) r.s ^= 1;
     v_real(out, &r);
     return 0;
 }
@@ -592,6 +808,16 @@ static BI(b_append)
         for (i = 0; i < n; i++) out->u.m->v[i] = a[0].u.m->v[i];
         v_copy(&out->u.m->v[n], &a[1]);
         if (a[1].t == T_INT) { real x; to_real(&a[1], &x); v_real(&out->u.m->v[n], &x); }
+        return 0;
+    }
+    if (a[0].t == T_MAT && a[1].t == T_MAT && a[1].u.m->vec) {
+        /* a vector appended to a matrix is a new row (giac; truss: append(intfor,d[1])) */
+        const pmat *m = a[0].u.m;
+        int n = m->rows * m->cols;
+        if (a[1].u.m->cols != m->cols) return E_DIM;
+        if ((st = v_mat(out, m->rows + 1, m->cols, 0))) return st;
+        memcpy(out->u.m->v, m->v, (size_t)n * sizeof(value));
+        memcpy(out->u.m->v + n, a[1].u.m->v, (size_t)m->cols * sizeof(value));
         return 0;
     }
     return E_BADTYPE;

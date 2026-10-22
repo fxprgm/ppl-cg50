@@ -253,15 +253,54 @@ static void emit_thunk(comp *C, node *n)
     }
 }
 
-/* BF_REF1: a variable reference, or a list of them where a sub-list's first
- * element is the reference ({var, [types], {pos}} fields of INPUT) */
-static void emit_reflist(comp *C, node *n, int depth)
+/* BF_REF1 on an element (INPUT(L(2),...), the field {M1(r,c),[0],{...}}: regress, simplex):
+ * the element is copied into a hidden local whose reference the builtin gets, and the local
+ * is stored back into the list or matrix after the call */
+typedef struct { node *el; int slot; } elref;
+#define MAX_ELREF 16
+
+static int is_element(comp *C, node *n)
+{
+    if (n->type != N_CALL || !n->nkids || !strcmp(n->name, "Notes")) return 0;
+    if (find_local(C, n->name) >= 0 || find_pvar(C, n->name) >= 0 || sysvar_id(n->name) >= 0) return 1;
+    return find_pfunc(C, n->name, -1) < 0 && !bi_lookup(n->name) && !bi_lookup_any(n->name);
+}
+
+static void find_elements(comp *C, node *n, int depth, elref *er, int *ner)
 {
     int i;
+    if (is_element(C, n)) {
+        if (*ner < MAX_ELREF) { er[*ner].el = n; er[*ner].slot = new_slot(C, NULL); (*ner)++; }
+        return;
+    }
+    if (n->type != N_LIST || depth > 1) return;
+    for (i = 0; i < n->nkids; i++)
+        if (i == 0 || depth == 0) find_elements(C, n->kids[i], depth + 1, er, ner);
+}
+
+/* store the value on the stack into the element t (L(i), M(r,c)); pops it */
+static void emit_setidx(comp *C, node *t)
+{
+    int s, i;
+    for (i = 0; i < t->nkids; i++) cexpr(C, t->kids[i]);
+    if ((s = find_local(C, t->name)) >= 0) { emit(C, BC_LSETIDX); emit(C, s); }
+    else if ((s = find_pvar(C, t->name)) >= 0) { emit(C, BC_GSETIDX); emit16(C, s); }
+    else if ((s = sysvar_id(t->name)) >= 0) { emit(C, BC_SSETIDX); emit(C, s); }
+    else { emit(C, BC_NSETIDX); emit16(C, add_name(C, t->name)); }
+    emit(C, t->nkids);
+}
+
+/* BF_REF1: a variable reference, or a list of them where a sub-list's first
+ * element is the reference ({var, [types], {pos}} fields of INPUT) */
+static void emit_reflist(comp *C, node *n, int depth, const elref *er, int ner)
+{
+    int i;
+    for (i = 0; i < ner; i++)
+        if (er[i].el == n) { emit(C, BC_VREF); emit(C, VK_LOCAL); emit16(C, er[i].slot); return; }
     if (n->type == N_NAME) { emit_vref(C, n); return; }
     if (n->type != N_LIST || depth > 1) { cexpr(C, n); return; }
     for (i = 0; i < n->nkids; i++) {
-        if (i == 0 || depth == 0) emit_reflist(C, n->kids[i], depth + 1);
+        if (i == 0 || depth == 0) emit_reflist(C, n->kids[i], depth + 1, er, ner);
         else cexpr(C, n->kids[i]);
     }
     emit(C, BC_MKLIST);
@@ -309,15 +348,20 @@ static void call_fnroot(comp *C, node *n, const builtin *b, int argc)
 
 static void call_builtin(comp *C, node *n, const builtin *b, int argc)
 {
-    int i;
+    int i, ner = 0;
+    elref er[MAX_ELREF];
     if (b->fn == bi_fnroot_impl) { call_fnroot(C, n, b, argc); return; }
     if (b->minargs > argc || (b->maxargs >= 0 && argc > b->maxargs)) {
         cerr(C, n->line, "wrong number of arguments");
         return;
     }
+    if (argc && (b->flags & BF_REF1)) {
+        find_elements(C, n->kids[0], 0, er, &ner);
+        for (i = 0; i < ner; i++) { cexpr(C, er[i].el); emit(C, BC_LSTORE); emit(C, er[i].slot); }
+    }
     for (i = 0; i < argc; i++) {
         if (i == 0 && (b->flags & BF_QUOTE1)) emit_thunk(C, n->kids[i]);
-        else if (i == 0 && (b->flags & BF_REF1)) emit_reflist(C, n->kids[i], 0);
+        else if (i == 0 && (b->flags & BF_REF1)) emit_reflist(C, n->kids[i], 0, er, ner);
         else if (i == 0 && (b->flags & BF_INPLACE) && n->kids[i]->type == N_NAME
                  && (find_local(C, n->kids[i]->name) >= 0 || find_pvar(C, n->kids[i]->name) >= 0
                      || sysvar_id(n->kids[i]->name) >= 0)) emit_vref(C, n->kids[i]);
@@ -328,6 +372,7 @@ static void call_builtin(comp *C, node *n, const builtin *b, int argc)
     emit(C, BC_CALLB);
     emit16(C, bi_id(b));
     emit(C, argc);
+    for (i = 0; i < ner; i++) { emit(C, BC_LLOAD); emit(C, er[i].slot); emit_setidx(C, er[i].el); }
 }
 
 static void cname(comp *C, node *n)

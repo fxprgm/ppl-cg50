@@ -44,5 +44,7 @@ bool io_iskeydown(int code);
 bool io_next_event(int *key, touch_ev_t *t);
 /* MOUSE: the current touch, if any (a tap stays visible until MOUSE has seen it once) */
 bool io_mouse(int v[5]);
+/* drop the waiting touch events and MOUSE's latched touch (a dialog closes) */
+void io_flush_touches(void);
 
 #endif
