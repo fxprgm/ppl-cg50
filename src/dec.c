@@ -11,6 +11,18 @@ int dec_round_mode = 1; /* the Prime: 1+5E-12 = 1, 1+2.5E-11 = 1.00000000002 */
 
 /* ------------------------------------------------------------------ xn */
 
+/* t / 10^b for b = 0..3 with a constant divisor: the SH-4 has no divide instruction, and a
+ * division by a variable is a library call (__udivsi3) where a constant one is a multiply */
+static inline uint32_t div_p10(uint32_t t, int b)
+{
+    switch (b) {
+    case 1: return t / 10u;
+    case 2: return t / 100u;
+    case 3: return t / 1000u;
+    default: return t;
+    }
+}
+
 static void xn_trim(xn *x)
 {
     while (x->n && x->d[x->n - 1] == 0) x->n--;
@@ -46,7 +58,7 @@ int xn_digit(const xn *x, int pos)
 {
     int rel = pos - x->e;
     if (rel < 0 || rel >= 4 * x->n) return 0;
-    return (x->d[rel >> 2] / xn_pow10[rel & 3]) % 10;
+    return div_p10(x->d[rel >> 2], rel & 3) % 10;
 }
 
 /* coefficient *= 10^k, e -= k.  Returns -1 when out of capacity. */
@@ -86,9 +98,9 @@ static void xn_shr(xn *x, int k, int *rd, int *st)
     if (!x->n) { if (rd) *rd = 0; if (st) *st = 0; return; }
     rel = k - 1;
     if (rel < 4 * x->n) {
-        unsigned limb = x->d[rel >> 2];
-        r = (limb / xn_pow10[rel & 3]) % 10;
-        if (limb % xn_pow10[rel & 3]) s = 1;
+        unsigned limb = x->d[rel >> 2], q = div_p10(limb, rel & 3);
+        r = q % 10;
+        if (limb != q * xn_pow10[rel & 3]) s = 1;
         for (i = 0; i < (rel >> 2) && !s; i++) if (x->d[i]) s = 1;
     } else {
         s = 1;   /* the whole value is below the cut */
@@ -103,12 +115,14 @@ static void xn_shr(xn *x, int k, int *rd, int *st)
         x->n = (uint8_t)(x->n - a);
     }
     if (b) {
-        uint32_t p = xn_pow10[b], rem = 0;
-        for (i = x->n - 1; i >= 0; i--) {
-            uint32_t cur = rem * 10000u + x->d[i];
-            x->d[i] = (uint16_t)(cur / p);
-            rem = cur % p;
-        }
+        uint32_t rem = 0, cur, q;
+        /* one loop per divisor, each a constant */
+#define SHR_LOOP(P) for (i = x->n - 1; i >= 0; i--) { \
+            cur = rem * 10000u + x->d[i]; q = cur / (P); x->d[i] = (uint16_t)q; rem = cur - q * (P); }
+        if (b == 1) SHR_LOOP(10u)
+        else if (b == 2) SHR_LOOP(100u)
+        else SHR_LOOP(1000u)
+#undef SHR_LOOP
     }
     x->e += k;
     {
@@ -155,7 +169,7 @@ int xn_is_int(const xn *x)
     rel = -x->e;                 /* number of fraction digits */
     if (rel >= 4 * x->n) return 0;
     for (i = 0; i < (rel >> 2); i++) if (x->d[i]) return 0;
-    return x->d[rel >> 2] % xn_pow10[rel & 3] == 0;
+    return x->d[rel >> 2] == div_p10(x->d[rel >> 2], rel & 3) * xn_pow10[rel & 3];
 }
 
 int xn_cmpmag(const xn *a, const xn *b)
@@ -542,7 +556,15 @@ int xn_sqrt(xn *r, const xn *a, int P)
         if (xn_cmpmag(&t, &y) >= 0) break;
         y = t;
     }
-    y.e = e; y.s = 0; y.k = DEC_FINITE;
+    /* y is the root truncated to P+2 digits: when it is not exact, a 1 below its last digit
+     * keeps the rounding from seeing a tie that is not one (√(2.41045640141E-13) =
+     * 4.90963990676|5057...: rounded to even it gave ...676, not ...677) */
+    {
+        xn sq;
+        xn_mul(&sq, &y, &y, 4 * XN_LIMBS);
+        if (xn_cmpmag(&sq, &N) != 0) { xn_shl(&y, 1); y.d[0] = (uint16_t)(y.d[0] + 1); }
+    }
+    y.e += e; y.s = 0; y.k = DEC_FINITE;
     *r = y;
     xn_round(r, P);
     return 0;
@@ -647,11 +669,11 @@ int dec_maxreal(real *r, int neg)
 
 int dec_is_zero(const real *x) { return x->k == DEC_FINITE && x->m[0] == 0; }
 
+static void real_from_u32(real *r, uint32_t v, int s);
+
 void dec_from_int(real *r, int32_t v)
 {
-    xn x;
-    xn_from_int(&x, v);
-    xn_to_real(r, &x);
+    real_from_u32(r, v < 0 ? (uint32_t)(-(v + 1)) + 1u : (uint32_t)v, v < 0);
 }
 
 int dec_from_str(real *r, const char *s, const char **end)
@@ -752,9 +774,72 @@ static int special2(real *r, const real *a, const real *b)
     return 0;
 }
 
+/* ---- integers: a fast path for add, sub and mul (loop counters, pixels; the SH-4 cost
+ * of a real addition through xn is a few thousand instructions) ---- */
+
+/* x as an integer of magnitude below 10^9: 1, or 0 when it is not one (or not finite) */
+static int real_small_int(const real *x, uint32_t *v)
+{
+    uint32_t q;
+    int b;
+    if (x->k) return 0;
+    if (!x->m[0]) { *v = 0; return 1; }
+    if (x->e < 0 || x->e > 8) return 0;
+    if (x->e <= 3) {
+        if (x->m[1] || x->m[2]) return 0;
+        b = 3 - x->e;
+        q = div_p10(x->m[0], b);
+        if (q * xn_pow10[b] != x->m[0]) return 0;
+        *v = q;
+    } else if (x->e <= 7) {
+        if (x->m[2]) return 0;
+        b = 7 - x->e;
+        q = div_p10(x->m[1], b);
+        if (q * xn_pow10[b] != x->m[1]) return 0;
+        *v = (uint32_t)x->m[0] * xn_pow10[x->e - 3] + q;
+    } else {
+        q = x->m[2] / 1000u;
+        if (q * 1000u != x->m[2]) return 0;
+        *v = (uint32_t)x->m[0] * 100000u + (uint32_t)x->m[1] * 10u + q;
+    }
+    return 1;
+}
+
+/* the integer v (any uint32) with sign s as a real */
+static void real_from_u32(real *r, uint32_t v, int s)
+{
+    uint32_t L[4], c;
+    uint16_t A[3] = { 0, 0, 0 };
+    int nd, t, q, i;
+    r->k = DEC_FINITE;
+    if (!v) { dec_zero(r); return; }
+    nd = v >= 1000000000u ? 10 : v >= 100000000u ? 9 : v >= 10000000u ? 8 : v >= 1000000u ? 7 :
+         v >= 100000u ? 6 : v >= 10000u ? 5 : v >= 1000u ? 4 : v >= 100u ? 3 : v >= 10u ? 2 : 1;
+    L[0] = v % 10000u; v /= 10000u;
+    L[1] = v % 10000u; L[2] = v / 10000u; L[3] = 0;
+    /* shift to 12 digits: by 10^t inside the limbs, then q whole limbs */
+    t = (12 - nd) & 3; q = (12 - nd) >> 2;
+    if (t) {
+        uint32_t p = xn_pow10[t];
+        c = 0;
+        for (i = 0; i < 4; i++) { uint32_t u = L[i] * p + c; L[i] = u % 10000u; c = u / 10000u; }
+    }
+    for (i = 0; i + q < 3; i++) A[i + q] = (uint16_t)L[i];
+    r->m[0] = A[2]; r->m[1] = A[1]; r->m[2] = A[0];
+    r->e = (int16_t)(nd - 1);
+    r->s = (uint8_t)(s != 0);
+}
+
 int dec_add(real *r, const real *a, const real *b)
 {
     xn x, y, z;
+    uint32_t u, v;
+    if (real_small_int(a, &u) && real_small_int(b, &v)) {
+        /* both below 10^9: the exact sum fits 32 bits */
+        int32_t p = a->s ? -(int32_t)u : (int32_t)u, q = b->s ? -(int32_t)v : (int32_t)v, w = p + q;
+        real_from_u32(r, w < 0 ? (uint32_t)-w : (uint32_t)w, w < 0);
+        return 0;
+    }
     if (a->k | b->k) {
         if (special2(r, a, b)) return 0;
         if (a->k == DEC_INF && b->k == DEC_INF && a->s != b->s) { dec_zero(r); r->k = DEC_NAN; return 0; }
@@ -776,6 +861,12 @@ int dec_sub(real *r, const real *a, const real *b)
 int dec_mul(real *r, const real *a, const real *b)
 {
     xn x, y, z;
+    uint32_t u, v;
+    if (real_small_int(a, &u) && real_small_int(b, &v) && u < 65536u && v < 65536u) {
+        /* the exact product fits 32 bits */
+        real_from_u32(r, u * v, (a->s ^ b->s) && u && v);
+        return 0;
+    }
     if (a->k | b->k) {
         if (special2(r, a, b)) return 0;
         if (dec_is_zero(a) || dec_is_zero(b)) { dec_zero(r); r->k = DEC_NAN; return 0; }

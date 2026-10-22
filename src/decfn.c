@@ -17,6 +17,10 @@
 
 #define WP XN_WP            /* working precision */
 #define GP (XN_WP + 8)      /* precision for reductions */
+/* sin, cos and tan: the series after the reduction needs no 26 digits for a 12-digit result
+ * (a misrounding needs the true value within 1E-20 of a rounding boundary), and it is the
+ * cost of SIN on the SH-4 (tools/check_round.py checks the rounding) */
+#define TP 20
 
 static const char S_PI[]   = "3.14159265358979323846264338327950288419716939937510582";
 static const char S_LN2[]  = "0.693147180559945309417232121458176568075500134360255254";
@@ -542,8 +546,13 @@ static void reduce_angle(xn *rem, int *q, const xn *x, int ang)
         *q = (int)(((qi % 4) + 4) % 4);
         return;
     }
-    /* radians: k = nearest integer of x / (pi/2) */
-    xn_div(&k, x, &K_PI2, 30);
+    /* radians: k = nearest integer of x / (pi/2); its integer digits and a few more are
+     * enough (a k off by one near a half leaves |rem| a little above pi/4, which the series
+     * still handles; rem itself is computed at GP below) */
+    {
+        int kp = xn_top(x) + 6;
+        xn_div(&k, x, &K_PI2, kp < 8 ? 8 : kp > 30 ? 30 : kp);
+    }
     xn_nint(&k, &k);
     if (!k.n) { *rem = *x; *q = 0; return; }
     reduce_by(rem, x, &k, &K_PI2, GP);
@@ -569,7 +578,7 @@ int dec_sin(real *r, const real *a, int ang)
     int q;
     if (trig_load(&x, a)) return nan_result(r);
     reduce_angle(&rem, &q, &x, ang);
-    x_sincos((q & 1) ? NULL : &s, (q & 1) ? &c : NULL, &rem, WP);
+    x_sincos((q & 1) ? NULL : &s, (q & 1) ? &c : NULL, &rem, TP);
     switch (q) {
     case 0: return finish(r, &s);
     case 1: return finish(r, &c);
@@ -584,7 +593,7 @@ int dec_cos(real *r, const real *a, int ang)
     int q;
     if (trig_load(&x, a)) return nan_result(r);
     reduce_angle(&rem, &q, &x, ang);
-    x_sincos((q & 1) ? &s : NULL, (q & 1) ? NULL : &c, &rem, WP);
+    x_sincos((q & 1) ? &s : NULL, (q & 1) ? NULL : &c, &rem, TP);
     switch (q) {
     case 0: return finish(r, &c);
     case 1: if (s.n) s.s ^= 1; return finish(r, &s);
@@ -599,15 +608,15 @@ int dec_tan(real *r, const real *a, int ang)
     int q, st;
     if (trig_load(&x, a)) return nan_result(r);
     reduce_angle(&rem, &q, &x, ang);
-    x_sincos(&s, &c, &rem, WP + 2);
+    x_sincos(&s, &c, &rem, TP + 2);
     if (q & 1) {
         /* tan = -cos/sin */
         if (!s.n) return DEC_EDOMAIN;     /* infinite result */
-        st = xn_div(&t, &c, &s, WP);
+        st = xn_div(&t, &c, &s, TP);
         if (st) return st;
         if (t.n) t.s ^= 1;
     } else {
-        st = xn_div(&t, &s, &c, WP);
+        st = xn_div(&t, &s, &c, TP);
         if (st) return st;
     }
     return finish(r, &t);
