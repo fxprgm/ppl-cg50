@@ -730,15 +730,21 @@ BI(b_expr)
     char *s;
     size_t n;
     int st;
+    const pstr *ps;
     (void)argc;
-    if (a[0].t != T_STR) { v_copy(out, &a[0]); return 0; }
-    n = u16_to_utf8(NULL, a[0].u.s->c, a[0].u.s->len);
+    /* a quoted expression is evaluated with the variables' current values (simprule:
+     * f:='SIN(X)'; X:=1; EVAL(f)); one naming an undefined variable stays as it is */
+    if (a[0].t == T_STR) ps = a[0].u.s;
+    else if (a[0].t == T_SYM) ps = a[0].u.y->text;
+    else { v_copy(out, &a[0]); return 0; }
+    n = u16_to_utf8(NULL, ps->c, ps->len);
     s = (char *)malloc(n + 1);
     if (!s) return E_MEM;
-    u16_to_utf8(s, a[0].u.s->c, a[0].u.s->len);
+    u16_to_utf8(s, ps->c, ps->len);
     s[n] = 0;
     st = vm_eval_string(V, s, n, out);
     free(s);
+    if (st == E_UNDEF && a[0].t == T_SYM) { V->err = 0; v_copy(out, &a[0]); return 0; }
     return st;
 }
 

@@ -151,3 +151,10 @@ END;
 //> CHISQUARE_CDF(10,40) => 0.999983055256
 //> CHISQUARE_ICDF(19,0.95) => 30.1435272056
 //> CHISQUARE_ICDF(4,0.99) => 13.276704136
+
+// simprule: EVAL of a quoted expression uses the variables' current values; with an
+// undefined name it stays as it is
+//> X:=2; EVAL('2*X') => 4
+//> X:=1; EVAL('SIN(X)') => 0.841470984808
+//> LOCAL t:=5; EXPR('2*t') => 10
+//> EVAL('2*qq') => 2*qq

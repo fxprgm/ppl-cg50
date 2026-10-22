@@ -1,5 +1,6 @@
 /* INPUT, CHOOSE and MSGBOX on the CG50 (dialogs.h). */
 #include "dialogs.h"
+#include "parse.h"
 #include "home.h"
 #include "host.h"
 #include "io.h"
@@ -75,14 +76,15 @@ typedef struct {
 	int gstart, gsize;        /* the radio group this check box is in (gsize 1: none) */
 	const value *choices;     /* F_CHOOSE: the list of items */
 	bool str_only;            /* F_EDIT with allowed types [2]: text without quotes */
+	bool sym_only;            /* F_EDIT with allowed types [8]: kept as an expression */
 	bool has_pos;             /* {x%, width%, line} given */
 	int pos[3];
 	int line, x, w, lx0;      /* layout: line (0..), field box x and width, label's left limit */
 	char label[48], help[100];
 } field_t;
 
-/* allowed types [t1, t2, ...]: only strings (2)? */
-static bool only_strings(const value *m)
+/* allowed types [t1, t2, ...]: only type t (2 strings, 8 expressions)? */
+static bool only_type(const value *m, int32_t want)
 {
 	if (m->t != T_MAT || !m->u.m)
 		return false;
@@ -91,10 +93,36 @@ static bool only_strings(const value *m)
 		return false;
 	for (int i = 0; i < k; i++) {
 		int32_t t = -1;
-		if (to_index(&m->u.m->v[i], &t) || t != T_STR)
+		if (to_index(&m->u.m->v[i], &t) || t != want)
 			return false;
 	}
 	return true;
+}
+
+/* a symbolic value 'text' after checking that text parses */
+static int sym_from_text(const char *t, value *out)
+{
+	parser P;
+	value tv;
+	psym *y;
+	parser_init(&P, t, strlen(t));
+	parse_home(&P);
+	int bad = P.err;
+	parser_free(&P);
+	if (bad)
+		return E_SYNTAX;
+	if (v_str_utf8(&tv, t, strlen(t)))
+		return E_MEM;
+	if (!(y = malloc(sizeof *y))) {
+		v_decref(&tv);
+		return E_MEM;
+	}
+	y->h.rc = 1;
+	y->text = tv.u.s;
+	v_none(out);
+	out->t = T_SYM;
+	out->u.y = y;
+	return 0;
 }
 
 static int fields_from(ppl_vm *V, const value *spec, field_t *f, int *n)
@@ -127,8 +155,10 @@ static int fields_from(ppl_vm *V, const value *spec, field_t *f, int *n)
 					x->kind = F_CHOOSE;
 					x->choices = k;
 				}
-				else if (k->t == T_MAT)
-					x->str_only = only_strings(k);
+				else if (k->t == T_MAT) {
+					x->str_only = only_type(k, T_STR);
+					x->sym_only = only_type(k, T_SYM);
+				}
 			}
 			/* {x%, width%, line} */
 			if (e->u.l->n >= 3 && e->u.l->v[2].t == T_LIST && e->u.l->v[2].u.l->n >= 3) {
@@ -363,6 +393,18 @@ int dlg_input(ppl_vm *V, int argc, value *a, value *out)
 					/* a string-only field: the text as typed, without quotes */
 					if (v_str_utf8(&v, ed.buf, strlen(ed.buf))) {
 						err = ppl_errmsg(E_MEM);
+						continue;
+					}
+				}
+				else if (f[sel].sym_only) {
+					/* an expression field (simprule's {f,[8]}): what is typed, not its value */
+					if (!ed.buf[0]) {
+						editing = false;
+						continue;
+					}
+					int e = sym_from_text(ed.buf, &v);
+					if (e) {
+						err = ppl_errmsg(e);
 						continue;
 					}
 				}

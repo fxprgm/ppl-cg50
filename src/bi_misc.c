@@ -271,7 +271,12 @@ static BI(b_piecewise)
     return E_UNDEFRES;
 }
 
-static BI(b_eval) { (void)V; (void)argc; v_copy(out, &a[0]); return 0; }
+static BI(b_eval)
+{
+    if (a[0].t == T_SYM) return b_expr(V, argc, a, out);
+    v_copy(out, &a[0]);
+    return 0;
+}
 
 static BI(b_version)
 {
