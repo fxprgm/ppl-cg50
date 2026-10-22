@@ -1,0 +1,15 @@
+// multiprec: a forward declaration of a function that another program defines
+// (multiprec.ppl declares xsetp(); multiprec2.ppl has it): looked up at run time
+//+ fwdlib.ppl
+fwdb();
+locb();
+EXPORT FWDA()
+BEGIN
+  RETURN fwdb()+locb();
+END;
+locb()
+BEGIN
+  RETURN 1;
+END;
+//> FWDA() => 42
+//> fwdb() => 41

@@ -1,0 +1,4 @@
+EXPORT fwdb()
+BEGIN
+  RETURN 41;
+END;

@@ -1,6 +1,6 @@
 /* ppl.c -- command-line front end of the PPL engine (host build).
  *
- *   ppl run FILE [EXPR...]     load a program; evaluate each EXPR (Home);
+ *   ppl run FILE [FILE.ppl...] [EXPR...]  load programs; evaluate each EXPR (Home);
  *                              with none, call its first exported function
  *                              that takes no arguments
  *   ppl eval EXPR...           evaluate Home expressions
@@ -237,6 +237,15 @@ static int cmd_run(int argc, char **argv)
     free(src);
     if (e) { report_error(V, e, msg); ppl_free(V); free(V); return 1; }
     if (msg[0]) fprintf(stderr, "Warning: %s\n", msg);
+    /* more programs: the arguments after FILE that end in .ppl (companions) */
+    while (argc > 1 && strlen(argv[1]) > 4 && !strcmp(argv[1] + strlen(argv[1]) - 4, ".ppl")) {
+        argc--, argv++;
+        if (!(src = read_file(argv[0], &n))) { perror(argv[0]); ppl_free(V); free(V); return 2; }
+        e = ppl_load(V, base_name(argv[0], name, sizeof name), src, n, msg, sizeof msg);
+        free(src);
+        if (e) { report_error(V, e, msg); ppl_free(V); free(V); return 1; }
+        if (msg[0]) fprintf(stderr, "Warning: %s\n", msg);
+    }
     if (argc == 1) {
         pprog *p = V->progs;
         for (i = 0; i < p->nf; i++)

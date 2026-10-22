@@ -317,6 +317,17 @@ int ppl_load(ppl_vm *V, const char *name, const char *src, size_t n, char *msg, 
             prog->nf++;
         }
     }
+    /* a forward declaration with no body here names a function of another program
+     * (multiprec: xsetp(); declared, defined in multiprec2): calls to it are looked up
+     * by name at run time, as calls to undeclared names are */
+    if (!st) {
+        int j, k = 0;
+        for (j = 0; j < prog->nf; j++) {
+            if (!prog->f[j]->line) { free_func(prog->f[j]); continue; }
+            prog->f[k++] = prog->f[j];
+        }
+        prog->nf = k;
+    }
     /* compile the bodies */
     for (i = 0; i < P.ndecls && !st; i++) {
         topdecl *d = &P.decls[i];
