@@ -196,3 +196,7 @@ END;
 //> int(1/X,X,1,1000) => 6.90775527898
 // a kink inside: the Gauss-Legendre fallback
 //> int(ABS(X-0.3),X,0,1) => 0.290000236875
+
+// listapi: CHAR(0) in a string is kept (SIZE) but not shown (the display stopped at it)
+//> {"A"+CHAR(0)+"B","C"} => {"AB","C"}
+//> SIZE("A"+CHAR(0)+"B") => 3

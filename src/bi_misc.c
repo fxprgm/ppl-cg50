@@ -211,6 +211,7 @@ static BI(b_print)
         sbuf s;
         sb_init(&s);
         v_to_text(V, &s, &a[0], 0);
+        sb_drop_nul(&s);
         V->print(V, s.p ? s.p : "");
         sb_free(&s);
     } else if (!argc && V->print) V->print(V, NULL);   /* PRINT(): clear */

@@ -324,6 +324,14 @@ void sb_put(sbuf *b, const char *s, size_t n)
 void sb_puts(sbuf *b, const char *s) { sb_put(b, s, strlen(s)); }
 void sb_free(sbuf *b) { free(b->p); sb_init(b); }
 
+void sb_drop_nul(sbuf *b)
+{
+    size_t i, k = 0;
+    for (i = 0; i < b->n; i++) if (b->p[i]) b->p[k++] = b->p[i];
+    b->n = k;
+    if (b->p) b->p[k] = 0;
+}
+
 /* -------------------------------------------------------------- text */
 
 static void real_text(ppl_vm *V, sbuf *b, const real *r)

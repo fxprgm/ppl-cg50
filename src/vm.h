@@ -203,6 +203,7 @@ void sb_init(sbuf *b);
 void sb_put(sbuf *b, const char *s, size_t n);
 void sb_puts(sbuf *b, const char *s);
 void sb_free(sbuf *b);
+void sb_drop_nul(sbuf *b);      /* for display: CHAR(0) ends a C string, so it is not shown */
 void v_to_text(ppl_vm *V, sbuf *b, const value *v, int quote_strings);
 size_t u16_to_utf8(char *out, const uint16_t *s, uint32_t n);  /* out may be NULL */
 uint32_t utf8_to_u16(uint16_t *out, const char *s, size_t n);  /* out may be NULL */

@@ -150,6 +150,7 @@ static void show(ppl_vm *V, const value *v)
     sbuf b;
     sb_init(&b);
     v_to_text(V, &b, v, 1);
+    sb_drop_nul(&b);
     put_text(b.p ? b.p : "");
     putchar('\n');
     sb_free(&b);

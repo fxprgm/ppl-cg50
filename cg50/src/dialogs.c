@@ -19,6 +19,7 @@ void value_text(ppl_vm *V, const value *v, char *out, int n, int quote)
 	sbuf b;
 	sb_init(&b);
 	v_to_text(V, &b, v, quote);
+	sb_drop_nul(&b);
 	int k = b.p ? (int)b.n : 0;
 	if (k > n - 1) {
 		k = n - 1;
