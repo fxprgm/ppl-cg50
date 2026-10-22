@@ -6,6 +6,7 @@
 #include "cg50_mem.h"
 #include "clock.h"
 #include "gfx.h"
+#include "config.h"
 #include "home.h"
 #include "host.h"
 #include "mem.h"
@@ -50,6 +51,7 @@ int main(void)
 	gfx_init(V);
 	g0_set_vm(V);
 	progs_init(V);
+	config_load();
 	home_init(V);
 	/* the programs in \\fls0\PPL\ are there from the start, as on the Prime */
 	char loaded[400];

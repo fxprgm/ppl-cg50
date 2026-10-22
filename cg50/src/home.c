@@ -3,6 +3,7 @@
 #include "gfx.h"
 #include "host.h"
 #include "clock.h"
+#include "config.h"
 #include "dialogs.h"
 #include "io.h"
 #include "mem.h"
@@ -12,6 +13,7 @@
 #include "term.h"
 #include "text.h"
 #include "ui.h"
+#include "viewer.h"
 
 #include <gint/display.h>
 #include <gint/gint.h>
@@ -66,9 +68,20 @@ void home_note(const char *in, const char *out, bool err) { hist_add(in, out, er
 
 /* ---- drawing ----------------------------------------------------------------------------- */
 
+/* the history and the command line use the font chosen in the Setup (config.h): rows are
+ * f.h + 1 pixels; the command line's two rows end just above the soft keys */
 #define HIST_Y 19
-#define HIST_ROWS 11
-#define ED_Y 177
+static pfont_t hf;
+static int lh, hcols, ed_y, hist_rows;
+
+static void home_layout(void)
+{
+	font_pick(&hf, cfg.home_font, cfg.home_bold);
+	lh = hf.h + 1;
+	hcols = (DWIDTH - 4) / hf.w;
+	ed_y = 205 - 2 * lh;
+	hist_rows = (ed_y - 3 - HIST_Y) / lh;
+}
 
 static const char *angle_name(void)
 {
@@ -91,25 +104,25 @@ static void cut(const char *s, char *out, int cols)
 static void draw_history(void)
 {
 	/* from the bottom: each entry takes 1 row (input and result fit) or 2 */
-	int y = HIST_Y + HIST_ROWS * LINE_H;
+	int y = HIST_Y + hist_rows * lh;
 	char a[COLS * 4 + 8], b[COLS * 4 + 8];
 	for (int i = nhist - 1; i >= 0 && y > HIST_Y; i--) {
 		int li = utf8_len(hist[i].in), lo = utf8_len(hist[i].out);
 		int col = hist[i].err ? C_ERR : C_OUT;
-		if (li + lo + 2 <= COLS) {
-			y -= LINE_H;
-			text_draw(FONT, 2, y, hist[i].in, C_BLACK, -1, -1);
-			text_right(FONT, DWIDTH - 2, y, hist[i].out, col, -1);
+		if (li + lo + 2 <= hcols) {
+			y -= lh;
+			text_draw(&hf, 2, y, hist[i].in, C_BLACK, -1, -1);
+			text_right(&hf, DWIDTH - 2, y, hist[i].out, col, -1);
 		}
 		else {
-			y -= LINE_H;
-			cut(hist[i].out, b, COLS);
-			text_right(FONT, DWIDTH - 2, y, b, col, -1);
-			if (y - LINE_H < HIST_Y)
+			y -= lh;
+			cut(hist[i].out, b, hcols);
+			text_right(&hf, DWIDTH - 2, y, b, col, -1);
+			if (y - lh < HIST_Y)
 				break;
-			y -= LINE_H;
-			cut(hist[i].in, a, COLS);
-			text_draw(FONT, 2, y, a, C_BLACK, -1, -1);
+			y -= lh;
+			cut(hist[i].in, a, hcols);
+			text_draw(&hf, 2, y, a, C_BLACK, -1, -1);
 		}
 		dline(0, y - 1, DWIDTH - 1, y - 1, C_RGB(28, 28, 28));
 	}
@@ -127,8 +140,8 @@ static void draw_home(void)
 	snprintf(t, sizeof t, "%s%s%s", m, *m ? "  " : "", angle_name());
 	text_right(FONT, DWIDTH - 6, 2, t, *m ? C_TITLE : C_LABEL, -1);
 	draw_history();
-	dline(0, ED_Y - 3, DWIDTH - 1, ED_Y - 3, C_LABEL);
-	ed_draw(&ed, 2, ED_Y, COLS, 2, C_BLACK, C_WHITE);
+	dline(0, ed_y - 3, DWIDTH - 1, ed_y - 3, C_LABEL);
+	ed_draw_font(&ed, &hf, 2, ed_y, hcols, 2, C_BLACK, C_WHITE);
 	static const char *const sk[6] = { "Load", "Run", "Term", "Chars", "Setup", "A<>a" };
 	static const char *const skl[6] = { "Load", "Run", "Term", "Chars", "Setup", "a<>A" };
 	ui_softbar(ed.lower ? skl : sk);
@@ -164,8 +177,10 @@ static void error_screen(int e, const char *in)
 	else
 		k += snprintf(text + k, sizeof text - k, "\n\nin: %s", in);
 	ST->phase = PH_ERROR;
-	ui_message("Error", text, "Press any key", C_ERR);
-	ui_key();
+	const char *s = V->errfn && V->errfn->prog ? progs_source(V->errfn->prog->name) : NULL;
+	ui_message("Error", text, s ? "F1: show the source   other keys: Home" : "Press any key", C_ERR);
+	if (ui_key() == KEY_F1 && s)
+		viewer_show(V->errfn->prog->name, s, V->errline);
 }
 
 static void run(const char *line)
@@ -334,7 +349,7 @@ static void setup(void)
 {
 	ST->phase = PH_SETUP;
 	int sel = 0;
-	enum { S_VIEW, S_ANGLE, S_KEYS, S_CLEAR, S_N };
+	enum { S_VIEW, S_ANGLE, S_FONT, S_BOLD, S_KEYS, S_CLEAR, S_N };
 	for (;;) {
 		dclear(C_WHITE);
 		drect(0, 0, DWIDTH - 1, 17, C_PANEL);
@@ -345,6 +360,8 @@ static void setup(void)
 			case S_VIEW: snprintf(t, sizeof t, "Graphics view:  %s   (LEFT/RIGHT)", view_names[view]); break;
 			case S_ANGLE: snprintf(t, sizeof t, "Angle (HAngle): %s   (LEFT/RIGHT)",
 			                       V->hset.angle == 1 ? "Degrees" : V->hset.angle == 2 ? "Gradians" : "Radians"); break;
+			case S_FONT: snprintf(t, sizeof t, "Home font:      %s   (LEFT/RIGHT)", font_size_names[cfg.home_font]); break;
+			case S_BOLD: snprintf(t, sizeof t, "Home bold:      %s   (LEFT/RIGHT)", cfg.home_bold ? "on" : "off"); break;
 			case S_KEYS: strcpy(t, "Key map, touch and pointer"); break;
 			case S_CLEAR: strcpy(t, "Clear the history"); break;
 			}
@@ -359,8 +376,14 @@ static void setup(void)
 		snprintf(m, sizeof m, "Memory: %u KB used of %u KB (peak %u KB); VM %u KB",
 		         (unsigned)(used >> 10), (unsigned)(size >> 10), (unsigned)(peak >> 10),
 		         (unsigned)(sizeof(ppl_vm) >> 10));
-		text_draw(FONT, 8, 120, m, C_LABEL, -1, -1);
-		text_draw(FONT, 8, 140, "HP PPL for the fx-CG50 - GPL-3.0-or-later", C_LABEL, -1, -1);
+		text_draw(FONT, 8, 26 + S_N * 18 + 8, m, C_LABEL, -1, -1);
+		text_draw(FONT, 8, 26 + S_N * 18 + 26, "HP PPL for the fx-CG50 - GPL-3.0-or-later", C_LABEL, -1, -1);
+		if (sel == S_FONT || sel == S_BOLD) {
+			/* a sample in the chosen font */
+			pfont_t f;
+			font_pick(&f, cfg.home_font, cfg.home_bold);
+			text_draw(&f, 8, 26 + S_N * 18 + 46, "1/3*3  SIN(\xCF\x80/6)  0.5", C_OUT, -1, -1);
+		}
 		static const char *const sk[6] = { NULL, NULL, NULL, NULL, NULL, "Back" };
 		ui_softbar(sk);
 		scr_push_all();
@@ -378,6 +401,16 @@ static void setup(void)
 			v_int32(&v, (V->hset.angle + (k == KEY_LEFT ? 2 : 1)) % 3);
 			vm_setting_set(V, "HAngle", &v);
 		}
+		else if (sel == S_FONT && (k == KEY_LEFT || k == KEY_RIGHT || k == KEY_EXE)) {
+			cfg.home_font = (cfg.home_font + (k == KEY_LEFT ? FONT_SIZES - 1 : 1)) % FONT_SIZES;
+			home_layout();
+			config_save();
+		}
+		else if (sel == S_BOLD && (k == KEY_LEFT || k == KEY_RIGHT || k == KEY_EXE)) {
+			cfg.home_bold = !cfg.home_bold;
+			home_layout();
+			config_save();
+		}
 		else if (sel == S_KEYS && k == KEY_EXE)
 			help();
 		else if (sel == S_CLEAR && k == KEY_EXE) {
@@ -393,6 +426,7 @@ void home_init(ppl_vm *vm)
 {
 	V = vm;
 	ed_clear(&ed);
+	home_layout();
 }
 
 void home_loop(void)

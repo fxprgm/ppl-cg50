@@ -19,4 +19,8 @@ int files_list(const char *dir, files_entry_t *out, int max);
    Returns the size, or a negative BFile error (-1000: no memory, -1001: too large). */
 int files_read_all(const char *name, char **out, int max);
 
+/* Writes size bytes (even, and at most the I/O buffer: a small file) as the whole file, replacing
+   it. Returns 0, or a negative BFile error (-1001: odd or too large). */
+int files_write(const char *name, const void *data, int size);
+
 #endif

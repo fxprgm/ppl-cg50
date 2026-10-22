@@ -214,7 +214,12 @@ int ed_key(editor_t *e, int key)
 
 void ed_draw(editor_t *e, int x, int y, int cols, int rows, int fg, int bg)
 {
-	int len = utf8_len(e->buf), cap = cols * rows;
+	ed_draw_font(e, FONT, x, y, cols, rows, fg, bg);
+}
+
+void ed_draw_font(editor_t *e, const pfont_t *f, int x, int y, int cols, int rows, int fg, int bg)
+{
+	int len = utf8_len(e->buf), cap = cols * rows, lh = f->h + 1;
 	/* keep the cursor visible: scroll by whole rows */
 	if (e->cur < e->scroll)
 		e->scroll = e->cur / cols * cols;
@@ -222,14 +227,14 @@ void ed_draw(editor_t *e, int x, int y, int cols, int rows, int fg, int bg)
 		e->scroll += cols;
 	if (len < cap)
 		e->scroll = 0;
-	drect(x, y, x + cols * 6 - 1, y + rows * LINE_H - 1, bg);
+	drect(x, y, x + cols * f->w - 1, y + rows * lh - 1, bg);
 	const char *p = e->buf + utf8_offset(e->buf, e->scroll);
 	for (int r = 0; r < rows; r++) {
-		text_draw(FONT, x, y + r * LINE_H, p, fg, -1, cols);
+		text_draw(f, x, y + r * lh, p, fg, -1, cols);
 		p += utf8_offset(p, cols);
 	}
 	int c = e->cur - e->scroll;
-	int cx = x + (c % cols) * 6, cy = y + (c / cols) * LINE_H;
+	int cx = x + (c % cols) * f->w, cy = y + (c / cols) * lh;
 	if (c / cols < rows)
-		drect(cx, cy, cx + 1, cy + 12, e->shift ? C_RGB(31, 16, 0) : e->alpha ? C_RGB(0, 20, 0) : fg);
+		drect(cx, cy, cx + 1, cy + f->h - 1, e->shift ? C_RGB(31, 16, 0) : e->alpha ? C_RGB(0, 20, 0) : fg);
 }

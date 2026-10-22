@@ -14,7 +14,7 @@ list(TRANSFORM CORE PREPEND ${CORE_DIR}/)
 list(TRANSFORM CORE APPEND .c)
 
 set(SOURCES src/main.c src/mem.c src/clock.c src/files.c src/text.c src/font_data.c src/ui.c
-  src/screen.c src/io.c src/term.c src/dialogs.c src/progs.c src/home.c src/host.c
+  src/screen.c src/io.c src/term.c src/dialogs.c src/progs.c src/home.c src/host.c src/config.c src/viewer.c
   ${CORE})
 
 add_executable(ppl ${SOURCES})

@@ -1,6 +1,7 @@
-"""Generate cg50/src/font_data.c: the X.org misc-fixed fonts 6x13 and 6x10 (public domain,
-tools/fonts/), with the glyphs for ASCII, Latin-1, Greek and the mathematical characters PPL
-programs use (Cyrillic, ⑴, ▓, ✔ too). Each glyph is `h` rows of uint8, bit 7 = leftmost pixel.
+"""Generate cg50/src/font_data.c: the X.org misc-fixed fonts 6x13, 6x10, 8x13, 9x15 and 10x20
+(public domain, tools/fonts/), with the glyphs for ASCII, Latin-1, Greek and the mathematical
+characters PPL programs use (Cyrillic, ⑴, ▓, ✔ too). Each glyph is `h` rows of 1 byte (width up
+to 8) or 2 bytes (big-endian), the leftmost pixel in the top bit.
 
 usage: python3 -I cg50/tools/mkfont.py
 """
@@ -8,7 +9,8 @@ import os
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(os.path.dirname(HERE), 'src', 'font_data.c')
-FONTS = [('6x13', 'font_6x13'), ('6x10', 'font_6x10')]
+FONTS = [('6x13', 'font_6x13'), ('6x10', 'font_6x10'), ('8x13', 'font_8x13'), ('9x15', 'font_9x15'),
+         ('10x20', 'font_10x20')]
 RANGES = [(0x20, 0x7E), (0xA0, 0x17F), (0x391, 0x3C9), (0x2010, 0x2027), (0x2030, 0x2044),
           (0x2070, 0x209C), (0x2190, 0x21FF), (0x2200, 0x22FF), (0x2308, 0x230B),
           (0x2500, 0x257F), (0x25A0, 0x25FF), (0x1D07, 0x1D07),
@@ -46,15 +48,18 @@ def bdf(path):
 
 
 def cell(bb, g):
+    """rows of the glyph in the font's cell, as bits (the leftmost pixel in the top bit of
+    8 * bytes-per-row)"""
     fw, fh, fx, fy = bb
+    nb = 8 * ((fw + 7) // 8)
     rows = [0] * fh
     w, h, ox, oy = g['bbx']
     x0 = ox - fx
     y0 = (fh + fy) - (h + oy)
     for r, bits in enumerate(g['rows']):
         for c in range(w):
-            if bits >> (g['nbits'] - 1 - c) & 1 and 0 <= y0 + r < fh and 0 <= x0 + c < 8:
-                rows[y0 + r] |= 0x80 >> (x0 + c)
+            if bits >> (g['nbits'] - 1 - c) & 1 and 0 <= y0 + r < fh and 0 <= x0 + c < nb:
+                rows[y0 + r] |= 1 << (nb - 1 - (x0 + c))
     return rows
 
 
@@ -65,18 +70,21 @@ def main():
         bb, glyphs = bdf(os.path.join(HERE, 'fonts', fname + '.bdf'))
         cps = sorted({c for lo, hi in RANGES for c in range(lo, hi + 1) if c in glyphs})  # text.c bisects
         fw, fh = bb[0], bb[1]
+        bpr = (fw + 7) // 8
         out.append('static const uint16_t cps_%s[%d] = {' % (fname, len(cps)))
         for i in range(0, len(cps), 12):
             out.append('\t' + ', '.join('0x%04X' % c for c in cps[i:i + 12]) + ',')
         out.append('};')
-        out.append('static const uint8_t bits_%s[%d] = {' % (fname, len(cps) * fh))
+        out.append('static const uint8_t bits_%s[%d] = {' % (fname, len(cps) * fh * bpr))
         for c in cps:
             rows = cell(bb, glyphs[c])
             if (fname, c) in OVERRIDE:
                 rows = [sum(0x80 >> i for i, ch in enumerate(r) if ch == '#') for r in OVERRIDE[(fname, c)]]
-            out.append('\t' + ', '.join('0x%02X' % b for b in rows) + ',')
+            data = [b for r in rows for b in r.to_bytes(bpr, 'big')]
+            out.append('\t' + ', '.join('0x%02X' % b for b in data) + ',')
         out.append('};')
-        out.append('const pfont_t %s = { %d, %d, %d, cps_%s, bits_%s };' % (cname, fw, fh, len(cps), fname, fname))
+        out.append('const pfont_t %s = { %d, %d, %d, %d, 0, cps_%s, bits_%s };' %
+                   (cname, fw, fh, bpr, len(cps), fname, fname))
         out.append('')
     open(OUT, 'w').write('\n'.join(out))
     print('wrote', OUT)

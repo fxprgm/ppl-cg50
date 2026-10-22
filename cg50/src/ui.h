@@ -6,6 +6,7 @@
 #include <gint/display.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include "text.h"
 
 #define C_PANEL  C_RGB(3, 6, 10)
 #define C_TITLE  C_RGB(31, 24, 4)
@@ -49,6 +50,8 @@ int ed_key(editor_t *e, int key);
 /* draws the editor in rows of cols characters from (x, y), at most rows rows, the cursor
    kept visible */
 void ed_draw(editor_t *e, int x, int y, int cols, int rows, int fg, int bg);
+/* the same in font f (rows f->h + 1 pixels apart) */
+void ed_draw_font(editor_t *e, const pfont_t *f, int x, int y, int cols, int rows, int fg, int bg);
 /* the modifier state as a short string: "", "SHIFT", "A", "a", "A-LOCK", "a-lock" */
 const char *ed_mode(const editor_t *e);
 

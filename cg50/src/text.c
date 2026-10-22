@@ -76,6 +76,17 @@ static uint32_t subst(uint32_t cp)
 	return '?';
 }
 
+const pfont_t *const font_sizes[FONT_SIZES] = { &font_6x10, &font_6x13, &font_8x13, &font_9x15, &font_10x20 };
+const char *const font_size_names[FONT_SIZES] = { "6x10 (small)", "6x13 (normal)", "8x13", "9x15", "10x20 (large)" };
+
+void font_pick(pfont_t *out, int i, int bold)
+{
+	if (i < 0 || i >= FONT_SIZES)
+		i = FONT_SIZE_DEFAULT;
+	*out = *font_sizes[i];
+	out->bold = bold != 0;
+}
+
 void text_char(const pfont_t *f, int x, int y, uint32_t cp, int fg, int bg)
 {
 	int g = glyph(f, cp);
@@ -83,16 +94,19 @@ void text_char(const pfont_t *f, int x, int y, uint32_t cp, int fg, int bg)
 		g = glyph(f, subst(cp));
 	if (g < 0)
 		g = glyph(f, '?');
-	const uint8_t *rows = f->bits + g * f->h;
+	const uint8_t *rows = f->bits + g * f->h * f->bpr;
 	int x0 = x < 0 ? -x : 0, x1 = x + f->w > DWIDTH ? DWIDTH - x : f->w;
 	for (int r = 0; r < f->h; r++) {
 		int yy = y + r;
 		if (yy < 0 || yy >= DHEIGHT)
 			continue;
-		uint8_t bits = rows[r];
+		/* the row as 16 bits, the leftmost pixel in bit 15; bold: and one pixel to the right */
+		uint32_t bits = f->bpr == 2 ? (uint32_t)rows[2 * r] << 8 | rows[2 * r + 1] : (uint32_t)rows[r] << 8;
+		if (f->bold)
+			bits |= bits >> 1;
 		uint16_t *p = gint_vram + yy * DWIDTH + x;
 		for (int c = x0; c < x1; c++) {
-			if (bits & (0x80 >> c))
+			if (bits & (0x8000 >> c))
 				p[c] = fg;
 			else if (bg >= 0)
 				p[c] = bg;

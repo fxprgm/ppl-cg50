@@ -31,7 +31,7 @@ typedef struct {
 } ppl_stats_t;
 
 enum { PH_START, PH_HOME, PH_RUN, PH_INPUT, PH_CHOOSE, PH_MSGBOX, PH_PICK, PH_ERROR, PH_TERM,
-       PH_FREEZE, PH_FUNCS, PH_CHARS, PH_SETUP, PH_HELP, PH_WAIT, PH_QUIT, PH_EDIT };
+       PH_FREEZE, PH_FUNCS, PH_CHARS, PH_SETUP, PH_HELP, PH_WAIT, PH_QUIT, PH_EDIT, PH_VIEW };
 
 #define ST ((volatile ppl_stats_t *)CG50_STATS_ADDR)
 

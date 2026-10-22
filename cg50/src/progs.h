@@ -19,4 +19,7 @@ void progs_line(const char *name, int line, char *out, int n);
    picked, with *run = 1 when it takes no arguments */
 int progs_functions(char *call, int n, int *run);
 
+/* the text of a loaded program (UTF-8), NULL if none */
+const char *progs_source(const char *name);
+
 #endif

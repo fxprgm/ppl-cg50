@@ -145,3 +145,28 @@ int files_read_all(const char *name, char **out, int max)
 	*out = buf;
 	return size;
 }
+
+/* ---- small whole-file writes -------------------------------------------------------------- */
+
+static int write_worker(void)
+{
+	int size = rq.size, rc;
+	BFile_Remove(rq.path);
+	if ((rc = BFile_Create(rq.path, BFile_File, &size)) < 0)
+		return rc;
+	if ((rq.h = BFile_Open(rq.path, BFile_WriteOnly)) < 0)
+		return rq.h;
+	rc = BFile_Write(rq.h, (void *)CG50_IOBUF_ADDR, rq.size);
+	BFile_Close(rq.h);
+	return rc < 0 ? rc : 0;
+}
+
+int files_write(const char *name, const void *data, int size)
+{
+	if ((size & 1) || size < 0 || size > (int)CG50_IOBUF_SIZE)
+		return -1001;
+	fc_path(rq.path, name);
+	memcpy((void *)CG50_IOBUF_ADDR, data, size);
+	rq.size = size;
+	return gint_world_switch(GINT_CALL(write_worker));
+}

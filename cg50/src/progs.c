@@ -5,6 +5,7 @@
 #include "stats.h"
 #include "text.h"
 #include "ui.h"
+#include "viewer.h"
 
 #include <gint/keyboard.h>
 #include <stdio.h>
@@ -34,6 +35,14 @@ static void keep_source(const char *name, char *src)
 	strncpy(loaded[nloaded].name, name, sizeof loaded[0].name - 1);
 	loaded[nloaded++].src = src;
 	ST->progs = nloaded;
+}
+
+const char *progs_source(const char *name)
+{
+	for (int i = 0; i < nloaded; i++)
+		if (!strcmp(loaded[i].name, name))
+			return loaded[i].src;
+	return NULL;
 }
 
 void progs_line(const char *name, int line, char *out, int n)
@@ -115,8 +124,10 @@ static void load_error(const char *path, const char *name, const char *msg, int 
 	char text[400], src[200];
 	progs_line(name, line, src, sizeof src);
 	snprintf(text, sizeof text, "%s\n\n%s\n\n%s", path, msg, src);
-	ui_message("Program not loaded", text, "Press any key", C_ERR);
-	ui_key();
+	const char *s = progs_source(name);
+	ui_message("Program not loaded", text, s ? "F1: show the source   other keys: back" : "Press any key", C_ERR);
+	if (ui_key() == KEY_F1 && s)
+		viewer_show(name, s, line);
 }
 
 int progs_load(const char *path, bool quiet)
@@ -245,12 +256,25 @@ void progs_picker(void)
 			text_right(FONT, DWIDTH - 8, y, t, s ? C_WHITE : C_LABEL, -1);
 		}
 		st_str(ST->msg, list[sel].name);   /* the probe test steers by it */
-		static const char *const sk[6] = { "Load", NULL, NULL, NULL, NULL, "Back" };
+		static const char *const sk[6] = { "Load", "View", NULL, NULL, NULL, "Back" };
 		ui_softbar(sk);
 		scr_push_all();
 		int k = ui_key();
 		if (k == KEY_UP) sel = (sel + nlist - 1) % nlist;
 		else if (k == KEY_DOWN) sel = (sel + 1) % nlist;
+		else if (k == KEY_F2) {
+			/* the file's text, whether or not it is loaded */
+			char *buf, *src;
+			int sn = 0, n = files_read_all(list[sel].name, &buf, 1 << 20);
+			if (n < 0)
+				continue;
+			src = source_of(buf, n, &sn);
+			free(buf);
+			if (src) {
+				viewer_show(list[sel].name, src, 1);
+				free(src);
+			}
+		}
 		else if (k == KEY_EXE || k == KEY_F1) {
 			progs_load(list[sel].name, false);
 			return;
@@ -355,7 +379,7 @@ int progs_functions(char *call, int n, int *run)
 			text_right(FONT, DWIDTH - 8, y, fl[i].prog, s ? C_WHITE : C_LABEL, -1);
 		}
 		st_str(ST->msg, fl[sel].f->name);
-		static const char *const sk[6] = { "Run", "Paste", NULL, NULL, NULL, "Back" };
+		static const char *const sk[6] = { "Run", "Paste", "Source", NULL, NULL, "Back" };
 		ui_softbar(sk);
 		scr_push_all();
 		int k = ui_key();
@@ -382,6 +406,12 @@ int progs_functions(char *call, int n, int *run)
 					break;
 				}
 			}
+		}
+		else if (k == KEY_F3) {
+			/* the program's text at the function */
+			const char *s = progs_source(fl[sel].prog);
+			if (s)
+				viewer_show(fl[sel].prog, s, fl[sel].f->line);
 		}
 		else if (k == KEY_EXE || k == KEY_F1 || k == KEY_F2) {
 			*run = !fl[sel].f->nparams && k != KEY_F2;
