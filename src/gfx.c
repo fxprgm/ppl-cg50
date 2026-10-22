@@ -39,6 +39,22 @@ void gfx_init(ppl_vm *V)
     if (gfx_dim(V, 0, GFX_W, GFX_H, GFX_WHITE)) { free(G); V->gfx = NULL; }
 }
 
+/* a program starts on a blank screen: G0 white at its full size (on the Prime the screen
+ * holds Home then, not the last program's drawing: angryb draws only rows 0-219 and showed
+ * spiro's DRAWMENU below them) */
+void gfx_clear_screen(ppl_vm *V)
+{
+    gfx_state *G = gfx_get(V);
+    long i, n;
+    if (!G) return;
+    if (G->g[0].w != GFX_W || G->g[0].h != GFX_H || !G->g[0].px) {
+        gfx_dim(V, 0, GFX_W, GFX_H, GFX_WHITE);
+        return;
+    }
+    n = (long)GFX_W * GFX_H;
+    for (i = 0; i < n; i++) G->g[0].px[i] = GFX_WHITE;
+}
+
 void gfx_free(ppl_vm *V)
 {
     int i;

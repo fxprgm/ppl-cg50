@@ -61,6 +61,7 @@ typedef struct gfx_state {
 
 void gfx_init(ppl_vm *V);
 void gfx_free(ppl_vm *V);
+void gfx_clear_screen(ppl_vm *V);   /* G0 white, as a program starts */
 /* G0's row y as RGB565 (320 pixels; rows outside G0 are white) */
 void gfx_row565(ppl_vm *V, int y, uint16_t *dst);
 /* present the changed rows of G0 now (no-op when nothing changed) */

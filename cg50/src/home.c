@@ -1,5 +1,6 @@
 /* Home (home.h). */
 #include "home.h"
+#include "gfx.h"
 #include "host.h"
 #include "clock.h"
 #include "dialogs.h"
@@ -178,6 +179,7 @@ static void run(const char *line)
 	V->errname[0] = 0;
 	io_reset();
 	host_run_start();
+	gfx_clear_screen(V);
 	term_clear();
 	panel_state = "Running";
 	panel_what = line;
