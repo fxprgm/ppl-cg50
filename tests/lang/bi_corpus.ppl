@@ -168,3 +168,31 @@ END;
 //> append([[0.1]],[0.05]) => [[0.1],[0.05]]
 //> append([[1,2]],[3,4]) => [[1,2],[3,4]]
 //> append([[1,2]],[3]) => *error*
+
+// gaussjordan: ref, the row echelon form with leading 1s (giac: [[1,4/3],[0,1]])
+//> ref([[1,2],[3,4]]) => [[1,1.33333333333],[0,1]]
+//> ref([[2,4,6],[1,2,3],[1,0,1]]) => [[1,2,3],[0,1,1],[0,0,0]]
+
+// listapi: a setting called with parentheses
+//> SIZE(Programs())>=1 => 1
+
+// bezier, repeating: TEVAL is the time taken, a measurement in seconds
+//> TYPE(TEVAL(1+1)) => 9
+
+// mathlib: polynomial_regression, coefficients highest power first
+//> polynomial_regression([[1,1],[2,4],[3,9]],2) => [1,0,0]
+//> POLYEVAL(polynomial_regression([[1,1],[2,4],[3,9]],2),2.5) => 6.25
+//> polynomial_regression({1,2,3,4},{2,4,6,8.5},1) => [2.15,-0.25]
+// and a column stored from a one-row matrix, growing the matrix
+//> LOCAL a:=[[0,0],[0,0]]; a(-1):=[[1,2,3]]; a => [[1,0],[2,0],[3,0]]
+
+// elliptic: int with an integrable singularity at an end point (tanh-sinh)
+//> int(1/√(1-X^2),X,0,1) => 1.57079632675
+//> int(1/√((1-X^2)*(1-0.25*X^2)),X,0,1) => 1.68575035476
+//> int(X^2,X,0,3) => 9
+//> int(1/√(X),X,0,1) => 2
+//> int(1/√(1-X^2),X,0,0.999) => 1.52607123963
+//> int(LN(X),X,0,1) => -1
+//> int(1/X,X,1,1000) => 6.90775527898
+// a kink inside: the Gauss-Legendre fallback
+//> int(ABS(X-0.3),X,0,1) => 0.290000236875

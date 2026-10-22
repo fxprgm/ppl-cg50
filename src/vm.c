@@ -658,12 +658,26 @@ static int set_index(ppl_vm *V, value *var, int argc, const value *idx, const va
             return 0;
         }
         if (argc == 1 && i < 0) {
-            /* M(-n):=vector replaces column n */
-            int k;
-            if (val->t != T_MAT || !val->u.m->vec || val->u.m->cols != var->u.m->rows) return E_DIM;
+            /* M(-n):=v replaces column n with a vector or a one-row or one-column matrix; a
+             * longer one adds zero rows (mathlib: a(-1):=data({{1,2},{1,c}}) into a 2x2 a;
+             * assumed from that program, not checked on a Prime) */
+            int k, len;
+            const pmat *q;
+            if (val->t != T_MAT) return E_BADTYPE;
+            q = val->u.m;
+            if (q->vec || q->rows == 1) len = q->cols;
+            else if (q->cols == 1) len = q->rows;
+            else return E_DIM;
             if (-i > var->u.m->cols) return E_INDEX;
+            if (len > var->u.m->rows) {
+                value nv;
+                int n = var->u.m->rows * var->u.m->cols;
+                if ((st = v_mat(&nv, len, var->u.m->cols, 0))) return st;
+                memcpy(nv.u.m->v, var->u.m->v, (size_t)n * sizeof(value));
+                v_decref(var); *var = nv;
+            }
             if (!(m = mat_own(var))) return E_MEM;
-            for (k = 0; k < m->rows; k++) m->v[k * m->cols + (-i - 1)] = val->u.m->v[k];
+            for (k = 0; k < len; k++) m->v[k * m->cols + (-i - 1)] = q->v[k];
             return 0;
         }
         if (argc == 1) {
@@ -1023,6 +1037,14 @@ static int exec(ppl_vm *V, int base)
                 value r;
                 v_none(&r);
                 e = notes_get(V, argc, &S[V->sp - argc], &r);
+                for (k = 0; k < argc; k++) v_decref(&S[--V->sp]);
+                if (e) FAIL(e);
+                S[V->sp++] = r;
+            } else if (k == R_SETTING) {
+                /* Programs(), HVars(): a setting called like a function (listapi) */
+                value t, r;
+                e = vm_setting_get(V, nm, &t);
+                if (!e) { e = vm_index(V, &t, argc, &S[V->sp - argc], &r); v_decref(&t); }
                 for (k = 0; k < argc; k++) v_decref(&S[--V->sp]);
                 if (e) FAIL(e);
                 S[V->sp++] = r;

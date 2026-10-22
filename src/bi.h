@@ -26,7 +26,7 @@ BI(b_iterate); BI(b_listtomat); BI(b_mattolist); BI(b_listfn);
 BI(b_list2mat); BI(b_mat2list); BI(b_remove);
 
 /* matrix built-ins (bi_mat.c) */
-BI(b_makemat); BI(b_idenmat); BI(b_randmat); BI(b_trn); BI(b_det); BI(b_rref);
+BI(b_makemat); BI(b_idenmat); BI(b_randmat); BI(b_trn); BI(b_det); BI(b_rref); BI(b_ref); BI(b_polyreg);
 BI(b_addrow); BI(b_addcol); BI(b_delrow); BI(b_delcol); BI(b_redim);
 BI(b_scale); BI(b_scaleadd); BI(b_sub); BI(b_swaprow); BI(b_swapcol);
 BI(b_dot); BI(b_cross); BI(b_trace); BI(b_rownorm); BI(b_colnorm);

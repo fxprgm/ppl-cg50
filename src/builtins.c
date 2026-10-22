@@ -45,7 +45,7 @@ static const builtin bi_core_table[] = {
     /* matrices */
     { "MAKEMAT", b_makemat, 2, 3, BF_QUOTE1 }, { "IDENMAT", b_idenmat, 1, 1, 0 },
     { "RANDMAT", b_randmat, 1, 4, 0 }, { "TRN", b_trn, 1, 1, 0 }, { "DET", b_det, 1, 1, 0 },
-    { "RREF", b_rref, 1, 1, 0 }, { "ADDROW", b_addrow, 3, 3, BF_INPLACE }, { "ADDCOL", b_addcol, 3, 3, BF_INPLACE },
+    { "RREF", b_rref, 1, 1, 0 }, { "ref", b_ref, 1, 1, 0 }, { "polynomial_regression", b_polyreg, 2, 3, 0 }, { "ADDROW", b_addrow, 3, 3, BF_INPLACE }, { "ADDCOL", b_addcol, 3, 3, BF_INPLACE },
     { "DELROW", b_delrow, 2, 2, BF_INPLACE }, { "DELCOL", b_delcol, 2, 2, BF_INPLACE }, { "REDIM", b_redim, 2, 2, BF_INPLACE },
     { "SCALE", b_scale, 3, 3, BF_INPLACE }, { "SCALEADD", b_scaleadd, 4, 4, BF_INPLACE }, { "SUB", b_sub, 3, 3, 0 },
     { "SWAPROW", b_swaprow, 3, 3, BF_INPLACE }, { "SWAPCOL", b_swapcol, 3, 3, BF_INPLACE },

@@ -44,6 +44,7 @@ int  xn_div(xn *r, const xn *a, const xn *b, int P);
 void xn_mul_int(xn *r, const xn *a, int32_t m, int P);
 int  xn_div_int(xn *r, const xn *a, int32_t m, int P);
 int  xn_sqrt(xn *r, const xn *a, int P);
+int  xn_exp(xn *r, const xn *x, int P);  /* decfn.c; DEC_EOVERFLOW / DEC_EUNDERFLOW */
 void xn_scale10(xn *x, int k);           /* multiply by 10^k (exponent only) */
 int  xn_to_int32(const xn *x, int32_t *v);   /* integer valued, |v| < 2^31 */
 int  xn_digit(const xn *x, int pos);     /* digit at absolute position 10^pos */

@@ -644,7 +644,29 @@ static int magfn(ppl_vm *V, int argc, value *a, value *out, const char *name, co
 MAGFN(u_abs, "ABS") MAGFN(u_ip, "IP") MAGFN(u_fp, "FP") MAGFN(u_floor, "FLOOR")
 MAGFN(u_ceiling, "CEILING") MAGFN(u_round, "ROUND") MAGFN(u_truncate, "TRUNCATE")
 
+/* TEVAL(expr): the time its evaluation takes, in seconds (User Guide: a measurement, as
+ * 0.012_s; bezier, repeating); the clock is the host's millisecond TICKS */
+static BI(b_teval)
+{
+    uint32_t t0, t1;
+    value r;
+    real sec, k;
+    ufac f;
+    int st;
+    (void)argc;
+    t0 = V->ticks ? V->ticks() : 0;
+    if ((st = vm_run_thunk(V, &a[0], &r))) return st;
+    t1 = V->ticks ? V->ticks() : 0;
+    v_decref(&r);
+    dec_from_int(&sec, (int32_t)(t1 - t0));
+    dec_from_int(&k, 1000);
+    dec_div(&sec, &sec, &k);
+    f.id = (uint8_t)cat_find("s", 1); f.pre = 0; f.pow = 1;
+    return mk(out, &sec, &f, 1);
+}
+
 const builtin bi_unit_table[] = {
+    { "TEVAL", b_teval, 1, 1, BF_QUOTE1 },
     { "_UNIT", b_unit, 2, 2, 0 }, { "CONVERT", b_convert, 2, 2, 0 }, { "MKSA", b_mksa, 1, 1, 0 },
     { "UFACTOR", b_ufactor, 2, 2, 0 }, { "USIMPLIFY", b_usimplify, 1, 1, 0 },
     { "UPART", b_upart, 1, 1, 0 }, { "UVAL", b_uval, 1, 1, 0 },

@@ -114,6 +114,8 @@ static int x_exp(xn *r, const xn *x, int P)
     return 0;
 }
 
+int xn_exp(xn *r, const xn *x, int P) { return x_exp(r, x, P); }
+
 static int x_expm1(xn *r, const xn *x, int P)
 {
     xn one;
