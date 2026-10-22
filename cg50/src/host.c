@@ -270,7 +270,8 @@ const builtin host_table[] = {
 	{ "GETKEY", b_getkey, 0, 0, BF_NOPAREN }, { "ISKEYDOWN", b_iskeydown, 1, 1, 0 },
 	{ "WAIT", b_wait, 0, 1, BF_NOPAREN }, { "MOUSE", b_mouse, 0, 1, BF_NOPAREN },
 	{ "INPUT", dlg_input, 1, 6, BF_REF1 }, { "CHOOSE", dlg_choose, 2, -1, BF_REF1 },
-	{ "MSGBOX", dlg_msgbox, 1, 3, 0 }, { "FREEZE", b_freeze, 0, 0, BF_NOPAREN },
+	{ "MSGBOX", dlg_msgbox, 1, 3, 0 },
+	{ "EDITMAT", dlg_editmat, 1, 3, BF_INPLACE }, { "EDITLIST", dlg_editlist, 1, 3, BF_INPLACE }, { "FREEZE", b_freeze, 0, 0, BF_NOPAREN },
 	{ "STARTVIEW", b_startview, 1, 2, 0 },
 #ifdef GFX_STUB
 	{ "RECT", b_rect, 0, -1, BF_NOPAREN }, { "RECT_P", b_rect, 0, -1, BF_NOPAREN },

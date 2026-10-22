@@ -303,6 +303,14 @@ bool io_next_event(int *key, touch_ev_t *t)
 	return false;
 }
 
+void io_flush_touches(void)
+{
+	tq_n = 0;
+	touch.latched = false;
+	if (touch.down && touch.fkey)
+		touch.down = false;       /* the F key that opened it: its release is no touch */
+}
+
 bool io_mouse(int v[5])
 {
 	if (!touch.down && !touch.latched)
