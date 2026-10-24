@@ -185,6 +185,7 @@ void v_real(value *v, const real *r);
 void v_int32(value *v, int32_t n);
 void v_none(value *v);
 int  v_str_utf8(value *v, const char *s, size_t n);
+int  v_sym_utf8(value *v, const char *s, size_t n);
 int  v_str_u16(value *v, const uint16_t *s, uint32_t n);
 pstr *str_new(uint32_t len);
 plist *list_new(uint32_t n);

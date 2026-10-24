@@ -28,14 +28,51 @@
 //> STARTVIEW(-1) => 0
 //> STARTVIEW(6,1) => 0
 
-// bernoulli: numer/denom of a Home real are those of its simplest fraction
+// bernoulli: numer/denom get the expression unevaluated; a quotient of integers is reduced,
+// a decimal real is its own numerator over 1 (Virtual Calculator, 2026-10-23)
 //> numer(-7/12) => -7
 //> denom(-7/12) => 12
 //> {numer(691/2730), denom(691/2730)} => {691,2730}
 //> {numer(6), denom(6)} => {6,1}
-//> {numer(1.4141), denom(1.4141)} => {14141,10000}
-// gradian: exact (guide: exact(1.4141) = 14141/10000), a real here
-//> exact(1/3) => 0.333333333333
+//> {numer(1.4141), denom(1.4141)} => {1.4141,1}
+//> {numer(33.3333333334), denom(0.333333333), denom(0.5)} => {33.3333333334,1,1}
+//> BEGIN LOCAL A:=7,B:=12; RETURN {numer(A/B), denom(A/B)}; END => {7,12}
+//> {numer(14/(-21)), denom(14/(-21)), numer(-(4/6))} => {-2,3,-2}
+//> {numer(0/5), denom(0/5)} => {0,1}
+//> {numer(1.5/3), denom(1.5/3)} => {0.5,1}
+// assumed (giac): numer/denom of exact's fraction
+//> {numer(exact(0.25)), denom(exact(-0.25))} => {1,4}
+// gradian: exact is giac's exact_double on the Prime's binary value of x (the mantissa cut
+// to 48 bits), eps 1E-12; the answer is a CAS fraction, TYPE 8 (Virtual Calculator, 2026-10-23)
+//> exact(33.3333333334) => 100/3
+//> exact(0.3333333333) => 1/3
+//> exact(0.333333333) => 333332121/999996364
+//> exact(0.33333333) => 33333318/99999955
+//> exact(0.3333333) => 3333332/9999997
+//> exact(333333.333333) => 332016333333/996049
+//> exact(333333.3333) => 239986999976/719961
+//> exact(3333333333.33) => 3333333333
+//> exact(0.000333333333) => 999997/2999991003
+//> exact(3.14159265359) => 5419351/1725033
+//> exact(1.41421356237) => 1217471/860882
+//> exact(1.4141) => 14141/10000
+//> exact(0.1428571) => 1428571/10000000
+//> exact(99.9999999997) => 100
+//> exact(99.999999997) => 33328633799/333286338
+//> exact(2.71828182846) => 3820276/1405401
+//> exact(12345678.5) => 24691357/2
+//> exact(5000000.25) => 20000001/4
+//> exact(0.5-0.833333333333) => -1/3
+//> TYPE(exact(0.5)) => 8
+//> approx(exact(33.3333333334)) => 33.3333333333
+//> evalf(exact(-0.25)) => -0.25
+// the Prime shows 333336858/1.000010574E12 (the denominator rounded on screen)
+//> exact(0.000333333333333) => 333336858/1000010574001
+// assumed (giac): far from 1, floor(|x|) or 1/floor(1/|x|); a list element by element
+//> exact(-1E20) => -1E20
+//> exact(1E-20) => 1/100000000000000000000
+//> exact({0.5,4}) => {1/2,4}
+//> approx({exact(0.5),2}) => {0.5,2}
 // repeating, primroot: ifactors (guide: ifactors(150) = [2,1,3,1,5,2])
 //> ifactors(150) => [2,1,3,1,5,2]
 //> ifactors(1) => []

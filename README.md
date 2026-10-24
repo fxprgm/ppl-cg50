@@ -5,7 +5,8 @@ fx-CG50. This repository holds the language core: a compiler to bytecode, a virt
 and a decimal number type that reproduces the Prime's 12-digit Home arithmetic. It is
 developed and tested on a desktop first.
 
-- Portable C11: no floating point, no endianness or alignment assumptions, 32-bit friendly
+- Portable C11: no floating point (one exception: `src/exact.c`, because the Prime's `exact()`
+  works on binary doubles), no endianness or alignment assumptions, 32-bit friendly
   (the target is an SH-4 without FPU).
 - `make` builds `build/ppl`, the desktop runner:
   - `build/ppl run prog.hppl "F(3)"` loads a program and evaluates expressions;

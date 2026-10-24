@@ -134,6 +134,19 @@ int v_str_utf8(value *v, const char *s, size_t n)
     return 0;
 }
 
+/* a symbolic object (a quoted expression, a CAS answer such as 100/3) of UTF-8 text */
+int v_sym_utf8(value *v, const char *s, size_t n)
+{
+    value t;
+    psym *y = (psym *)malloc(sizeof(psym));
+    if (!y) return E_MEM;
+    if (v_str_utf8(&t, s, n)) { free(y); return E_MEM; }
+    y->h.rc = 1; y->text = t.u.s;
+    v_none(v);
+    v->t = T_SYM; v->u.y = y;
+    return 0;
+}
+
 int v_str_u16(value *v, const uint16_t *s, uint32_t n)
 {
     pstr *p = str_new(n);

@@ -457,6 +457,23 @@ static void ccall(comp *C, node *n)
         return;
     }
     if ((b = bi_lookup(nm)) != NULL || (!strchr(nm, '.') && (b = bi_lookup_any(nm)) != NULL)) {
+        if (n->nkids == 1 && (b == bi_lookup("numer") || b == bi_lookup("denom"))) {
+            /* numer(A/B): the CAS gets the quotient unevaluated (A = 7, B = 12 give 7 and
+             * 12 on the Prime), so its two sides go to numer/ or denom/ */
+            node *k = n->kids[0];
+            int neg = 0;
+            while (k->type == N_NEG) { neg ^= 1; k = k->a; }
+            if (k->type == N_BIN && k->op == OP_DIV) {
+                cexpr(C, k->a);
+                if (neg) emit(C, BC_NEG);
+                cexpr(C, k->b);
+                mark_line(C, n->line);
+                emit(C, BC_CALLB);
+                emit16(C, bi_id(bi_lookup(b == bi_lookup("numer") ? "numer/" : "denom/")));
+                emit(C, 2);
+                return;
+            }
+        }
         call_builtin(C, n, b, n->nkids);
         return;
     }
@@ -521,12 +538,8 @@ static void cexpr(comp *C, node *n)
     }
     case N_NAME: cname(C, n); break;
     case N_SYM: {
-        value v, t;
-        psym *y = (psym *)malloc(sizeof(psym));
-        v_str_utf8(&t, n->name ? n->name : "", n->nlen);
-        if (!y) { cerr(C, n->line, "out of memory"); break; }
-        y->h.rc = 1; y->text = t.u.s;
-        v_none(&v); v.t = T_SYM; v.u.y = y;
+        value v;
+        if (v_sym_utf8(&v, n->name ? n->name : "", n->nlen)) { cerr(C, n->line, "out of memory"); break; }
         emit(C, BC_CONST); emit16(C, add_const(C, &v));
         v_decref(&v);
         break;

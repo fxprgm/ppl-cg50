@@ -3,10 +3,12 @@
 
 CC      ?= cc
 CFLAGS  ?= -std=c11 -Wall -Wextra -O2 -g
+# exact.c's doubles must round as on the SH-4: no fused multiply-add (arm64 has one)
+CFLAGS  += -ffp-contract=off
 SAN     ?=
 CORE    = src/dec.c src/decfn.c src/decfmt.c src/value.c src/arith.c \
           src/parse.c src/compile.c src/vm.c src/builtins.c src/bi_math.c \
-          src/bi_misc.c src/bi_list.c src/bi_mat.c src/bi_prob.c src/bi_cas.c src/hpprgm.c src/units.c \
+          src/bi_misc.c src/bi_list.c src/bi_mat.c src/bi_prob.c src/bi_cas.c src/exact.c src/hpprgm.c src/units.c \
           src/gfx.c src/bi_gfx.c src/font/gfx_font.c
 HDRS    = $(wildcard src/*.h)
 
@@ -27,7 +29,7 @@ asan:
 	$(MAKE) clean
 	$(MAKE) SAN="-fsanitize=address,undefined" CFLAGS="-std=c11 -Wall -Wextra -O1 -g"
 
-test: all fmtcheck
+test: all fmtcheck floatcheck
 	./build/test_dec
 	./tests/run_tests.sh
 
@@ -36,6 +38,11 @@ test: all fmtcheck
 fmtcheck:
 	@! grep -nE '%[-+ #0]*([0-9]*\.)?\*' src/*.c cg50/src/*.c || \
 	  { echo "printf '*' width/precision: fxlibc does not support it"; exit 1; }
+
+# Home reals are decimal: floating point only in src/exact.c (the Prime's exact() is binary)
+floatcheck:
+	@! grep -nwE 'float|double' $(filter-out src/exact.c,$(wildcard src/*.c src/*.h)) cg50/src/*.c cg50/src/*.h || \
+	  { echo "floating point outside src/exact.c"; exit 1; }
 
 conform: build/ppl
 	./build/ppl conform tests/conformance/hpkit_cases.tsv > build/conform.txt
@@ -62,4 +69,4 @@ fonts:
 	echo "c80858440d8fb618e0ac5ff6f16251dbfa6b3316f00f3cdd17d477297dd87b04  $(FONTDIR)/freefont-20120503/FreeSans.ttf" | shasum -a 256 -c
 	python3 -I tools/mkfont.py $(FONTDIR)/DroidSans.ttf $(FONTDIR)/freefont-20120503/FreeSans.ttf > src/font/gfx_font.c
 
-.PHONY: all asan test fmtcheck conform sh4size clean fonts
+.PHONY: all asan test fmtcheck floatcheck conform sh4size clean fonts

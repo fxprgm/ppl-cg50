@@ -5,6 +5,7 @@
  * call fails with "Not supported". */
 #include "bi.h"
 #include "decx.h"
+#include "exact.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -192,7 +193,23 @@ static BI(b_member)
     return 0;
 }
 
-static BI(b_approx) { (void)V; (void)argc; v_copy(out, &a[0]); return 0; }
+/* approx/evalf: a symbolic value such as exact's 100/3 is evaluated (gradian.ppl:
+ * approx(exact(...))); reals stay as they are */
+static BI(b_approx)
+{
+    if (a[0].t == T_SYM) return b_expr(V, 1, a, out);
+    if (a[0].t == T_LIST) {
+        uint32_t i;
+        int st;
+        if ((st = v_list(out, a[0].u.l->n))) return st;
+        for (i = 0; i < a[0].u.l->n; i++)
+            if ((st = b_approx(V, 1, &a[0].u.l->v[i], &out->u.l->v[i]))) { v_decref(out); return st; }
+        return 0;
+    }
+    (void)argc;
+    v_copy(out, &a[0]);
+    return 0;
+}
 
 static BI(b_cat)
 {
@@ -543,45 +560,103 @@ static BI(b_integral)
     return 0;
 }
 
-/* ---- exact rationals of reals: numer, denom, exact ---- */
+/* ---- numer, denom, exact (measured on the Virtual Calculator 2026-10-23) ---- */
 
-/* the simplest fraction p/q (a continued-fraction convergent) that rounds to x
- * at 12 digits; p carries the sign.  Returns 1 when x is out of reach (its
- * denominator would pass 10^18): then p = x, q = 1. */
-static int real_frac(const real *x, real *p, real *q)
+/* the decimal digits of u */
+static size_t u64_text(uint64_t u, char *s)
 {
-    uint64_t M = (uint64_t)x->m[0] * 100000000u + (uint64_t)x->m[1] * 10000u + x->m[2], N, D = 1;
-    uint64_t h1 = 1, h2 = 0, k1 = 0, k2 = 1, n, d;
-    int e = x->e - 11, i;
-    real ax;
-    dec_abs(&ax, x);
-    dec_from_int(q, 1);
-    if (dec_is_zero(x) || x->k != DEC_FINITE) { *p = *x; return 0; }
-    while (M % 10 == 0) { M /= 10; e++; }
-    if (e >= 0) { *p = *x; return 0; }            /* an integer */
-    if (e < -18) { *p = *x; return 1; }
-    for (i = 0; i < -e; i++) D *= 10;
-    N = M;
-    n = N; d = D;
-    while (d) {
-        uint64_t aq = n / d, h = aq * h1 + h2, k = aq * k1 + k2, r = n - aq * d;
-        real rh, rk, t;
-        h2 = h1; h1 = h; k2 = k1; k1 = k;
-        n = d; d = r;
-        dec_from_u64(&rh, (uint32_t)(h >> 32), (uint32_t)h);
-        dec_from_u64(&rk, (uint32_t)(k >> 32), (uint32_t)k);
-        if (!d || (!dec_div(&t, &rh, &rk) && !dec_cmp(&t, &ax))) { *p = rh; *q = rk; break; }
-    }
-    p->s = x->s;
-    return 0;
+    char t[20];
+    size_t n = 0, k = 0;
+    do { t[n++] = (char)('0' + u % 10); u /= 10; } while (u);
+    while (n) s[k++] = t[--n];
+    return k;
 }
 
-/* numer/denom of a real: of its simplest fraction (bernoulli.ppl builds exact
- * fractions with numer(A/B), denom(A/B) from Home reals; the Prime's CAS sees
- * them exactly, assumed) */
+/* the digits of a positive integer-valued real (1 <= r < 10^500) */
+static size_t int_text(const real *r, char *s)
+{
+    char d[12];
+    size_t k = 0;
+    int i;
+    for (i = 0; i < 3; i++) {
+        d[4 * i] = (char)('0' + r->m[i] / 1000); d[4 * i + 1] = (char)('0' + r->m[i] / 100 % 10);
+        d[4 * i + 2] = (char)('0' + r->m[i] / 10 % 10); d[4 * i + 3] = (char)('0' + r->m[i] % 10);
+    }
+    for (i = 0; i <= r->e; i++) s[k++] = i < 12 ? d[i] : '0';
+    return k;
+}
+
+/* |r| as an integer when r is one below 10^18 */
+static int real_u64(const real *r, uint64_t *u)
+{
+    uint64_t M = (uint64_t)r->m[0] * 100000000u + (uint64_t)r->m[1] * 10000u + r->m[2];
+    int e;
+    if (r->k != DEC_FINITE) return 0;
+    if (dec_is_zero(r)) { *u = 0; return 1; }
+    if (r->e < 0 || r->e > 17) return 0;
+    for (e = r->e; e < 11; e++) { if (M % 10) return 0; M /= 10; }
+    for (; e > 11; e--) M *= 10;
+    *u = M;
+    return 1;
+}
+
+/* the CAS fraction p/q: an integer is a real, anything else the symbolic p/q (TYPE 8) */
+static int frac_value(int neg, uint64_t p, uint64_t q, value *out)
+{
+    char s[46];
+    size_t k = 0;
+    if (q == 1 || !p) {
+        real r;
+        dec_from_u64(&r, (uint32_t)(p >> 32), (uint32_t)p);
+        if (neg && p) r.s = 1;
+        v_real(out, &r);
+        return 0;
+    }
+    if (neg) { memcpy(s, "\xE2\x88\x92", 3); k = 3; }       /* the minus sign of reals, U+2212 */
+    k += u64_text(p, s + k);
+    s[k++] = '/';
+    k += u64_text(q, s + k);
+    return v_sym_utf8(out, s, k);
+}
+
+/* exact(x): the Prime's CAS fraction of x (exact.c, in binary as the Prime): exact(33.3333333334)
+ * is 100/3, exact(99.9999999997) 100; far from 1, floor(|x|) or 1/floor(1/|x|) */
+static int r_exact(ppl_vm *V, const real *x, value *out)
+{
+    uint64_t p, q;
+    real ax, n, one;
+    char s[520];
+    size_t k = 0;
+    (void)V;
+    if (x->k != DEC_FINITE) { v_real(out, x); return 0; }
+    dec_abs(&ax, x);
+    switch (exact_frac(x, &p, &q)) {
+    case EX_FRAC: return frac_value(x->s, p, q, out);
+    case EX_FLOOR:
+        dec_floor(&n, &ax);
+        n.s = x->s;
+        v_real(out, &n);
+        return 0;
+    case EX_INVFLOOR:
+        dec_from_int(&one, 1);
+        dec_div(&n, &one, &ax);
+        dec_floor(&n, &n);
+        if (x->s) { memcpy(s, "\xE2\x88\x92", 3); k = 3; }
+        s[k++] = '1'; s[k++] = '/';
+        k += int_text(&n, s + k);
+        return v_sym_utf8(out, s, k);
+    default:                    /* past 64 bits: kept as it is */
+        v_real(out, x);
+        return 0;
+    }
+}
+static BI(b_exact) { (void)argc; if (a[0].t == T_CPLX) { v_copy(out, &a[0]); return 0; } return ar_map1(V, &a[0], r_exact, NULL, out); }
+
+/* numer/denom of a value: a real is its own numerator over 1 (numer(1.4141) = 1.4141 on the
+ * Prime: the CAS does not convert a decimal); a CAS fraction p/q from exact gives p and q */
 static int frac_part(const value *v, value *out, int den)
 {
-    real x, p, q;
+    real x;
     if (v->t == T_LIST) {
         uint32_t i;
         int st;
@@ -589,24 +664,51 @@ static int frac_part(const value *v, value *out, int den)
         for (i = 0; i < v->u.l->n; i++) if ((st = frac_part(&v->u.l->v[i], &out->u.l->v[i], den))) { v_decref(out); return st; }
         return 0;
     }
+    if (v->t == T_SYM) {
+        const pstr *t = v->u.y->text;
+        uint64_t pq[2] = { 0, 0 };
+        uint32_t i = 0;
+        int neg = 0, j = 0, nd = 0;
+        if (t->len && (t->c[0] == '-' || t->c[0] == 0x2212)) { neg = 1; i = 1; }
+        for (; i < t->len; i++) {
+            if (t->c[i] >= '0' && t->c[i] <= '9' && pq[j] < 100000000000000000u) { pq[j] = pq[j] * 10 + (t->c[i] - '0'); nd++; }
+            else if (t->c[i] == '/' && !j && nd) { j = 1; nd = 0; }
+            else break;
+        }
+        if (i == t->len && j && nd && pq[1]) return frac_value(den ? 0 : neg, pq[den], 1, out);
+        return E_BADTYPE;
+    }
     if (bi_real(v, &x)) return E_BADTYPE;
-    real_frac(&x, &p, &q);
-    v_real(out, den ? &q : &p);
+    if (den) dec_from_int(&x, 1);
+    v_real(out, &x);
     return 0;
 }
 static BI(b_numer) { (void)V; (void)argc; return frac_part(&a[0], out, 0); }
 static BI(b_denom) { (void)V; (void)argc; return frac_part(&a[0], out, 1); }
 
-/* exact(x): the simplest fraction, shown as a real here (gradian.ppl calls
- * approx(exact(...)); User Guide: exact(1.4141) = 14141/10000) */
-static int r_exact(ppl_vm *V, const real *x, value *out)
+/* numer(a/b), denom(a/b): the compiler passes a quotient's two sides (the CAS gets the
+ * expression unevaluated: numer(A/B) = 7 for A = 7, B = 12; bernoulli.ppl); integers
+ * give the reduced fraction, anything else the quotient's numer/denom */
+static int quot_part(ppl_vm *V, const value *a, value *out, int den)
 {
-    real p, q, r = {{0, 0, 0}, 0, 0, 0};
-    (void)V;
-    real_frac(x, &p, &q);
-    return bi_fin(out, &r, dec_div(&r, &p, &q));
+    real x, y;
+    uint64_t p, q, g, r;
+    int st;
+    if (!bi_real(&a[0], &x) && !bi_real(&a[1], &y) && real_u64(&x, &p) && real_u64(&y, &q) && q) {
+        for (g = p, r = q; r; ) { uint64_t t = g % r; g = r; r = t; }
+        if (!den) return frac_value(x.s != y.s, p / g, 1, out);
+        return frac_value(0, q / g, 1, out);
+    }
+    {
+        value t;
+        if ((st = ar_binary(V, OP_DIV, &a[0], &a[1], &t))) return st;
+        st = frac_part(&t, out, den);
+        v_decref(&t);
+        return st;
+    }
 }
-static BI(b_exact) { (void)argc; if (a[0].t == T_CPLX) { v_copy(out, &a[0]); return 0; } return ar_map1(V, &a[0], r_exact, NULL, out); }
+static BI(b_numerq) { (void)argc; return quot_part(V, a, out, 0); }
+static BI(b_denomq) { (void)argc; return quot_part(V, a, out, 1); }
 
 /* ifactors(n) (giac): [p1, e1, p2, e2, ...] as a vector, primes increasing;
  * ifactors(1) = []; |n| below 10^12 */
@@ -883,7 +985,7 @@ const builtin bi_cas2_table[] = {
     { "\xE2\x88\xAB", b_integral, 4, 4, BF_QUOTE1 | BF_QUOTE2 },     /* ∫ */
     { "fsolve", bi_fnroot_impl, 3, 3, BF_QUOTE1 | BF_QUOTE2 },
     { "int", b_integral, 4, 4, BF_QUOTE1 | BF_QUOTE2 },              /* CAS integrate */
-    { "numer", b_numer, 1, 1, 0 }, { "denom", b_denom, 1, 1, 0 }, { "exact", b_exact, 1, 1, 0 },
+    { "numer", b_numer, 1, 1, 0 }, { "denom", b_denom, 1, 1, 0 }, { "numer/", b_numerq, 2, 2, 0 }, { "denom/", b_denomq, 2, 2, 0 }, { "exact", b_exact, 1, 1, 0 },
     { "ifactors", b_ifactors, 1, 1, 0 },
     { "product", b_product, 1, 5, BF_QUOTE1 | BF_QUOTE2 },
     { "polar_coordinates", b_polar, 1, 2, 0 }, { "rectangular_coordinates", b_rect, 1, 2, 0 },
