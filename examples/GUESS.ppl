@@ -1,0 +1,20 @@
+// GUESS: a number guessing game with INPUT, MSGBOX and CHOOSE.
+EXPORT GUESS()
+BEGIN
+  LOCAL secret, g, tries, again := 1;
+  WHILE again == 1 DO
+    secret := RANDINT(1, 100);
+    tries := 0;
+    g := 0;
+    WHILE g <> secret DO
+      IF NOT INPUT(g, "Guess", "1-100: ", "A number from 1 to 100") THEN RETURN; END;
+      tries := tries + 1;
+      IF g < secret THEN MSGBOX(g + " is too small");
+      ELSE
+        IF g > secret THEN MSGBOX(g + " is too big"); END;
+      END;
+    END;
+    MSGBOX("Yes, " + secret + ", in " + tries + " tries");
+    CHOOSE(again, "Again?", "Play again", "Stop");
+  END;
+END;

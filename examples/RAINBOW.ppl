@@ -1,0 +1,30 @@
+// RAINBOW: G0 graphics: rays and circles in every hue. Any key ends it.
+hue(h)
+BEGIN
+  LOCAL s := (h MOD 360)/60, i := IP(s), f := FP(s), q := 255*(1-f), t := 255*f;
+  CASE
+    IF i == 0 THEN RETURN RGB(255, t, 0); END;
+    IF i == 1 THEN RETURN RGB(q, 255, 0); END;
+    IF i == 2 THEN RETURN RGB(0, 255, t); END;
+    IF i == 3 THEN RETURN RGB(0, q, 255); END;
+    IF i == 4 THEN RETURN RGB(t, 0, 255); END;
+    DEFAULT RETURN RGB(255, 0, q);
+  END;
+END;
+
+EXPORT RAINBOW()
+BEGIN
+  LOCAL k, a, r, h := HAngle;
+  HAngle := 0;
+  RECT_P(0, 0, 319, 239, RGB(12, 12, 28));
+  FOR k FROM 0 TO 357 STEP 3 DO
+    a := k*π/180;
+    LINE_P(160, 120, 160 + 110*COS(a), 120 + 110*SIN(a), hue(k));
+  END;
+  FOR r FROM 100 DOWNTO 10 STEP 10 DO
+    ARC_P(160, 120, r, hue(4*r));
+  END;
+  TEXTOUT_P("HP PPL on the fx-CG50", 92, 222, 2, RGB(255, 255, 255));
+  HAngle := h;
+  WAIT(-1);
+END;

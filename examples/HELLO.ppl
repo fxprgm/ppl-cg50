@@ -1,0 +1,15 @@
+// HELLO: the PRINT terminal, loops and exact decimal arithmetic.
+EXPORT HELLO()
+BEGIN
+  LOCAL n, f := 1;
+  PRINT();
+  PRINT("Hello from HP PPL on the fx-CG50");
+  PRINT("");
+  FOR n FROM 1 TO 12 DO
+    f := f*n;
+    PRINT(n + "! = " + f);
+  END;
+  PRINT("");
+  PRINT("0.1+0.2 = " + (0.1+0.2));
+  PRINT("1/3 = " + 1/3);
+END;
