@@ -48,18 +48,58 @@ int utf16le_start(const uint8_t *buf, size_t n)
     return zeros * 4 >= pairs * 3 ? 0 : -1;
 }
 
+/* HP's container of 2013-2017 (before the 7C 61 8A B2 magic): [u32 hlen][hlen bytes, the name
+ * as "1ASTEROID"][u32 slen][slen bytes of UTF-16LE source], nothing after it (asteroid.zip of
+ * 2013, snake.zip and lightsout.zip on hpcalc.org).  The lengths must add up to the file's
+ * size exactly.  -> the source's offset (*slen its bytes), or 0. */
+static size_t old_source_at(const uint8_t *buf, size_t n, uint32_t *slen)
+{
+    uint32_t h, s, i;
+    if (n < 12) return 0;
+    h = rd32le(buf);
+    if (h < 8 || h > 512 || (size_t)h + 8 > n) return 0;
+    s = rd32le(buf + 4 + h);
+    if ((size_t)h + 8 + s != n || (s & 1) || s < 2) return 0;
+    for (i = 0; i < 8 && 2 * i < s; i++)                 /* it starts with text */
+        if (!buf[8 + h + 2 * i] && !buf[9 + h + 2 * i]) return 0;
+    *slen = s;
+    return (size_t)h + 8;
+}
+
 int hpprgm_is(const uint8_t *buf, size_t n)
 {
-    return n >= 12 && buf[0] == 0x7C && buf[1] == 0x61 && buf[2] == 0x8A && buf[3] == 0xB2;
+    uint32_t s;
+    if (n >= 12 && buf[0] == 0x7C && buf[1] == 0x61 && buf[2] == 0x8A && buf[3] == 0xB2) return 1;
+    return old_source_at(buf, n, &s) != 0;
+}
+
+/* units UTF-16LE characters at p -> malloc'd UTF-8 in *out (length *outn) */
+static int u16le_to_utf8(const uint8_t *p, uint32_t units, char **out, size_t *outn)
+{
+    uint32_t i;
+    uint16_t *u = (uint16_t *)malloc((units + 1) * sizeof(uint16_t));
+    if (!u) return E_MEM;
+    for (i = 0; i < units; i++) u[i] = (uint16_t)(p[2 * i] | (p[2 * i + 1] << 8));
+    *outn = u16_to_utf8(NULL, u, units);
+    *out = (char *)malloc(*outn + 1);
+    if (!*out) { free(u); return E_MEM; }
+    u16_to_utf8(*out, u, units);
+    (*out)[*outn] = 0;
+    free(u);
+    return 0;
 }
 
 /* -> malloc'd UTF-8 source in *out (length *outn); 0 or E_SYNTAX */
 int hpprgm_source(const uint8_t *buf, size_t n, char **out, size_t *outn)
 {
     size_t o, best_start = 0, best_len = 0, best_end = 0;
-    uint16_t *u;
-    uint32_t units, i;
+    uint32_t units, slen;
     if (!hpprgm_is(buf, n)) return E_SYNTAX;
+    if (buf[0] != 0x7C && (o = old_source_at(buf, n, &slen)) != 0) {
+        units = slen / 2;
+        if (units && !buf[o + 2 * units - 2] && !buf[o + 2 * units - 1]) units--;   /* a NUL */
+        return u16le_to_utf8(buf + o, units, out, outn);
+    }
     for (o = 12; o + 10 <= n; o++) {
         uint32_t len = rd32le(buf + o);
         size_t end;
@@ -76,14 +116,5 @@ int hpprgm_source(const uint8_t *buf, size_t n, char **out, size_t *outn)
     }
     if (!best_len) return E_SYNTAX;
     units = (uint32_t)((best_end - (best_start + 8)) / 2) - 1;   /* without the NUL */
-    u = (uint16_t *)malloc((units + 1) * sizeof(uint16_t));
-    if (!u) return E_MEM;
-    for (i = 0; i < units; i++) u[i] = (uint16_t)(buf[best_start + 8 + 2 * i] | (buf[best_start + 9 + 2 * i] << 8));
-    *outn = u16_to_utf8(NULL, u, units);
-    *out = (char *)malloc(*outn + 1);
-    if (!*out) { free(u); return E_MEM; }
-    u16_to_utf8(*out, u, units);
-    (*out)[*outn] = 0;
-    free(u);
-    return 0;
+    return u16le_to_utf8(buf + best_start + 8, units, out, outn);
 }
