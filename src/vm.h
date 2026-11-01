@@ -285,6 +285,7 @@ pfunc *vm_find_func(ppl_vm *V, const char *name, int exported_only);
 
 /* .hpprgm files (hpprgm.c) */
 int hpprgm_is(const uint8_t *buf, size_t n);
+int utf16le_start(const uint8_t *buf, size_t n);
 int hpprgm_source(const uint8_t *buf, size_t n, char **out, size_t *outn);
 
 /* system variable ids (sysvars[]) */

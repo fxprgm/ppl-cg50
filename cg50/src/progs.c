@@ -69,7 +69,8 @@ void progs_line(const char *name, int line, char *out, int n)
 	}
 }
 
-/* the file's text as UTF-8: HP's binary .hpprgm, UTF-16LE with a byte-order mark, or UTF-8 */
+/* the file's text as UTF-8: HP's binary .hpprgm, UTF-16LE (with a byte-order mark, or HP's old
+   .hpprgm without one), or UTF-8 */
 static char *source_of(char *buf, int n, int *outn)
 {
 	if (hpprgm_is((const uint8_t *)buf, n)) {
@@ -80,13 +81,14 @@ static char *source_of(char *buf, int n, int *outn)
 		*outn = sn;
 		return src;
 	}
-	if (n >= 2 && (uint8_t)buf[0] == 0xFF && (uint8_t)buf[1] == 0xFE) {
-		uint32_t units = (n - 2) / 2;
+	int at = utf16le_start((const uint8_t *)buf, n);
+	if (at >= 0) {
+		uint32_t units = (n - at) / 2;
 		uint16_t *u = malloc(units * 2 + 2);
 		if (!u)
 			return NULL;
 		for (uint32_t i = 0; i < units; i++)
-			u[i] = (uint8_t)buf[2 + 2 * i] | (uint8_t)buf[3 + 2 * i] << 8;
+			u[i] = (uint8_t)buf[at + 2 * i] | (uint8_t)buf[at + 1 + 2 * i] << 8;
 		size_t k = u16_to_utf8(NULL, u, units);
 		char *o = malloc(k + 1);
 		if (o) {
@@ -194,7 +196,7 @@ static bool is_program(const char *name)
 {
 	const char *d = strrchr(name, '.');
 	return d && (!strcasecmp(d, ".hpprgm") || !strcasecmp(d, ".ppl") || !strcasecmp(d, ".txt") ||
-	             !strcasecmp(d, ".hppl") || !strcasecmp(d, ".prgm"));
+	             !strcasecmp(d, ".hppl") || !strcasecmp(d, ".hpppl") || !strcasecmp(d, ".prgm"));
 }
 
 static void scan(void)

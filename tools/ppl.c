@@ -178,12 +178,13 @@ static char *read_file(const char *path, size_t *n)
         *n = sn;
         return src;
     }
-    /* UTF-16LE text (with a byte-order mark): convert to UTF-8 */
-    if (*n >= 2 && (unsigned char)buf[0] == 0xFF && (unsigned char)buf[1] == 0xFE) {
-        size_t units = (*n - 2) / 2, i, k;
+    /* UTF-16LE text (with a byte-order mark, or HP's old .hpprgm without one): to UTF-8 */
+    int at = utf16le_start((const uint8_t *)buf, *n);
+    if (at >= 0) {
+        size_t units = (*n - (size_t)at) / 2, i, k;
         uint16_t *u = (uint16_t *)malloc(units * sizeof(uint16_t) + 2);
         char *o;
-        for (i = 0; i < units; i++) u[i] = (uint16_t)((unsigned char)buf[2 + 2 * i] | ((unsigned char)buf[3 + 2 * i] << 8));
+        for (i = 0; i < units; i++) u[i] = (uint16_t)((unsigned char)buf[at + 2 * i] | ((unsigned char)buf[at + 1 + 2 * i] << 8));
         k = u16_to_utf8(NULL, u, (uint32_t)units);
         o = (char *)malloc(k + 1);
         u16_to_utf8(o, u, (uint32_t)units);

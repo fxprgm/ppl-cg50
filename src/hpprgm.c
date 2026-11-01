@@ -32,6 +32,22 @@ static int text_like(const uint8_t *p, uint32_t units)
     return bad * 50 <= units;
 }
 
+/* where UTF-16LE text starts in a file: 2 after a byte-order mark, 0 for text without one
+ * (HP's older .hpprgm files are only the program text in UTF-16LE: breakout.hpprgm, 2014),
+ * -1 when the file is not UTF-16LE.  Without a mark: UTF-8 has no NUL bytes, while UTF-16LE
+ * program text has one in the high byte of nearly every character. */
+int utf16le_start(const uint8_t *buf, size_t n)
+{
+    size_t i, m = n < 1024 ? n : 1024, pairs = m / 2, zeros = 0;
+    if (n >= 2 && buf[0] == 0xFF && buf[1] == 0xFE) return 2;
+    if (pairs < 2 || !buf[0]) return -1;
+    for (i = 0; i < pairs; i++) {
+        if (!buf[2 * i]) return -1;            /* a NUL low byte: not text */
+        if (!buf[2 * i + 1]) zeros++;
+    }
+    return zeros * 4 >= pairs * 3 ? 0 : -1;
+}
+
 int hpprgm_is(const uint8_t *buf, size_t n)
 {
     return n >= 12 && buf[0] == 0x7C && buf[1] == 0x61 && buf[2] == 0x8A && buf[3] == 0xB2;
