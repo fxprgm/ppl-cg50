@@ -57,6 +57,11 @@ running program.
 - More than a hundred programs published for the Prime on hpcalc.org (games, demos and
   calculation tools) have been tried on a real fx-CG50.
 
+Programs can be copied as the Prime's own files. [SameGame 1.4](https://www.hpcalc.org/details/8796)
+by Tony Gallo runs from its `SameGame.hpprgm`, just as it was downloaded:
+
+<img src="docs/images/samegame.png" width="396" alt="SameGame 1.4 by Tony Gallo, from its .hpprgm file, on the fx-CG50">
+
 **Yes, serious programs run too.**
 [AstroCalc](https://github.com/placidanomaly/HPPrimeSightReduction) by Charles Vaillancourt is
 a celestial-navigation almanac of about 4,000 lines, with the VSOP87 series for the Earth's
