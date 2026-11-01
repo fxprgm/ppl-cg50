@@ -71,6 +71,7 @@ static void flush_screen(void)
 #define FMAX 40
 #define ROWS_PER_PAGE 7          /* the Prime: at most seven lines of controls per page */
 enum { F_EDIT, F_CHECK, F_CHOOSE };
+#define CHECK_W 17            /* a check box's square, in pixels */
 typedef struct {
 	value ref, val;
 	int kind, group;          /* F_CHECK: radio group size (1 = a plain check box) */
@@ -225,7 +226,7 @@ static void input_layout(field_t *f, int n)
 		for (int i = 0; i < n; i++) {
 			f[i].line = i;
 			f[i].x = 8 + lw + 6;
-			f[i].w = DWIDTH - 8 - f[i].x;
+			f[i].w = f[i].kind == F_CHECK ? CHECK_W : DWIDTH - 8 - f[i].x;
 			f[i].lx0 = 8;
 		}
 		return;
@@ -235,6 +236,12 @@ static void input_layout(field_t *f, int n)
 		if (x < 2) x = 2;
 		if (x > DWIDTH - 6) x = DWIDTH - 6;
 		if (x + w > DWIDTH - 4) w = DWIDTH - 4 - x;
+		/* a check box is a square of its own size, whatever the width (bonds.ppl gives
+		   2%, which the Prime's box ignores) */
+		if (f[i].kind == F_CHECK) {
+			w = CHECK_W;
+			if (x > DWIDTH - 4 - w) x = DWIDTH - 4 - w;
+		}
 		f[i].line = f[i].pos[2], f[i].x = x, f[i].w = w;
 	}
 	/* a label may use the room between the field before it on its line and its field */
@@ -267,6 +274,17 @@ static void input_draw(ppl_vm *V, const char *title, field_t *f, int n, int sel,
 				text_draw(FONT, f[i].lx0, y + 3, f[i].label, C_BLACK, -1, room / 6);
 		}
 		bool s = i == sel;
+		if (f[i].kind == F_CHECK) {  /* a square box, ticked when on */
+			int bx = vx, by = y + 1;
+			drect_border(bx, by, bx + CHECK_W - 1, by + CHECK_W - 1, s ? C_RGB(29, 30, 31) : C_WHITE,
+				1, s ? C_SEL : C_LABEL);
+			if (truth(&f[i].val))
+				for (int t = 0; t < 2; t++) {
+					dline(bx + 3, by + 8 + t, bx + 6, by + 11 + t, C_SEL);
+					dline(bx + 6, by + 11 + t, bx + 12, by + 4 + t, C_SEL);
+				}
+			continue;
+		}
 		if (w < 4) {               /* a zero-width field: only a mark when selected */
 			if (s)
 				drect(vx, y, vx + 3, y + 18, C_SEL);
