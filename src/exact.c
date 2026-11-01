@@ -2,8 +2,8 @@
  *
  * The one file of the core with floating point (`make floatcheck` keeps it so): the
  * Prime's answer comes from binary doubles, so only doubles give the same fractions.
- * Measured on the Virtual Calculator 2026-10-23 (notes/ppl.md, "Built-ins for the corpus
- * programs"): the Home real becomes a double whose mantissa is truncated to 48 bits, then
+ * Measured on HP's Virtual Calculator 2026-10-23 (tests/lang/bi_corpus.ppl holds the
+ * answers): the Home real becomes a double whose mantissa is truncated to 48 bits, then
  * giac's exact_double runs on it with eps = 1E-12:
  *   exact(33.3333333334) = 100/3, exact(99.9999999997) = 100,
  *   exact(0.333333333) = 333332121/999996364 (the odd last term is the 48-bit truncation).

@@ -1,7 +1,6 @@
 /* gfx.c -- grobs and drawing primitives (see gfx.h).
  *
- * What is known about the Prime's drawing, and from where, is in
- * notes/ppl.md ("Graphics").  In short (HP's Virtual Calculator, 2026-10-18):
+ * What is known about the Prime's drawing (HP's Virtual Calculator, 2026-10-18):
  *   - pixels are 0xAARRGGBB; a colour whose alpha byte a is 0 is drawn as
  *     is, 255 draws nothing, and 1..254 blends each channel as
  *     (src*(255-a) + dst*a) >> 8 (PIXON_P of RGB(255,0,0,200) on black gives

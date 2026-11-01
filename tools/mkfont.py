@@ -11,8 +11,8 @@ Project), the typeface the HP Prime's own fonts match, with GNU FreeSans
 Their licences are in src/font/.
 
 The advance widths are not the fonts' own: they were measured on HP's Virtual
-Calculator (TEXTOUT_P's answer for every character in fonts 1-7, 2026-10-18,
-see notes/ppl.md), so TEXTOUT returns and lays out exactly as on the Prime.
+Calculator (TEXTOUT_P's answer for every character in fonts 1-7, 2026-10-18),
+so TEXTOUT returns and lays out exactly as on the Prime.
 Pixel sizes 10,12,...,22; fonts 1-2 are rendered unhinted (8x supersampled),
 3-7 with FreeType's hinting, whichever matched the Prime's pixels better.
 

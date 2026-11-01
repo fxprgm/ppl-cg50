@@ -1,7 +1,7 @@
 /* dec.h -- HP Prime Home real numbers: 12-digit decimal floating point.
  *
  * A real is a 12-significant-digit decimal with an exponent in -499..499,
- * like the Prime's Home reals (see notes/ppl.md, "Number semantics").
+ * like the Prime's Home reals.
  * Every operation is computed exactly (or with enough guard digits) and then
  * rounded once to 12 digits, half away from zero.
  *

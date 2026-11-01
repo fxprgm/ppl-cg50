@@ -1,6 +1,6 @@
 // Built-ins that real programs (ref/corpus, 2026-10-20) need.  Each case names the program
 // and how the answer is known: the User Guide (guide), the conformance table, giac, or the
-// program's own use of it (assumed; listed as questions in notes/ppl.md).
+// program's own use of it (assumed: not checked on a Prime).
 
 // linexpreg: list2mat(list, n) cuts the list into rows of n, padding with zeros (guide)
 //> list2mat({1,8,4,9},1) => [[1],[8],[4],[9]]

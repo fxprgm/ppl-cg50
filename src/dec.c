@@ -6,7 +6,7 @@
 const uint16_t xn_pow10[5] = { 1, 10, 100, 1000, 10000 };
 
 /* Tie rule: 0 = half away from zero (default), 1 = half to even.  Which one
- * the Prime uses is not settled yet (see notes/ppl.md). */
+ * the Prime uses is not settled yet. */
 int dec_round_mode = 1; /* the Prime: 1+5E-12 = 1, 1+2.5E-11 = 1.00000000002 */
 
 /* ------------------------------------------------------------------ xn */

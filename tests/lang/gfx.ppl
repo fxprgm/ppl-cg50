@@ -1,5 +1,5 @@
 // Graphics values, each checked on HP's Virtual Calculator (macOS, Home
-// view, 2026-10-18); see notes/ppl.md, "Graphics".
+// view, 2026-10-18).
 
 // rows of a 13x13 (or 17x17) grob as binary numbers, pixel x = 0 the highest bit
 EXPORT ROWS(n, y0, y1)

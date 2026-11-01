@@ -6,8 +6,8 @@
  * left.  Pixel coordinates are truncated toward zero (5.7 -> 5, -0.5 -> 0);
  * Cartesian ones go through the Function app's window (Xmin..Ymax) the way
  * the Prime maps them (see cart_x/cart_y).  Every drawing command answers 1.
- * What was checked on HP's Virtual Calculator is in notes/ppl.md
- * ("Graphics") and tests/lang/gfx.ppl.
+ * What was checked on HP's Virtual Calculator is in src/gfx.c and
+ * tests/lang/gfx.ppl.
  */
 #include "bi.h"
 #include "gfx.h"
