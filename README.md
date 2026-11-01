@@ -62,12 +62,11 @@ by Tony Gallo runs from its `SameGame.hpprgm`, just as it was downloaded:
 
 <img src="docs/images/samegame.png" width="396" alt="SameGame 1.4 by Tony Gallo, from its .hpprgm file, on the fx-CG50">
 
-**Yes, serious programs run too.**
-[AstroCalc](https://github.com/placidanomaly/HPPrimeSightReduction) by Charles Vaillancourt is
-a celestial-navigation almanac of about 4,000 lines, with the VSOP87 series for the Earth's
-position. Put its two files (`src/AstroCalc.hpppl` and `src/Earth.hpppl`) in `PPL`, type
-`SunEphemeris(2026.0101,12)`, and your fx-CG50 gives
-the Sun's Greenwich hour angle and declination for 1 January 2026 at 12:00 UT, the numbers a
+**Yes, serious programs run too.** AstroCalc, the almanac library of Charles Vaillancourt's
+[HPPrimeSightReduction](https://github.com/placidanomaly/HPPrimeSightReduction), is about
+4,000 lines with the VSOP87 series for the Earth's position. Put `src/AstroCalc.hpppl` and
+`src/Earth.hpppl` in `PPL`, type `SunEphemeris(2026.0101,12)`, and your fx-CG50 gives the
+Sun's Greenwich hour angle and declination for 1 January 2026 at 12:00 UT, the numbers a
 navigator looks up in the Nautical Almanac:
 
 ```
@@ -76,7 +75,9 @@ SunEphemeris(2026.0101,12)
 ```
 
 That is GHA 359°06.5′, declination S 22°58.6′, the GHA of Aries and the Sun's semi-diameter.
-The same program gives the Moon, 58 navigation stars, and sunrise, sunset and twilight times.
+The same library gives the Moon, 58 navigation stars, and sunrise, sunset and twilight times.
+The project's main program, Sight Reduction, doesn't run here yet: it puts its results in the
+Prime's Spreadsheet and Function apps, which this add-in doesn't have.
 
 Not there: the Prime's CAS (symbolic algebra; `CAS("…")` strings), the apps' views (Function,
 Statistics…) apart from their variables, `solve` and the Finance functions. Against the
